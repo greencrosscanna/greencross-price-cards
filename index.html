@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Green Cross Labels — Shelf Label Generator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="fonts.css"/>
+<link rel="stylesheet" href="generator.css"/>
+</head>
+<body>
+<div id="app">
+  <!-- ============ TOP BAR ============ -->
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark">+</span>
+      <span class="brand-name">Green Cross <strong>Labels</strong></span>
+    </div>
+    <div class="topbar-meta">
+      <span class="sheet-spec">Avery&nbsp;95271 &middot; 9-up &middot; US&nbsp;Letter</span>
+    </div>
+    <div class="topbar-actions">
+      <button class="btn btn-ghost" id="btnAddRow">+ Add product</button>
+      <button class="btn btn-ghost" id="btnClearQueue" title="Uncheck every Print box">Clear print queue</button>
+      <button class="btn btn-primary" id="btnGenerate">Generate label sheets</button>
+    </div>
+  </header>
+
+  <div class="workspace">
+    <!-- ============ LEFT: DATA EDITOR ============ -->
+    <section class="editor" id="editorPane">
+      <div class="editor-head">
+        <h2>Product data</h2>
+        <p class="editor-sub">Check <b>Print</b> for the labels you want. The design is fixed — you only edit the words. Every checked product prints as a full label; sheets fill 9-up.</p>
+        <div class="sheet-import" id="sheetImport">
+          <input type="url" id="sheetUrl" class="sheet-url" placeholder="Paste your Google Sheet link…" spellcheck="false"/>
+          <button class="btn btn-soft" id="btnImport"><span class="imp-ico">&#10227;</span> Import from Google Sheet</button>
+          <span class="import-status" id="importStatus"></span>
+        </div>
+        <div class="sheet-map" id="sheetMap" hidden>
+          <div class="sheet-map-head">
+            <span>Match your sheet columns to the label fields</span>
+            <button class="map-close" id="mapClose" title="Hide">&times;</button>
+          </div>
+          <div class="sheet-map-grid" id="sheetMapGrid"></div>
+          <div class="sheet-map-foot">
+            <button class="btn btn-primary" id="btnApplyMap">Apply mapping</button>
+            <span class="map-hint">Saved for next time. Re-import any time to pull fresh data.</span>
+          </div>
+        </div>
+        <details class="sheet-advanced" id="sheetAdvanced">
+          <summary>&#9881; Sheet settings &mdash; Apps Script data engine (read + write)</summary>
+          <div class="adv-body">
+            <label class="adv-field">Data engine URL <span class="adv-sub">(Apps Script web-app /exec)</span>
+              <input type="url" id="markDoneUrl" class="sheet-url" placeholder="https://script.google.com/macros/s/…/exec" spellcheck="false"/>
+            </label>
+            <label class="adv-toggle"><input type="checkbox" id="markDoneToggle" checked/> After importing, mark those rows <b>Done</b> in the sheet</label>
+            <p class="adv-note">With an engine URL set, the app reads rows <b>through</b> Apps Script — so your Sheet can stay <b>private</b> — and writes Done back after each import. Leave it blank to read the public CSV link instead (read-only). <b>Setup:</b> in the Sheet, Extensions ▸ Apps Script ▸ paste <b>Code.gs</b> ▸ Deploy ▸ Web app (Execute as <i>me</i>, Access <i>Anyone</i>) ▸ paste the <b>/exec</b> URL above.</p>
+          </div>
+        </details>
+      </div>
+      <div class="table-wrap">
+        <table class="grid-table" id="dataTable">
+          <thead>
+            <tr>
+              <th class="col-print" title="Include on the printed sheet">Print</th>
+              <th class="col-store">Store</th>
+              <th class="col-name">Name <span class="req">*</span></th>
+              <th class="col-product">Product</th>
+              <th class="col-desc">Description</th>
+              <th class="col-desc">Description 2</th>
+              <th class="col-size">Size</th>
+              <th class="col-price">Price <span class="req">*</span></th>
+              <th class="col-tools"></th>
+            </tr>
+          </thead>
+          <tbody id="dataBody"></tbody>
+        </table>
+      </div>
+      <div class="editor-foot">
+        <button class="btn btn-soft" id="btnAddRow2">+ Add product row</button>
+        <span class="hint">Tip: paste a column straight from Google Sheets — Tab / Enter move between cells.</span>
+      </div>
+    </section>
+
+    <!-- ============ RIGHT: PREVIEW ============ -->
+    <section class="preview" id="previewPane">
+      <div class="preview-head">
+        <div>
+          <h2>Print preview</h2>
+          <p class="preview-sub" id="previewStatus">No labels queued.</p>
+        </div>
+        <div class="preview-zoom">
+          <label class="guides-toggle" title="Show trim &amp; safe-margin guides"><input type="checkbox" id="guidesChk" checked/> Guides</label>
+          <label class="guides-toggle" title="Overlay the master template PDF for alignment"><input type="checkbox" id="templateChk"/> Template</label>
+          <button class="zbtn" id="zoomOut">&minus;</button>
+          <span id="zoomVal">Fit</span>
+          <button class="zbtn" id="zoomIn">+</button>
+        </div>
+      </div>
+      <div class="validation" id="validation" hidden></div>
+      <div class="preview-scroll" id="previewScroll">
+        <div class="sheets show-guides" id="sheets"></div>
+      </div>
+    </section>
+  </div>
+
+  <!-- print-only render target -->
+  <div id="printRoot" aria-hidden="true"></div>
+</div>
+
+<script src="generator.js"></script>
+</body>
+</html>
+
+<style id="__om-edit-overrides">
+#sheets div:nth-child(1) >.av-footer >.av-size { margin: 0px 0px -4px !important }
+#sheets div:nth-child(1) >.av-footer >.av-size { margin: 0px 0px 5px !important }
+#sheets div:nth-child(1) >.av-footer >.av-size { margin: 0px 0px 8px !important }
+#sheets div:nth-child(1) >.av-footer >.av-size { margin: 0px 0px 9px !important }
+#sheets div:nth-child(1) >.av-footer >.av-size { margin: 0px 0px 8px !important }
+#sheets div:nth-child(1) >.av-footer >.av-size { margin: 0px 0px 7px !important }
+#sheets div:nth-child(1) >.av-footer >.av-size { margin: 0px 0px 8px !important }
+#sheets div:nth-child(1) >.av-footer >.av-size { margin: 0px 0px 8px !important }
+#sheets div:nth-child(1) >.av-footer >.av-size { margin: 0px 1px 8px 0px !important }
+#sheets div:nth-child(1) >.av-footer >.av-size { margin: 0px 2px 8px 0px !important }
+#sheets div:nth-child(1) >.av-footer >.av-size { margin: 0px 4px 8px 0px !important }
+#sheets div:nth-child(1) >.av-footer >.av-size { margin: 0px -2px 8px 0px !important }
+#sheets div:nth-child(1) >.av-footer >.av-size { margin: 0px 0px 8px !important }
+#sheets div:nth-child(1) >.av-footer >.av-size { margin: 0px 0px 8px 1px !important }
+#sheets div:nth-child(1) >.av-footer >.av-size { margin: 0px 0px 8px 2px !important }
+#sheets div:nth-child(1) >.av-footer >.av-size { margin: 0px 0px 8px !important }
+#sheets div:nth-child(1) >.av-footer >.av-size { margin: 0px 0px 8px !important }
+#sheets div:nth-child(1) >.av-footer >.av-size { margin: 0px !important }
+#sheets div:nth-child(1) >.av-footer >.av-price { margin: 0px 0px 0px 1px !important }
+#sheets div:nth-child(1) >.av-footer >.av-price { margin: 0px 0px 0px 3px !important }
+#sheets div:nth-child(1) >.av-footer >.av-price { margin: 0px 0px 0px 6px !important }
+#sheets div:nth-child(1) >.av-footer >.av-price { margin: 0px !important }
+#sheets div:nth-child(1) >.av-footer >.av-price { margin: 0px 1px 0px 0px !important }
+#sheets div:nth-child(1) >.av-footer >.av-price { margin: 0px 2px 0px 0px !important }
+#sheets div:nth-child(1) >.av-footer >.av-price { margin: 0px -2px 0px 0px !important }
+#sheets div:nth-child(1) >.av-footer >.av-price { margin: 0px -3px 0px 0px !important }
+#sheets div:nth-child(1) >.av-footer >.av-price { margin: 0px !important }
+#sheets div:nth-child(1) >.av-name { font-size: 27px !important }
+#sheets div:nth-child(1) >.av-name { font-size: 26px !important }
+#sheets div:nth-child(1) >.av-name { margin: 0px 0px 0px 1px !important }
+#sheets div:nth-child(1) >.av-name { margin: 1px 0px 0px 1px !important }
+#sheets div:nth-child(1) >.av-name { margin: -1px 0px 0px 1px !important }
+#sheets div:nth-child(1) >.av-name { margin: 0px 0px 0px 1px !important }
+#sheets div:nth-child(1) >.av-name { margin: 0px 0px 1px 1px !important }
+#sheets div:nth-child(1) >.av-name { margin: 0px 0px 0px 1px !important }
+#sheets div:nth-child(1) >.av-name { margin: 0px 0px 1px 1px !important }
+#sheets div:nth-child(1) >.av-name { margin: 0px 0px 0px 1px !important }
+#sheets div:nth-child(1) >.av-name { margin: 0px !important }
+</style>

@@ -1,0 +1,288 @@
+/* ============================================================
+   GREEN CROSS LABELS — generator chrome + LOCKED label design
+   The .av-label block below is the print-accurate Avery 95271
+   label. Nothing here is editable by staff; only data changes.
+   ============================================================ */
+:root{
+  --gc-green:#89CD01;
+  --gc-green-deep:#6FA800;
+  --gc-ink:#2D2F35;       /* store soft-black */
+  --gc-footer:#2C2E35;    /* footer bar — charcoal, per master template */
+  --gc-black:#0C0D0C;     /* name / product pure black */
+  /* Brand type: Gotham Black + Gotham Book. Falls back to Montserrat
+     (closest free match) until the licensed Gotham files are embedded
+     via @font-face below. */
+  --gotham:'Gotham','Montserrat',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --bg:#EEF0F1;
+  --panel:#FFFFFF;
+  --line:#DCE0E3;
+  --line-strong:#C7CDD2;
+  --muted:#6B727A;
+  --muted-2:#9AA1A8;
+  --focus:#89CD01;
+  --radius:10px;
+  --shadow:0 1px 2px rgba(16,22,26,.06), 0 8px 24px rgba(16,22,26,.06);
+  font-synthesis:none;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;height:100%;}
+body{
+  font-family:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif;
+  background:var(--bg);
+  color:#1C2127;
+  -webkit-font-smoothing:antialiased;
+}
+#app{display:flex;flex-direction:column;height:100vh;}
+
+/* ---------------- TOP BAR ---------------- */
+.topbar{
+  display:flex;align-items:center;gap:20px;
+  padding:0 18px;height:58px;flex:0 0 58px;
+  background:var(--gc-ink);color:#fff;
+  box-shadow:0 1px 0 rgba(0,0,0,.25);z-index:5;
+}
+.brand{display:flex;align-items:center;gap:10px;font-size:16px;letter-spacing:.2px;}
+.brand-mark{
+  display:grid;place-items:center;width:28px;height:28px;border-radius:7px;
+  background:var(--gc-green);color:var(--gc-ink);font-weight:900;font-size:22px;
+  font-family:var(--gotham);line-height:1;padding-bottom:2px;
+}
+.brand-name{font-weight:500;}
+.brand-name strong{font-weight:800;}
+.topbar-meta{margin-left:4px;}
+.sheet-spec{
+  font-size:11.5px;color:#AEB4BB;letter-spacing:.3px;
+  border:1px solid rgba(255,255,255,.16);padding:4px 9px;border-radius:20px;white-space:nowrap;
+}
+.topbar-actions{margin-left:auto;display:flex;align-items:center;gap:9px;}
+
+.btn{
+  font:600 13px/1 'Inter',sans-serif;border:none;border-radius:8px;cursor:pointer;
+  padding:9px 14px;transition:.14s ease;white-space:nowrap;
+}
+.btn-primary{background:var(--gc-green);color:var(--gc-ink);font-weight:800;}
+.btn-primary:hover{background:#9BDC18;}
+.btn-ghost{background:rgba(255,255,255,.08);color:#E8EBED;}
+.btn-ghost:hover{background:rgba(255,255,255,.16);}
+.btn-soft{background:#fff;color:#2D2F35;border:1px solid var(--line-strong);}
+.btn-soft:hover{border-color:var(--muted-2);background:#FAFBFB;}
+
+/* ---------------- WORKSPACE ---------------- */
+.workspace{flex:1;display:grid;grid-template-columns:minmax(560px,1fr) minmax(440px,720px);min-height:0;}
+
+/* ---------------- EDITOR ---------------- */
+.editor{display:flex;flex-direction:column;min-height:0;border-right:1px solid var(--line);background:var(--panel);}
+.editor-head{padding:18px 20px 12px;}
+.editor-head h2{margin:0 0 4px;font-size:15px;font-weight:700;}
+.editor-sub{margin:0;font-size:12.5px;color:var(--muted);line-height:1.5;max-width:62ch;}
+.editor-sub b{color:#374049;}
+/* ---- Google Sheet import ---- */
+.sheet-import{display:flex;align-items:center;gap:10px;margin-top:12px;flex-wrap:wrap;}
+.sheet-url{
+  flex:1;min-width:200px;max-width:420px;font:inherit;font-size:12.5px;color:#2D2F35;
+  padding:7px 10px;border:1px solid var(--line-strong);border-radius:7px;background:#fff;
+}
+.sheet-url::placeholder{color:#B7BDC2;}
+.sheet-url:focus{outline:none;border-color:var(--gc-green);box-shadow:0 0 0 2px rgba(137,205,1,.25);}
+#btnImport{display:inline-flex;align-items:center;gap:7px;}
+#btnImport .imp-ico{font-size:14px;line-height:1;display:inline-block;}
+#btnImport.loading{opacity:.7;pointer-events:none;}
+#btnImport.loading .imp-ico{animation:imp-spin .7s linear infinite;}
+@keyframes imp-spin{to{transform:rotate(360deg);}}
+.import-status{font-size:12px;line-height:1.4;color:var(--muted);flex-basis:100%;}
+.import-status.ok{color:var(--gc-green-deep);}
+.import-status.err{color:#C24A2C;}
+/* ---- column mapping panel ---- */
+.sheet-map{margin-top:12px;border:1px solid var(--line-strong);border-radius:9px;background:#fff;padding:12px 14px;max-width:560px;}
+.sheet-map-head{display:flex;align-items:center;justify-content:space-between;font-size:12.5px;font-weight:700;color:#374049;margin-bottom:10px;}
+.map-close{border:none;background:none;font-size:18px;line-height:1;color:#9AA1A7;cursor:pointer;padding:0 2px;}
+.map-close:hover{color:#5A6066;}
+.sheet-map-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 14px;}
+.map-field{display:flex;align-items:center;gap:8px;font-size:12px;}
+.map-field label{flex:0 0 96px;color:var(--muted);font-weight:600;}
+.map-field label .req{font-weight:800;}
+.map-field select{flex:1;min-width:0;font:inherit;font-size:12px;padding:5px 7px;border:1px solid var(--line-strong);border-radius:6px;background:#fff;color:#2D2F35;cursor:pointer;}
+.map-field select:focus{outline:none;border-color:var(--gc-green);box-shadow:0 0 0 2px rgba(137,205,1,.25);}
+.sheet-map-foot{display:flex;align-items:center;gap:12px;margin-top:12px;}
+.map-hint{font-size:11.5px;color:var(--muted);}
+/* ---- write-back settings ---- */
+.sheet-advanced{margin-top:10px;max-width:560px;font-size:12px;}
+.sheet-advanced summary{cursor:pointer;color:var(--muted);font-weight:600;list-style:none;padding:4px 0;user-select:none;}
+.sheet-advanced summary::-webkit-details-marker{display:none;}
+.sheet-advanced summary:hover{color:#374049;}
+.sheet-advanced[open] summary{color:#374049;margin-bottom:8px;}
+.adv-body{display:flex;flex-direction:column;gap:9px;padding:12px 14px;border:1px solid var(--line);border-radius:9px;background:#FAFBFB;}
+.adv-toggle{display:flex;align-items:center;gap:8px;color:#374049;line-height:1.35;}
+.adv-toggle input{width:16px;height:16px;accent-color:var(--gc-green);}
+.adv-field{display:flex;flex-direction:column;gap:5px;color:var(--muted);font-weight:600;}
+.adv-field .sheet-url{max-width:none;font-weight:400;}
+.adv-sub{font-weight:400;color:#9AA1A7;font-size:11px;}
+.adv-note{margin:2px 0 0;font-size:11.5px;line-height:1.5;color:var(--muted);}
+.table-wrap{flex:1;overflow:auto;padding:0 14px;}
+.editor-foot{display:flex;align-items:center;gap:14px;padding:12px 20px;border-top:1px solid var(--line);}
+.hint{font-size:11.5px;color:var(--muted-2);}
+
+.grid-table{width:100%;border-collapse:separate;border-spacing:0;font-size:12.5px;}
+.grid-table thead th{
+  position:sticky;top:0;z-index:2;background:#F6F7F8;text-align:left;
+  font-weight:600;color:#5A626B;font-size:11px;letter-spacing:.4px;text-transform:uppercase;
+  padding:9px 8px;border-bottom:1px solid var(--line-strong);white-space:nowrap;
+}
+.grid-table thead th:first-child{border-top-left-radius:8px;}
+.req{color:var(--gc-deep,#6FA800);color:#6FA800;font-weight:800;}
+.col-print{width:46px;text-align:center !important;}
+.col-store{width:108px;}
+.col-name{width:140px;}
+.col-product{width:128px;}
+.col-size{width:78px;}
+.col-price{width:78px;}
+.col-tools{width:34px;}
+
+.grid-table tbody td{
+  border-bottom:1px solid var(--line);padding:0;vertical-align:middle;background:#fff;
+}
+.grid-table tbody tr:hover td{background:#FBFCFC;}
+.grid-table tbody tr.queued td{background:#F4FBE8;}
+.grid-table tbody tr.queued:hover td{background:#EFF8DE;}
+.grid-table tbody tr.row-error td{background:#FEF6F4;}
+
+.cell-input{
+  width:100%;border:none;background:transparent;font:inherit;color:#1C2127;
+  padding:10px 8px;outline:none;resize:none;line-height:1.35;
+}
+.cell-input::placeholder{color:#C2C8CD;}
+.cell-input:focus{box-shadow:inset 0 0 0 2px var(--gc-green);border-radius:5px;background:#fff;}
+td.invalid .cell-input{box-shadow:inset 0 0 0 2px #E8836B;border-radius:5px;}
+
+.chk-wrap{display:grid;place-items:center;height:100%;padding:8px 0;}
+.chk{appearance:none;width:18px;height:18px;border:1.6px solid var(--line-strong);border-radius:5px;cursor:pointer;position:relative;transition:.12s;}
+.chk:hover{border-color:var(--gc-green-deep);}
+.chk:checked{background:var(--gc-green);border-color:var(--gc-green);}
+.chk:checked::after{content:"";position:absolute;left:5px;top:1px;width:5px;height:10px;border:solid var(--gc-ink);border-width:0 2.4px 2.4px 0;transform:rotate(42deg);}
+
+.row-del{
+  width:24px;height:24px;border:none;background:transparent;color:#C2C8CD;cursor:pointer;
+  border-radius:6px;font-size:16px;line-height:1;transition:.12s;
+}
+.row-del:hover{background:#FBEAE5;color:#D8694B;}
+
+/* ---------------- PREVIEW ---------------- */
+.preview{display:flex;flex-direction:column;min-height:0;background:var(--bg);}
+.preview-head{display:flex;align-items:flex-end;justify-content:space-between;padding:16px 20px 12px;}
+.preview-head h2{margin:0 0 3px;font-size:15px;font-weight:700;}
+.preview-sub{margin:0;font-size:12px;color:var(--muted);}
+.preview-zoom{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--line);border-radius:8px;padding:3px;}
+.zbtn{width:26px;height:26px;border:none;background:transparent;border-radius:6px;cursor:pointer;font-size:15px;color:#4A525A;}
+.zbtn:hover{background:#F0F2F3;}
+#zoomVal{font-size:11.5px;color:var(--muted);min-width:34px;text-align:center;}
+.guides-toggle{display:flex;align-items:center;gap:5px;font-size:11.5px;color:#4A525A;cursor:pointer;padding:0 8px 0 4px;border-right:1px solid var(--line);margin-right:2px;user-select:none;white-space:nowrap;}
+.guides-toggle input{accent-color:#06C8C8;width:13px;height:13px;cursor:pointer;}
+
+.validation{margin:0 20px;padding:11px 14px;border-radius:9px;font-size:12.5px;line-height:1.5;}
+.validation.error{background:#FCEDE8;border:1px solid #F2C4B6;color:#9A3B22;}
+.validation.warn{background:#FEF7E6;border:1px solid #F3DEA0;color:#866017;}
+.validation b{font-weight:700;}
+.validation ul{margin:6px 0 0;padding-left:18px;}
+
+.preview-scroll{flex:1;overflow:auto;padding:18px 20px 40px;}
+.sheets{display:flex;flex-direction:column;align-items:center;gap:22px;transform-origin:top center;}
+
+.empty-state{
+  margin-top:64px;text-align:center;color:var(--muted-2);
+}
+.empty-state .es-sheet{
+  width:170px;height:220px;margin:0 auto 18px;border:2px dashed var(--line-strong);border-radius:8px;
+  display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);gap:6px;padding:10px;
+}
+.empty-state .es-sheet span{background:#fff;border:1px solid var(--line);border-radius:3px;}
+.empty-state p{font-size:13px;}
+
+/* ============================================================
+   ★ LOCKED LABEL DESIGN — Avery 95271 (do not expose to staff)
+   All sizes in inches/points for exact 100%-scale printing.
+   ============================================================ */
+.av-sheet{
+  width:8.5in;height:11in;background:#fff;position:relative;flex:0 0 auto;
+  box-shadow:0 2px 8px rgba(16,22,26,.14);
+}
+/* Template overlay (screen only) — the align PDF, toggled like guides */
+.av-template{position:absolute;top:0;left:0;width:8.5in;height:11in;opacity:.5;mix-blend-mode:multiply;pointer-events:none;display:none;z-index:20;}
+.sheets.show-template .av-template{display:block;}
+.av-grid{
+  /* Avery 95271: 3×3, 2.75in square labels. Edge-to-edge horizontally
+     (0.125in side margins); 0.625in gap between rows (0.75in top/bottom margins).
+     Row pitch = 3.375in, matching the perforation. */
+  position:absolute;top:0.75in;left:0.125in;
+  display:grid;
+  grid-template-columns:repeat(3,2.75in);
+  grid-template-rows:repeat(3,2.75in);
+  column-gap:0;row-gap:0.625in;
+}
+.av-label{
+  position:relative;width:2.75in;height:2.75in;overflow:visible;
+  color:var(--gc-black);background:#fff;
+}
+.av-cut{           /* faint perforation guide — screen only, hidden on print */
+  position:absolute;inset:0;outline:1px dashed #D7DBDE;outline-offset:-0.5px;pointer-events:none;
+}
+/* Cyan trim + safe guides (screen only) — mirror the Illustrator template.
+   .av-trim = the label trim / perforation edge; .av-safe = safe margin. */
+.av-guides{position:absolute;inset:0;pointer-events:none;display:none;z-index:10;}
+.sheets.show-guides .av-guides{display:block;}
+.av-guides .trim{position:absolute;inset:0;border:1px solid #00E0E0;}
+.av-guides .safe{position:absolute;top:0.125in;left:0.125in;right:0.125in;bottom:0.125in;border:1px solid #00E0E0;opacity:.7;}
+/* Store sits in the bleed, just above the trim (per the master template). */
+.av-pad{position:absolute;left:0.14in;right:0.2in;top:-0.13in;}
+.av-store{
+  font-family:var(--gotham);font-weight:500;font-size:9pt;letter-spacing:.1pt;
+  color:var(--gc-ink);line-height:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.av-name{
+  position:absolute;left:calc(0.389in - 1px);right:0.2in;bottom:2.06in;
+  font-family:var(--gotham);font-weight:900;color:var(--gc-black);
+  font-size:26px;line-height:.95;letter-spacing:-0.4pt;
+  word-break:break-word;
+}
+.av-body{
+  position:absolute;left:calc(0.389in - 2px);right:0.2in;bottom:calc(1.09in - 1px);
+}
+.av-product{
+  font-family:var(--gotham);font-weight:800;color:var(--gc-black);
+  font-size:17px;line-height:1.0;letter-spacing:-0.2pt;margin-bottom:1pt;
+  word-break:break-word;
+}
+.av-desc{
+  position:relative;top:2px;
+  font-family:var(--gotham);font-weight:400;color:#1A1C1E;
+  font-size:11.5pt;line-height:1.12;word-break:break-word;
+}
+.av-footer{
+  position:absolute;left:0;right:0;bottom:0;height:0.906in;background:var(--gc-footer);
+}
+.av-size{
+  position:absolute;left:0.389in;bottom:calc(0.352in + 8px);
+  font-family:var(--gotham);font-weight:700;color:#fff;font-size:11pt;line-height:1;
+  letter-spacing:.1pt;white-space:nowrap;
+}
+.av-price{
+  position:absolute;right:calc(0.417in - 3px);bottom:0.322in;
+  font-family:var(--gotham);font-weight:900;color:var(--gc-green);
+  font-size:30pt;line-height:1;letter-spacing:-1pt;white-space:nowrap;text-align:right;
+}
+.av-price .cur{font-size:25pt;}
+.av-label.empty-slot{background:#fff;}
+
+/* ---------------- PRINT ---------------- */
+@media print{
+  @page{size:8.5in 11in;margin:0;}
+  html,body{background:#fff;}
+  #app>*{display:none !important;}
+  #printRoot{display:block !important;}
+  .av-cut{display:none !important;}
+  .av-guides{display:none !important;}
+  .av-template{display:none !important;}
+  .av-sheet{box-shadow:none;page-break-after:always;break-after:page;margin:0;}
+  .av-sheet:last-child{page-break-after:auto;}
+  *{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+}
+#printRoot{display:none;}
