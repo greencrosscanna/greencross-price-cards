@@ -154,15 +154,17 @@
       {f:"size",         ph:"Size",         tag:"input"},
       {f:"price",        ph:"Price *",      tag:"input"}
     ];
+    var inputs = {};
     cells.forEach(function(c){
       var td = el('<td class="col-'+c.f+'"></td>');
       var inp = el('<input class="cell-input" type="text"/>');
       inp.value = r[c.f]||"";
       inp.placeholder = c.ph;
       inp.dataset.field = c.f;
+      inputs[c.f] = inp;
       inp.addEventListener("input",function(){ r[c.f]=inp.value; save(); schedulePreview(); td.classList.remove("invalid"); });
       inp.addEventListener("keydown",onCellKey);
-      // ── style-guide autocomplete + smart-naming ──
+      // ── style-guide autocomplete + smart-naming + cascading catalog ──
       if(c.f==="name"){                                   // Brand: type-ahead + conform on blur
         inp.setAttribute("list","brandList"); inp.setAttribute("autocomplete","off");
         inp.addEventListener("blur",function(){
@@ -174,7 +176,21 @@
           }
         });
       }
-      if(c.f==="size"){ inp.setAttribute("list","sizeList"); inp.setAttribute("autocomplete","off"); }
+      if(c.f==="product"){                                // Item: options filtered to the row's brand
+        inp.setAttribute("list","itemList"); inp.setAttribute("autocomplete","off");
+        inp.addEventListener("focus",function(){ ensureDatalist("itemList", productsFor(normalizeBrand(r.name))); });
+        inp.addEventListener("change",function(){ cascadeFill(r, inputs, "product"); });
+        inp.addEventListener("blur",function(){ cascadeFill(r, inputs, "product"); });
+      }
+      if(c.f==="size"){                                   // Size: options filtered to brand+item; sets price
+        inp.setAttribute("list","sizeList"); inp.setAttribute("autocomplete","off");
+        inp.addEventListener("focus",function(){
+          var vs = variantsFor(normalizeBrand(r.name), (r.product||"").trim());
+          ensureDatalist("sizeList", vs.length ? uniq(vs.map(function(v){ return v.size; })) : STYLE.sizes);
+        });
+        inp.addEventListener("change",function(){ cascadeFill(r, inputs, "size"); });
+        inp.addEventListener("blur",function(){ cascadeFill(r, inputs, "size"); });
+      }
       td.appendChild(inp); tr.appendChild(td);
     });
     // flag (new / special) — print-time instruction to attach a physical flag
@@ -613,7 +629,7 @@
   // ================= STYLE GUIDE: autocomplete + smart-naming =================
   // Loads the canonical tag dictionary (style/tags.json) and powers brand
   // type-ahead + on-blur normalization, so cards stay uniform across stores.
-  var STYLE = { brands:[], brandNorm:{}, sizes:[] };
+  var STYLE = { brands:[], brandNorm:{}, sizes:[], catalog:{} };
   function ensureDatalist(id, values){
     var dl = document.getElementById(id);
     if(!dl){ dl = document.createElement("datalist"); dl.id = id; document.body.appendChild(dl); }
@@ -625,6 +641,38 @@
     var hit = STYLE.brandNorm[s.toLowerCase()];
     return hit || s;   // unknown brands pass through untouched
   }
+  function uniq(a){ var o=[]; (a||[]).forEach(function(x){ if(x && o.indexOf(x)<0) o.push(x); }); return o; }
+  function productsFor(brand){ var b = STYLE.catalog[brand]; return b ? Object.keys(b) : []; }
+  function variantsFor(brand, product){ var b = STYLE.catalog[brand]; return (b && b[product]) ? b[product] : []; }
+  function flashCell(inp){ var c = inp && inp.closest && inp.closest("td"); if(c){ c.classList.add("conformed"); setTimeout(function(){ c.classList.remove("conformed"); }, 1000); } }
+
+  // Cascade: once Brand+Item (and Size) narrow to a known card, auto-fill size/price/desc.
+  function cascadeFill(r, inputs, stage){
+    var brand = normalizeBrand(r.name), product = (r.product||"").trim();
+    var variants = variantsFor(brand, product);
+    if(!variants.length) return;
+    var touched = [];
+    function set(f, val, onlyIfEmpty){
+      if(!val || !inputs[f]) return;
+      if(onlyIfEmpty && (inputs[f].value||"").trim()) return;
+      if((inputs[f].value||"") === String(val)) return;
+      inputs[f].value = val; r[f] = String(val); touched.push(f);
+    }
+    if(stage === "product"){
+      if(variants.length === 1){                       // unique item → fill it all
+        set("size", variants[0].size); set("price", variants[0].price); set("description", variants[0].desc, true);
+      } else {                                          // many sizes → fill price only if they all share one
+        var prices = uniq(variants.map(function(v){ return v.price; }));
+        if(prices.length === 1) set("price", prices[0]);
+      }
+    } else {                                            // stage === "size" → resolve price for the chosen size
+      var size = (r.size||"").trim();
+      var match = variants.filter(function(v){ return v.size === size; });
+      if(match.length){ set("price", match[0].price); set("description", match[0].desc, true); }
+    }
+    if(touched.length){ save(); schedulePreview(); touched.forEach(function(f){ flashCell(inputs[f]); }); }
+  }
+
   function loadStyle(){
     fetch("style/tags.json", {cache:"no-store"})
       .then(function(res){ if(!res.ok) throw 0; return res.json(); })
@@ -644,6 +692,10 @@
         ensureDatalist("sizeList", STYLE.sizes);
       })
       .catch(function(){ /* dictionary optional — app still works without it */ });
+    fetch("style/catalog.json", {cache:"no-store"})
+      .then(function(res){ if(!res.ok) throw 0; return res.json(); })
+      .then(function(c){ STYLE.catalog = c || {}; })
+      .catch(function(){ /* catalog optional */ });
   }
 
   // ================= INIT =================
