@@ -144,6 +144,14 @@ body{
 }
 .cell-flag.has-new{border-color:#1a8a3c;color:#1a8a3c;font-weight:600;}
 .cell-flag.has-special{border-color:#c2261d;color:#c2261d;font-weight:600;}
+/* brief flash when smart-naming conforms a brand to the canonical spelling */
+td.conformed .cell-input{background:#e8f7ed;transition:background .25s;}
+td.conformed{position:relative;}
+td.conformed::after{
+  content:"✓ conformed";position:absolute;top:-7px;right:6px;z-index:3;
+  font-size:9px;font-weight:700;letter-spacing:.2px;color:#fff;background:#1a8a3c;
+  padding:1px 5px;border-radius:7px;pointer-events:none;
+}
 
 .grid-table tbody td{
   border-bottom:1px solid var(--line);padding:0;vertical-align:middle;background:#fff;

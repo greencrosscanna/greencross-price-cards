@@ -27,12 +27,12 @@
       var raw = JSON.parse(localStorage.getItem(STORAGE_KEY));
       if(Array.isArray(raw) && raw.length) return raw.map(function(r){return blankRow(r);});
     }catch(e){}
-    // seed sample rows on first run (matches the approved Illustrator layout)
+    // seed sample rows on first run (Brand headline + Item, matching the master template)
     return [
-      blankRow({print:true,  name:"Blue Dream",        product:"Premium Flower",      description:"Sativa-dominant hybrid", description2:"22.4% THC", size:"3.5g", price:"40"}),
-      blankRow({print:true,  name:"Wedding Cake",       product:"Live Resin Cartridge",description:"Indica hybrid",         description2:"1g · 510 thread", size:"1g",  price:"55"}),
-      blankRow({print:true,  name:"Sour Diesel",        product:"Pre-Roll 5-Pack",     description:"Sativa",                 description2:"2.5g total",      size:"5×0.5g", price:"35"}),
-      blankRow({print:false, name:"Northern Lights",    product:"Premium Flower",      description:"Indica",                 description2:"19.1% THC",       size:"3.5g", price:"38"})
+      blankRow({print:true,  name:"Wyld",       product:"Gummies",          description:"Various | 100mg THC", size:"10 Pieces", price:"18"}),
+      blankRow({print:true,  name:"Grön",       product:"Mini Bar",         description:"100mg THC",           size:"1 Piece",   price:"8"}),
+      blankRow({print:true,  name:"Good Tide",  product:"Rosin Gummies 1:1",description:"Various | 100mg THC", size:"10 Pieces", price:"22"}),
+      blankRow({print:false, name:"Hellavated", product:"Cloud Bar",        description:"All-in-One",          size:"1g",        price:"24"})
     ];
   }
   function save(){ try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(rows)); }catch(e){} }
@@ -147,8 +147,8 @@
     // field cells
     var cells = [
       {f:"store",        ph:"Store",        tag:"input"},
-      {f:"name",         ph:"Name *",       tag:"input"},
-      {f:"product",      ph:"Product",      tag:"input"},
+      {f:"name",         ph:"Brand *",      tag:"input"},
+      {f:"product",      ph:"Item",         tag:"input"},
       {f:"description",  ph:"Description",  tag:"input"},
       {f:"description2", ph:"Description 2",tag:"input"},
       {f:"size",         ph:"Size",         tag:"input"},
@@ -162,6 +162,19 @@
       inp.dataset.field = c.f;
       inp.addEventListener("input",function(){ r[c.f]=inp.value; save(); schedulePreview(); td.classList.remove("invalid"); });
       inp.addEventListener("keydown",onCellKey);
+      // ── style-guide autocomplete + smart-naming ──
+      if(c.f==="name"){                                   // Brand: type-ahead + conform on blur
+        inp.setAttribute("list","brandList"); inp.setAttribute("autocomplete","off");
+        inp.addEventListener("blur",function(){
+          var norm = normalizeBrand(inp.value);
+          if(norm !== inp.value){
+            inp.value = norm; r.name = norm; save(); schedulePreview();
+            td.classList.add("conformed");
+            setTimeout(function(){ td.classList.remove("conformed"); }, 1000);
+          }
+        });
+      }
+      if(c.f==="size"){ inp.setAttribute("list","sizeList"); inp.setAttribute("autocomplete","off"); }
       td.appendChild(inp); tr.appendChild(td);
     });
     // flag (new / special) — print-time instruction to attach a physical flag
@@ -204,7 +217,7 @@
     if(v.problems.length){
       valEl.hidden=false; valEl.className="validation warn";
       var li = v.problems.map(function(p){
-        return "<li>Row "+p.row+" — <b>"+esc(p.name)+"</b> missing: "+p.missing.join(", ")+"</li>";
+        return "<li>Row "+p.row+" — <b>"+esc(p.name)+"</b> missing: "+p.missing.map(function(f){return f==="name"?"Brand":f.charAt(0).toUpperCase()+f.slice(1);}).join(", ")+"</li>";
       }).join("");
       valEl.innerHTML = "<b>"+v.problems.length+" queued label"+(v.problems.length>1?"s":"")+" missing required fields</b> (they’re skipped until fixed):<ul>"+li+"</ul>";
     } else valEl.hidden=true;
@@ -286,7 +299,7 @@
     }
     var printable = v.queued.filter(function(r){ return REQUIRED.every(function(f){return String(r[f]||"").trim();}); });
     if(!printable.length){
-      flashError("Every queued label is missing required fields (Name, Price). Fix the highlighted rows.");
+      flashError("Every queued label is missing required fields (Brand, Price). Fix the highlighted rows.");
       markInvalid(v.problems);
       return;
     }
@@ -365,8 +378,9 @@
   var HEADER_ALIASES = {
     print:        ["print","include","queue","on sheet"],
     store:        ["store","location","shop","dispensary","site"],
-    name:         ["name","strain","strain name","product name","item","title"],
-    product:      ["product","category","type","product type","class","subcategory"],
+    // Brand is the big headline on the card (.av-name). Item Name is the line below it.
+    name:         ["brand","brand name","maker","producer","vendor"],
+    product:      ["item name","item","product name","product","strain","strain name","title"],
     description:  ["description","desc","description 1","desc 1","details","notes","info","line 1"],
     description2: ["description 2","desc 2","description2","desc2","subtitle","secondary","line 2"],
     size:         ["size","weight","net weight","qty","quantity","amount","grams","unit"],
@@ -392,8 +406,8 @@
   // ---- column mapping (persisted as field -> header NAME so it survives reorders) ----
   var MAP_KEY = "gcLabels.colMap.v1";
   var MAP_FIELDS = [
-    {f:"name",         label:"Name",          req:true},
-    {f:"product",      label:"Product",       req:false},
+    {f:"name",         label:"Brand",         req:true},
+    {f:"product",      label:"Item",          req:false},
     {f:"description",  label:"Description",   req:false},
     {f:"description2", label:"Description 2", req:false},
     {f:"size",         label:"Size",          req:false},
@@ -596,7 +610,44 @@
   var mapClose = document.getElementById("mapClose");
   if(mapClose) mapClose.onclick = function(){ if(mapPanel) mapPanel.hidden = true; };
 
+  // ================= STYLE GUIDE: autocomplete + smart-naming =================
+  // Loads the canonical tag dictionary (style/tags.json) and powers brand
+  // type-ahead + on-blur normalization, so cards stay uniform across stores.
+  var STYLE = { brands:[], brandNorm:{}, sizes:[] };
+  function ensureDatalist(id, values){
+    var dl = document.getElementById(id);
+    if(!dl){ dl = document.createElement("datalist"); dl.id = id; document.body.appendChild(dl); }
+    dl.innerHTML = (values||[]).map(function(v){ return '<option value="'+esc(v)+'"></option>'; }).join("");
+  }
+  function normalizeBrand(v){
+    var s = String(v==null?"":v).trim();
+    if(!s) return s;
+    var hit = STYLE.brandNorm[s.toLowerCase()];
+    return hit || s;   // unknown brands pass through untouched
+  }
+  function loadStyle(){
+    fetch("style/tags.json", {cache:"no-store"})
+      .then(function(res){ if(!res.ok) throw 0; return res.json(); })
+      .then(function(t){
+        STYLE.brands = t.brands || [];
+        var m = {};
+        STYLE.brands.forEach(function(b){ m[b.toLowerCase()] = b; });          // canonical casing
+        var corr = t.brand_corrections || {};
+        Object.keys(corr).forEach(function(k){ m[k.toLowerCase()] = corr[k]; }); // known fixes
+        STYLE.brandNorm = m;
+        var sizes = [], su = t.size_units || {};
+        ["weights","counts_packs","other"].forEach(function(k){
+          (su[k]||[]).forEach(function(s){ if(sizes.indexOf(s)<0) sizes.push(s); });
+        });
+        STYLE.sizes = sizes;
+        ensureDatalist("brandList", STYLE.brands);
+        ensureDatalist("sizeList", STYLE.sizes);
+      })
+      .catch(function(){ /* dictionary optional — app still works without it */ });
+  }
+
   // ================= INIT =================
+  loadStyle();
   renderTable();
   refreshPreview();
   // re-fit once fonts + layout settle (first paint can mis-measure)
