@@ -629,7 +629,7 @@
   // ================= STYLE GUIDE: autocomplete + smart-naming =================
   // Loads the canonical tag dictionary (style/tags.json) and powers brand
   // type-ahead + on-blur normalization, so cards stay uniform across stores.
-  var STYLE = { brands:[], brandNorm:{}, sizes:[], catalog:{} };
+  var STYLE = { brands:[], brandNorm:{}, sizes:[], catalog:{}, index:[] };
   function ensureDatalist(id, values){
     var dl = document.getElementById(id);
     if(!dl){ dl = document.createElement("datalist"); dl.id = id; document.body.appendChild(dl); }
@@ -694,8 +694,89 @@
       .catch(function(){ /* dictionary optional — app still works without it */ });
     fetch("style/catalog.json", {cache:"no-store"})
       .then(function(res){ if(!res.ok) throw 0; return res.json(); })
-      .then(function(c){ STYLE.catalog = c || {}; })
+      .then(function(c){ STYLE.catalog = c || {}; buildIndex(); })
       .catch(function(){ /* catalog optional */ });
+  }
+
+  // ===== CARD BUILDER — search → conformed card =====
+  // Flatten the catalog into a searchable index. (Same shape Dutchie will
+  // provide, so this swaps to live active inventory later with no UI change.)
+  function buildIndex(){
+    var idx = [];
+    Object.keys(STYLE.catalog).forEach(function(brand){
+      var prods = STYLE.catalog[brand];
+      Object.keys(prods).forEach(function(item){
+        prods[item].forEach(function(v){
+          idx.push({ brand:brand, item:item, desc:v.desc||"", size:v.size||"", price:v.price||"", category:v.category||"",
+            hay:(brand+" "+item+" "+(v.desc||"")+" "+(v.size||"")+" "+(v.category||"")).toLowerCase() });
+        });
+      });
+    });
+    STYLE.index = idx;
+  }
+  function cbRun(q){
+    q = String(q||"").trim().toLowerCase();
+    if(!q) return [];
+    var toks = q.split(/\s+/), scored = [];
+    STYLE.index.forEach(function(e){
+      var s = 0, ok = true;
+      for(var i=0;i<toks.length;i++){
+        var t = toks[i], at = e.hay.indexOf(t);
+        if(at < 0){ ok = false; break; }
+        s += (e.brand.toLowerCase().indexOf(t)>=0 ? 3 : 1) + (at===0 ? 1 : 0);
+      }
+      if(ok) scored.push({ e:e, s:s });
+    });
+    scored.sort(function(a,b){ return b.s - a.s; });
+    return scored.slice(0,8).map(function(x){ return x.e; });
+  }
+
+  var cbSearch  = document.getElementById("cbSearch");
+  var cbResults = document.getElementById("cbResults");
+  var cbMatches = [], cbActive = -1;
+  function cbRender(){
+    if(!cbResults) return;
+    if(!cbMatches.length){
+      cbResults.innerHTML = '<div class="cb-empty">No match — refine your search, or add a blank row below.</div>';
+      cbResults.hidden = false; return;
+    }
+    cbResults.innerHTML = cbMatches.map(function(e,i){
+      var sub = [e.desc, e.size].filter(Boolean).join(" · ");
+      return '<div class="cb-item'+(i===cbActive?' active':'')+'" data-i="'+i+'">'+
+        (e.category ? '<span class="cb-cat">'+esc(e.category)+'</span>' : '')+
+        '<span class="cb-text"><span class="cb-main">'+esc(e.brand)+' · '+esc(e.item)+'</span>'+
+          (sub ? ' <span class="cb-sub">'+esc(sub)+'</span>' : '')+'</span>'+
+        (e.price ? '<span class="cb-price">$'+esc(e.price)+'</span>' : '')+
+      '</div>';
+    }).join("");
+    cbResults.hidden = false;
+  }
+  function cbAdd(e){
+    if(!e) return;
+    rows.push(blankRow({ print:true, name:e.brand, product:e.item, description:e.desc, size:e.size, price:e.price }));
+    save(); renderTable(); refreshPreview();
+    if(cbSearch) cbSearch.value = "";
+    cbMatches = []; cbActive = -1; if(cbResults) cbResults.hidden = true;
+    var tr = dataBody.lastElementChild;
+    if(tr){ tr.classList.add("row-added"); setTimeout(function(){ tr.classList.remove("row-added"); }, 1300);
+      tr.scrollIntoView({block:"nearest"}); }
+  }
+  if(cbSearch){
+    cbSearch.addEventListener("input", function(){ cbMatches = cbRun(cbSearch.value); cbActive = cbMatches.length ? 0 : -1; cbRender(); });
+    cbSearch.addEventListener("focus", function(){ if(cbSearch.value){ cbMatches = cbRun(cbSearch.value); cbRender(); } });
+    cbSearch.addEventListener("blur",  function(){ setTimeout(function(){ if(cbResults) cbResults.hidden = true; }, 150); });
+    cbSearch.addEventListener("keydown", function(ev){
+      if(ev.key === "ArrowDown"){ ev.preventDefault(); cbActive = Math.min(cbActive+1, cbMatches.length-1); cbRender(); }
+      else if(ev.key === "ArrowUp"){ ev.preventDefault(); cbActive = Math.max(cbActive-1, 0); cbRender(); }
+      else if(ev.key === "Enter"){ ev.preventDefault(); if(cbMatches[cbActive]) cbAdd(cbMatches[cbActive]); }
+      else if(ev.key === "Escape"){ cbMatches = []; if(cbResults) cbResults.hidden = true; }
+    });
+  }
+  if(cbResults){
+    cbResults.addEventListener("mousedown", function(ev){
+      var it = ev.target.closest(".cb-item"); if(!it) return;
+      ev.preventDefault(); cbAdd(cbMatches[+it.dataset.i]);
+    });
   }
 
   // ================= INIT =================

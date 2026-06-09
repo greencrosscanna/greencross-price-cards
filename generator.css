@@ -144,6 +144,25 @@ body{
 }
 .cell-flag.has-new{border-color:#1a8a3c;color:#1a8a3c;font-weight:600;}
 .cell-flag.has-special{border-color:#c2261d;color:#c2261d;font-weight:600;}
+/* ===== Card builder (search → conformed card) ===== */
+.card-builder{position:relative;margin:10px 0 14px;}
+.card-builder .cb-ico{position:absolute;left:13px;top:50%;transform:translateY(-50%);font-size:17px;color:#8a9099;pointer-events:none;}
+.cb-search{width:100%;font:inherit;font-size:15px;padding:11px 14px 11px 38px;border:1.5px solid var(--gc-line,#d7dbe0);border-radius:10px;background:#fff;color:var(--gc-ink,#2a2d31);}
+.cb-search::placeholder{color:#9aa0a6;}
+.cb-search:focus{outline:none;border-color:#8bc34a;box-shadow:0 0 0 3px rgba(139,195,74,.18);}
+.cb-results{position:absolute;left:0;right:0;top:calc(100% + 5px);z-index:30;background:#fff;
+  border:1px solid var(--gc-line,#d7dbe0);border-radius:11px;box-shadow:0 10px 30px rgba(20,25,35,.14);
+  max-height:360px;overflow:auto;padding:5px;}
+.cb-item{display:flex;align-items:center;gap:9px;padding:9px 11px;border-radius:8px;cursor:pointer;}
+.cb-item:hover,.cb-item.active{background:#f1f7e8;}
+.cb-item .cb-cat{flex:none;font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;
+  color:#fff;background:#9aa0a6;border-radius:6px;padding:2px 6px;}
+.cb-item .cb-text{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.cb-item .cb-main{font-weight:600;color:var(--gc-ink,#2a2d31);}
+.cb-item .cb-sub{color:#6b7280;font-size:12.5px;}
+.cb-item .cb-price{flex:none;font-weight:800;color:#3d6b1f;}
+.cb-empty{padding:13px;color:#6b7280;font-size:13px;}
+tr.row-added td{background:#eef7e2 !important;transition:background .35s;}
 /* brief flash when smart-naming conforms a brand to the canonical spelling */
 td.conformed .cell-input{background:#e8f7ed;transition:background .25s;}
 td.conformed{position:relative;}
