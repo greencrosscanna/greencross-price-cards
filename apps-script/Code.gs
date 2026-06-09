@@ -39,20 +39,39 @@ var SHEET_GID = '';
 
 /* ---------------------- ONE-TIME AUTHORIZE -------------------- *
  * Run this ONCE in the editor (select "authorize" ▸ Run) to grant
- * the script permission to read/write this Sheet. The web app can't
- * serve requests until the owner has authorized these scopes.
- * Safe to re-run; it just reads the Sheet's name.
+ * the script its scopes. RE-RUN after a scope change (e.g. when we
+ * added Dutchie/external requests). The web app can't serve until
+ * the owner has authorized. Safe to re-run.
  * -------------------------------------------------------------- */
 function authorize() {
   var name = SpreadsheetApp.getActiveSpreadsheet().getName();
-  Logger.log('Authorized. Connected to: ' + name);
-  return name;
+  var report = { sheet: name, dutchie: {} };
+  // Touch the external-request scope + verify Dutchie connectivity per store.
+  try {
+    var stores = dutchieStores_();
+    for (var i = 0; i < stores.length; i++) {
+      try {
+        var hdrs = { Authorization: dutchieAuth_(stores[i]), Accept: 'application/json' };
+        var r = UrlFetchApp.fetch(DUTCHIE_BASE + '/whoami', { headers: hdrs, muteHttpExceptions: true });
+        report.dutchie[stores[i]] = 'HTTP ' + r.getResponseCode();
+      } catch (e2) { report.dutchie[stores[i]] = 'ERR ' + e2.message; }
+    }
+  } catch (e1) { report.dutchie = 'keys not set: ' + e1.message; }
+  Logger.log('Authorized. ' + JSON.stringify(report));
+  return report;
 }
 
 /* ---------------------------- READ ---------------------------- */
 function doGet(e) {
   try {
-    var sheet  = pickSheet(e && e.parameter && e.parameter.gid);
+    var p = (e && e.parameter) || {};
+    switch (p.action) {
+      case 'stores':       return json({ ok: true, stores: dutchieStores_() });
+      case 'dutchieProbe': return json(dutchieProbe_(p));
+      case 'liveCatalog':  return json(liveCatalog_(p));
+    }
+    // default: read the bound Sheet
+    var sheet  = pickSheet(p.gid);
     var values = sheet.getDataRange().getValues();
     var grid   = values.map(function (row) {
       return row.map(cellToString);
@@ -124,4 +143,76 @@ function json(obj) {
   return ContentService
     .createTextOutput(JSON.stringify(obj))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+/* ===================== DUTCHIE — live active inventory ===================== *
+ * Reads in-stock inventory per store from the Dutchie POS API so the card
+ * builder can search real products with real per-store prices. Keys live in
+ * Script Property DUTCHIE_STORE_KEYS_JSON = {"<store>":"<apiKey>", ...},
+ * the same map the inventory app uses. Never hard-code keys here.
+ * ------------------------------------------------------------------------- */
+var DUTCHIE_BASE = 'https://api.pos.dutchie.com';
+var DUTCHIE_STORE_KEYS_PROP = 'DUTCHIE_STORE_KEYS_JSON';
+
+function getDutchieStoreKeys_() {
+  var raw = PropertiesService.getScriptProperties().getProperty(DUTCHIE_STORE_KEYS_PROP);
+  if (!raw) throw new Error('DUTCHIE_STORE_KEYS_JSON is not set in Script Properties.');
+  return JSON.parse(raw);
+}
+function dutchieStores_() { return Object.keys(getDutchieStoreKeys_()); }
+function dutchieAuth_(store) {
+  var key = getDutchieStoreKeys_()[store];
+  if (!key) throw new Error('No Dutchie key for store: ' + store);
+  return 'Basic ' + Utilities.base64Encode(key + ':');   // POS API: key as username, blank password
+}
+
+function priceOf_(it) {
+  return Number(it.unitPrice || it.price || it.retailPrice || it.defaultUnitPrice || it.medPrice || it.recPrice || 0);
+}
+
+// Raw inventory items for a store from /reporting/inventory (one call, all fields).
+function dutchieInventory_(store) {
+  var hdrs = { Authorization: dutchieAuth_(store), Accept: 'application/json' };
+  var resp = UrlFetchApp.fetch(DUTCHIE_BASE + '/reporting/inventory', { headers: hdrs, muteHttpExceptions: true });
+  if (resp.getResponseCode() !== 200) throw new Error('Dutchie HTTP ' + resp.getResponseCode() + ' (' + store + ')');
+  var raw = JSON.parse(resp.getContentText());
+  return Array.isArray(raw) ? raw : (raw.data || raw.items || []);
+}
+
+// Diagnostic: see real field shapes + a few in-stock samples (for designing the conformance).
+function dutchieProbe_(p) {
+  var store = p.store || dutchieStores_()[0];
+  var items = dutchieInventory_(store);
+  var inStock = items.filter(function (it) { return Number(it.quantityAvailable || 0) > 0; });
+  return {
+    ok: true, store: store, total: items.length, inStock: inStock.length,
+    fields: items.length ? Object.keys(items[0]) : [],
+    sample: inStock.slice(0, 5)
+  };
+}
+
+// Conformed live catalog for the card builder. One store (?store=) or all merged.
+function liveCatalog_(p) {
+  var stores = p.store ? [p.store] : dutchieStores_();
+  var items = [], errors = {};
+  for (var s = 0; s < stores.length; s++) {
+    try {
+      var inv = dutchieInventory_(stores[s]);
+      for (var i = 0; i < inv.length; i++) {
+        var it = inv[i];
+        if (Number(it.quantityAvailable || 0) <= 0) continue;   // active = in stock
+        items.push({
+          store:    stores[s],
+          brand:    String(it.brandName || '').trim(),
+          name:     String(it.productName || '').trim(),
+          category: String(it.masterCategory || it.category || '').trim(),
+          size:     String(it.size || it.unitWeight || it.netWeight || it.weight || '').trim(),
+          sku:      it.sku || '',
+          price:    priceOf_(it) ? String(priceOf_(it)) : '',
+          qty:      Number(it.quantityAvailable || 0)
+        });
+      }
+    } catch (err) { errors[stores[s]] = String(err); }
+  }
+  return { ok: true, count: items.length, stores: stores, errors: errors, items: items };
 }
