@@ -18,7 +18,7 @@
   var rows = load();
   function blankRow(over){
     var r = {print:false, store:DEFAULT_STORE, name:"", product:"",
-             description:"", description2:"", size:"", price:""};
+             description:"", description2:"", size:"", price:"", status:""};
     if(over) for(var k in over) r[k]=over[k];
     return r;
   }
@@ -65,7 +65,11 @@
     var node = el(
       '<div class="av-label">'+
         '<div class="av-guides"><div class="trim"></div><div class="safe"></div></div>'+
-        (d.store ? '<div class="av-pad"><div class="av-store">'+esc(d.store)+'</div></div>' : '')+
+        ((d.store || d.status) ?
+          '<div class="av-pad">'+
+            (d.store ? '<div class="av-store">'+esc(d.store)+'</div>' : '')+
+            (d.status ? '<span class="av-flag '+esc(d.status)+'">'+(d.status==="special"?"SPECIAL":"NEW")+'</span>' : '')+
+          '</div>' : '')+
         '<div class="av-name">'+esc(d.name)+'</div>'+
         '<div class="av-body">'+
           (d.product ? '<div class="av-product">'+esc(d.product)+'</div>' : '')+
@@ -160,6 +164,13 @@
       inp.addEventListener("keydown",onCellKey);
       td.appendChild(inp); tr.appendChild(td);
     });
+    // flag (new / special) — print-time instruction to attach a physical flag
+    var tdf = el('<td class="col-flag"></td>');
+    var sel = el('<select class="cell-flag"><option value="">—</option><option value="new">NEW</option><option value="special">SPECIAL</option></select>');
+    sel.value = r.status || "";
+    sel.className = "cell-flag" + (r.status ? " has-"+r.status : "");
+    sel.addEventListener("change",function(){ r.status=sel.value; sel.className="cell-flag"+(r.status?" has-"+r.status:""); save(); schedulePreview(); });
+    tdf.appendChild(sel); tr.appendChild(tdf);
     // delete
     var tdt = el('<td class="col-tools"></td>');
     var del = el('<button class="row-del" title="Delete row">&times;</button>');
@@ -360,6 +371,7 @@
     description2: ["description 2","desc 2","description2","desc2","subtitle","secondary","line 2"],
     size:         ["size","weight","net weight","qty","quantity","amount","grams","unit"],
     price:        ["price","cost","msrp","retail","price ($)"],
+    status:       ["status","flag","new/special","new or special","card flag"],
     done:         ["done","printed","complete","completed","finished","archived"]
   };
   function normHeader(h){ return String(h==null?"":h).trim().toLowerCase().replace(/[._]/g," ").replace(/\s+/g," "); }
@@ -387,6 +399,7 @@
     {f:"size",         label:"Size",          req:false},
     {f:"price",        label:"Price",         req:true},
     {f:"store",        label:"Store",         req:false},
+    {f:"status",       label:"Flag (new/special)", req:false},
     {f:"done",         label:"Done (skip if ✓)", req:false},
     {f:"print",        label:"Print",         req:false}
   ];
@@ -430,6 +443,8 @@
       var get=function(f){ return (idxMap[f]!=null && idxMap[f]>=0) ? String(r[idxMap[f]]==null?"":r[idxMap[f]]).trim() : ""; };
       // skip rows already marked Done in the sheet
       if(hasDone && DONE_RE.test(get("done"))){ if(get("name")||get("price")||get("store")) doneSkipped++; continue; }
+      var rawStatus = get("status").toLowerCase();
+      var status = /\b(new|green)\b/.test(rawStatus) ? "new" : (/\b(special|red|sale)\b/.test(rawStatus) ? "special" : "");
       var rec = blankRow({
         // imported rows default to Print = ON, unless a Print column says otherwise
         print:        hasPrint ? DONE_RE.test(get("print")) : true,
@@ -439,7 +454,8 @@
         description:  get("description"),
         description2: get("description2"),
         size:         get("size"),
-        price:        get("price")
+        price:        get("price"),
+        status:       status
       });
       if(!rec.name && !rec.product && !rec.price && !rec.store) continue; // skip blank lines
       out.push(rec);
