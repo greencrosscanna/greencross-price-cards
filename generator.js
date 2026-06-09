@@ -509,9 +509,14 @@
   // ---- write-back: mark imported rows Done in the sheet (needs an Apps Script web app) ----
   var WEBAPP_KEY = "gcLabels.markDoneUrl";
   var WEBAPP_ON_KEY = "gcLabels.markDoneOn";
+  // Team default: the deployed Apps Script data engine. Baked in so staff never
+  // have to configure anything — open the page, click Import, and it reads the
+  // (private) Sheet through this engine and writes Done back. Override per-machine
+  // in ⚙ Sheet settings if needed.
+  var DEFAULT_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbwKRfDEz5Rugw-NfFZpEMDawoX-nBCB0rocMdt-KBfcyOf13ZO8D2INQGvHqIzKjVFb/exec";
   var markUrlInput = document.getElementById("markDoneUrl");
   var markToggle   = document.getElementById("markDoneToggle");
-  function loadWebapp(){ try{ return localStorage.getItem(WEBAPP_KEY) || ""; }catch(e){ return ""; } }
+  function loadWebapp(){ try{ return localStorage.getItem(WEBAPP_KEY) || DEFAULT_WEBAPP_URL; }catch(e){ return DEFAULT_WEBAPP_URL; } }
   function loadWebappOn(){ try{ return localStorage.getItem(WEBAPP_ON_KEY) !== "0"; }catch(e){ return true; } }
   if(markUrlInput){ markUrlInput.value = loadWebapp();
     markUrlInput.addEventListener("change", function(){ try{ localStorage.setItem(WEBAPP_KEY, markUrlInput.value.trim()); }catch(e){} }); }

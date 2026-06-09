@@ -37,6 +37,18 @@
 // whatever gid the request passes). Leave '' for normal use.
 var SHEET_GID = '';
 
+/* ---------------------- ONE-TIME AUTHORIZE -------------------- *
+ * Run this ONCE in the editor (select "authorize" ▸ Run) to grant
+ * the script permission to read/write this Sheet. The web app can't
+ * serve requests until the owner has authorized these scopes.
+ * Safe to re-run; it just reads the Sheet's name.
+ * -------------------------------------------------------------- */
+function authorize() {
+  var name = SpreadsheetApp.getActiveSpreadsheet().getName();
+  Logger.log('Authorized. Connected to: ' + name);
+  return name;
+}
+
 /* ---------------------------- READ ---------------------------- */
 function doGet(e) {
   try {
