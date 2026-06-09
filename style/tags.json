@@ -27,7 +27,7 @@
     "CartI9",
     "Chompd",
     "Clipper",
-    "Dave's Nutz",
+    "Dave's Nuttz",
     "Davie's Glass",
     "Decibel Farms",
     "Don Coolio",
@@ -98,7 +98,7 @@
     "Zenblaze"
   ],
   "brand_corrections": {
-    "Dave's Nuttz": "Dave's Nutz",
+    "Dave's Nutz": "Dave's Nuttz",
     "Decibel": "Decibel Farms",
     "Entrourage": "Entourage",
     "Farmer's": "Farmer's Friend",
@@ -120,10 +120,10 @@
       "2oz",
       "4oz",
       "8oz",
+      ".75g",
       "1.5g",
       "12oz",
       "2.5g",
-      "0.75g",
       "1.25g",
       "1.5oz",
       "1.75g",
@@ -133,10 +133,10 @@
       "Pipe | Bong | XL Bong"
     ],
     "counts_packs": [
-      "012 Pack",
       "1 Piece",
       "10 Pack",
       "10 Pieces",
+      "12 Pack",
       "2 Pack",
       "2 Pieces",
       "20 Pack",

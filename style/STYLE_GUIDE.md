@@ -6,7 +6,8 @@ the reference that powers in-app **autocomplete** and **smart-naming**. Companio
 [`tags.json`](./tags.json).
 
 > ✅ **Reviewed & confirmed** (2026-06-09). Naming decisions signed off: Yocan (official spelling),
-> Decibel Farms (merged), Dave's Nutz, leading-zero weights. Update as the catalog evolves.
+> Decibel Farms (merged), Dave's Nuttz (two t's), weights stay verbatim (no leading zero).
+> Update as the catalog evolves.
 
 ---
 
@@ -44,7 +45,7 @@ list has all 83). Multi-word brands are written in full — never the wrapped fr
 | `National` (wrapped) | **National Cannabis Co.** | line-wrap |
 | `Willamette` / `…Alchemey` | **Willamette Valley Alchemy** | line-wrap + "Alchemey" misspelling |
 | `Harmony` (wrapped) | **Harmony Roots** | line-wrap |
-| `Dave's Nuttz` / `Dave's Nutz` | **Dave's Nutz** | two spellings unified (confirmed) |
+| `Dave's Nuttz` / `Dave's Nutz` | **Dave's Nuttz** | two spellings unified — two t's (confirmed) |
 | `Decibel` / `Decibel Farms` | **Decibel Farms** | one brand across extracts + pre-rolls (confirmed) |
 
 **Apostrophes:** store as straight `'` (e.g. `Farmer's`) for reliable matching; display unchanged.
@@ -69,7 +70,7 @@ were excluded from the brand list.
 ## 4. Size / count formatting
 
 - **Weights:** number + lowercase unit, no space → `1g`, `2g`, `3.5oz`, `12oz`, `750ml`.
-  - Fractional weights carry a leading zero: `.75g` → **`0.75g`** (confirmed).
+  - Fractional weights stay as written, **no leading zero** → `.75g` (less is more).
 - **Counts:** `1 Piece` (singular) / `10 Pieces` (plural); packs `2 Pack`, `10 Pack`, `40 Pack`.
 - **Accessories / single units:** `Each`.
 - **All-in-one vapes:** `All-in-One` as the size line where applicable.
