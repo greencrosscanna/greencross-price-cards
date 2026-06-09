@@ -9,6 +9,22 @@ data engine, laid out to match a *GitHub Pages front-end + Google Apps Script ba
 
 ---
 
+## ✅ Live & deployed (zero-config for staff)
+
+- **App:** https://greencrosscanna.github.io/greencross-price-cards/
+- **Data engine:** deployed as a Google Apps Script web app, bound to the product Sheet, and
+  its `/exec` URL is **baked into `generator.js`** (`DEFAULT_WEBAPP_URL`). Staff just open the
+  app and click **Import from Google Sheet** — no setup. The Sheet stays **private**; the engine
+  reads it and writes **Done** back. Verified end-to-end (read 106 rows + write-back, no CORS issues).
+- **Apps Script project** is managed with [`clasp`](https://github.com/google/clasp) and is
+  reproducible from this repo (`.clasp.json` + `apps-script/`). To edit the engine:
+  `clasp push` then **re-deploy keeping the same URL**: `clasp update-deployment <deploymentId>`.
+  After changing scopes, the owner re-runs the `authorize()` function once in the editor.
+
+The Part A/B/C instructions below are the from-scratch setup, kept for reference / re-deploying elsewhere.
+
+---
+
 ## Architecture
 
 ```
