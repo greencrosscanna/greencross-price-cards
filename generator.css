@@ -124,34 +124,36 @@ body{
 
 .req{color:#6FA800;font-weight:800;}
 /* ===== Editor — two-row product blocks ===== */
-.erows{display:flex;flex-direction:column;gap:8px;padding:6px 0 12px;}
-.erow{border:1px solid var(--gc-line,#e2e6ea);border-radius:10px;background:#fff;}
+.erows{display:flex;flex-direction:column;gap:5px;padding:4px 0 10px;}
+.erow{border:1px solid var(--gc-line,#e2e6ea);border-radius:8px;background:#fff;}
 .erow.queued{border-color:#cfe3ad;background:#fbfdf7;}
 .erow-main{display:flex;align-items:stretch;}
-.erow-check{flex:none;width:42px;display:flex;align-items:center;justify-content:center;border-right:1px solid var(--gc-line,#eef0f3);}
-.ef-print{appearance:none;-webkit-appearance:none;width:19px;height:19px;border:1.6px solid var(--line-strong,#c7ccd2);border-radius:5px;cursor:pointer;position:relative;}
+.erow-check{flex:none;width:34px;display:flex;align-items:center;justify-content:center;border-right:1px solid var(--gc-line,#eef0f3);}
+.ef-print{appearance:none;-webkit-appearance:none;width:17px;height:17px;border:1.6px solid var(--line-strong,#c7ccd2);border-radius:4px;cursor:pointer;position:relative;}
 .ef-print:checked{background:var(--gc-green,#8bc34a);border-color:var(--gc-green,#8bc34a);}
-.ef-print:checked::after{content:"";position:absolute;left:6px;top:2px;width:4px;height:9px;border:solid #2a2d31;border-width:0 2.2px 2.2px 0;transform:rotate(42deg);}
+.ef-print:checked::after{content:"";position:absolute;left:5px;top:2px;width:4px;height:8px;border:solid #2a2d31;border-width:0 2px 2px 0;transform:rotate(42deg);}
 .erow-fields{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;}
-.erow-l1,.erow-l2{display:flex;gap:7px;padding:8px 10px;}
+.erow-l1,.erow-l2{display:flex;gap:5px;padding:4px 7px;}
 .erow-l2{border-top:1px dashed var(--gc-line,#eef0f3);}
-.ef{font:inherit;font-size:13.5px;padding:7px 9px;border:1px solid var(--gc-line,#dce0e5);border-radius:7px;background:#fff;color:#1C2127;min-width:0;}
-.ef::placeholder{color:#aab0b6;}
+.ef{font:inherit;font-size:12px;padding:4px 7px;border:1px solid var(--gc-line,#dce0e5);border-radius:6px;background:#fff;color:#1C2127;min-width:0;}
+.ef::placeholder{color:#b3b9bf;}
 .ef:focus{outline:none;border-color:var(--gc-green,#8bc34a);box-shadow:0 0 0 2px rgba(139,195,74,.18);}
 .ef.invalid{border-color:#e0857a;background:#fdf3f2;}
 .ef.conformed{background:#e8f7ed;transition:background .25s;}
 .ef-brand{flex:2 1 0;font-weight:600;}
 .ef-item{flex:2 1 0;}
-.ef-size{flex:0 1 92px;}
-.ef-price{flex:0 1 84px;}
-.ef-store{flex:0 1 132px;}
+.ef-size{flex:0 1 88px;}
+.ef-price-wrap{position:relative;flex:0 1 78px;}
+.ef-price-wrap .ef-price{width:100%;padding-left:16px;}
+.ef-price-sign{position:absolute;left:7px;top:50%;transform:translateY(-50%);color:#b3b9bf;font-size:12px;pointer-events:none;}
+.ef-store{flex:0 1 120px;}
 .ef-desc,.ef-desc2{flex:1 1 0;}
-.ef-flag{flex:0 1 118px;font:inherit;font-size:12.5px;padding:7px 8px;border:1px solid var(--gc-line,#dce0e5);border-radius:7px;background:#fff;color:#6b7280;cursor:pointer;}
+.ef-flag{flex:0 1 104px;font:inherit;font-size:11.5px;padding:4px 6px;border:1px solid var(--gc-line,#dce0e5);border-radius:6px;background:#fff;color:#6b7280;cursor:pointer;}
 .ef-flag.has-new{border-color:#1a8a3c;color:#1a8a3c;font-weight:600;}
 .ef-flag.has-special{border-color:#c2261d;color:#c2261d;font-weight:600;}
-.erow-del{flex:none;width:36px;border:0;border-left:1px solid var(--gc-line,#eef0f3);background:transparent;color:#c2c8cd;font-size:19px;line-height:1;cursor:pointer;border-radius:0 9px 9px 0;}
+.erow-del{flex:none;width:30px;border:0;border-left:1px solid var(--gc-line,#eef0f3);background:transparent;color:#c2c8cd;font-size:17px;line-height:1;cursor:pointer;border-radius:0 7px 7px 0;}
 .erow-del:hover{color:#D8694B;background:#FBEAE5;}
-.erow-divider{display:flex;align-items:center;gap:10px;margin:7px 2px 1px;color:#9aa0a6;font-size:10.5px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;}
+.erow-divider{display:flex;align-items:center;gap:10px;margin:5px 2px 0;color:#9aa0a6;font-size:10px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;}
 .erow-divider::before,.erow-divider::after{content:"";flex:1;height:0;border-top:1px dashed #cfd5db;}
 .erow.row-added{animation:rowAdded 1.3s ease;}
 @keyframes rowAdded{0%{background:#eef7e2;}100%{background:#fff;}}

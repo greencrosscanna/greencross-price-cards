@@ -181,21 +181,24 @@
     var chk = el('<input type="checkbox" class="ef-print"/>'); chk.checked = !!r.print;
     chk.addEventListener("change", function(){ r.print=chk.checked; save(); renderTable(); refreshPreview(); });
     var check = el('<label class="erow-check" title="Print this card"></label>'); check.appendChild(chk);
-    // line 1 (the card essentials): brand · item · size · price
+    // line 1 (the card essentials): brand · item · size · $price
     var l1 = el('<div class="erow-l1"></div>');
     l1.appendChild(makeField(r,"name","Brand *","ef-brand",inputs));
     l1.appendChild(makeField(r,"product","Item","ef-item",inputs));
     l1.appendChild(makeField(r,"size","Size","ef-size",inputs));
-    l1.appendChild(makeField(r,"price","Price *","ef-price",inputs));
-    // line 2: store · flag · description · description 2
+    var priceWrap = el('<div class="ef-price-wrap"><span class="ef-price-sign">$</span></div>');
+    priceWrap.appendChild(makeField(r,"price","","ef-price",inputs));
+    l1.appendChild(priceWrap);
+    // flag (placed second-to-last on line 2)
     var sel = el('<select class="ef-flag"><option value="">— flag —</option><option value="new">NEW</option><option value="special">SPECIAL</option></select>');
     sel.value = r.status||""; sel.className = "ef-flag"+(r.status?" has-"+r.status:"");
     sel.addEventListener("change", function(){ r.status=sel.value; sel.className="ef-flag"+(r.status?" has-"+r.status:""); save(); schedulePreview(); });
+    // line 2: description · description 2 · flag · store (store last)
     var l2 = el('<div class="erow-l2"></div>');
-    l2.appendChild(makeField(r,"store","Store","ef-store",inputs));
-    l2.appendChild(sel);
     l2.appendChild(makeField(r,"description","Description","ef-desc",inputs));
     l2.appendChild(makeField(r,"description2","Description 2","ef-desc2",inputs));
+    l2.appendChild(sel);
+    l2.appendChild(makeField(r,"store","Store","ef-store",inputs));
     var fields = el('<div class="erow-fields"></div>'); fields.appendChild(l1); fields.appendChild(l2);
     var del = el('<button class="erow-del" title="Delete card">&times;</button>');
     del.addEventListener("click", function(){ var i=rows.indexOf(r); if(i>=0) rows.splice(i,1); if(!rows.length) rows.push(blankRow()); save(); renderTable(); refreshPreview(); });
