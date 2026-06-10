@@ -323,8 +323,29 @@
     var pages=Math.ceil(printable.length/9);
     for(var p=0;p<pages;p++) root.appendChild(buildSheet(printable.slice(p*9,p*9+9)));
     applyFit(root);
-    requestAnimationFrame(function(){ requestAnimationFrame(function(){ window.print(); }); });
+    var printed = printable.slice();
+    setTimeout(function(){
+      window.print();
+      offerClearPrinted(printed);    // after the print dialog closes, offer to clear them from the queue
+    }, 80);
   };
+
+  // After printing, offer to remove the printed cards from the queue (confirmed,
+  // so a cancelled print dialog never loses cards). Matches the print-queue model.
+  function offerClearPrinted(printed){
+    if(!printed || !printed.length) return;
+    valEl.hidden=false; valEl.className="validation info";
+    valEl.innerHTML = '<b>Sent '+printed.length+' card'+(printed.length>1?'s':'')+' to print.</b> '+
+      '<span class="val-q">Clear them from the queue?</span> '+
+      '<button class="btn btn-soft" id="btnClearPrinted">Clear printed</button> '+
+      '<button class="btn btn-ghost" id="btnKeepPrinted">Keep</button>';
+    document.getElementById("btnClearPrinted").onclick=function(){
+      rows = rows.filter(function(r){ return printed.indexOf(r)<0; });
+      if(!rows.length) rows.push(blankRow());
+      save(); renderTable(); refreshPreview(); valEl.hidden=true;
+    };
+    document.getElementById("btnKeepPrinted").onclick=function(){ valEl.hidden=true; };
+  }
 
   function markInvalid(problems){
     problems.forEach(function(p){

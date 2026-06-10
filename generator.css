@@ -239,6 +239,9 @@ body{
 .validation{margin:0 20px;padding:11px 14px;border-radius:9px;font-size:12.5px;line-height:1.5;}
 .validation.error{background:#FCEDE8;border:1px solid #F2C4B6;color:#9A3B22;}
 .validation.warn{background:#FEF7E6;border:1px solid #F3DEA0;color:#866017;}
+.validation.info{background:#EFF7E6;border:1px solid #CFE3AD;color:#3D6B1F;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.validation.info .val-q{flex:1 1 auto;}
+.validation.info .btn{padding:5px 11px;font-size:12px;}
 .validation b{font-weight:700;}
 .validation ul{margin:6px 0 0;padding-left:18px;}
 
