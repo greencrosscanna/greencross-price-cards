@@ -69,6 +69,7 @@ function doGet(e) {
       case 'stores':       return json({ ok: true, stores: dutchieStores_() });
       case 'dutchieProbe': return json(dutchieProbe_(p));
       case 'liveCatalog':  return json(liveCatalog_(p));
+      case 'getConfig':    return json(getConfig_());
     }
     // default: read the bound Sheet
     var sheet  = pickSheet(p.gid);
@@ -86,6 +87,7 @@ function doGet(e) {
 function doPost(e) {
   try {
     var body = JSON.parse((e && e.postData && e.postData.contents) || '{}');
+    if (body.action === 'saveConfig') return json(saveConfig_(body));
     if (body.action !== 'markDone') return json({ ok: false, error: 'unknown-action' });
 
     var sheet = pickSheet(body.gid);
@@ -143,6 +145,23 @@ function json(obj) {
   return ContentService
     .createTextOutput(JSON.stringify(obj))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+/* ----- Shared (global) settings — one config for all staff/devices ----- *
+ * Stored in Script Properties so OTD pricing, label sections, smart rules,
+ * and the category map are the same everywhere the engine is used.
+ * -------------------------------------------------------------------- */
+var GC_CONFIG_PROP = 'GC_CONFIG_JSON';
+function getConfig_() {
+  var raw = PropertiesService.getScriptProperties().getProperty(GC_CONFIG_PROP);
+  return { ok: true, config: raw ? JSON.parse(raw) : null };
+}
+function saveConfig_(body) {
+  if (body && body.config != null) {
+    PropertiesService.getScriptProperties().setProperty(GC_CONFIG_PROP, JSON.stringify(body.config));
+    return { ok: true, saved: true };
+  }
+  return { ok: false, error: 'no-config' };
 }
 
 /* ===================== DUTCHIE — live active inventory ===================== *

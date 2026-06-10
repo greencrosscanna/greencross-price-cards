@@ -194,8 +194,8 @@ body{
   max-height:360px;overflow:auto;padding:5px;}
 .cb-item{display:flex;align-items:flex-start;gap:0;padding:8px 11px;border-radius:8px;cursor:pointer;}
 .cb-item:hover{background:#f1f7e8;}
-.cb-chev,.cb-spacer{flex:none;width:18px;align-self:stretch;}
-.cb-chev{margin-top:1px;border:0;background:transparent;color:#9aa0a6;font-size:11px;line-height:1.5;cursor:pointer;
+.cb-chev,.cb-spacer{flex:none;width:24px;align-self:stretch;}
+.cb-chev{margin-top:-1px;border:0;background:transparent;color:#9aa0a6;font-size:22px;line-height:1.1;cursor:pointer;
   padding:0;text-align:left;transition:transform .15s ease;}
 .cb-chev:hover{color:#3d6b1f;}
 .cb-parent.expanded .cb-chev{transform:rotate(90deg);}
@@ -208,7 +208,7 @@ body{
 .cb-count{flex:none;font-size:10px;font-weight:700;color:#fff;background:#8bc34a;border-radius:9px;padding:1px 7px;cursor:pointer;}
 .cb-empty{padding:13px;color:#6b7280;font-size:13px;}
 /* nested flavor children */
-.cb-child{padding-left:30px;}
+.cb-child{padding-left:36px;}
 .cb-child .cb-body{border-left:2px solid #e3ebd6;padding-left:12px;}
 .cb-child .cb-main{font-weight:500;}
 tr.row-added td{background:#eef7e2 !important;transition:background .35s;}

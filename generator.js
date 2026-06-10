@@ -698,8 +698,8 @@
   }
 
   // ===== CARD BUILDER — search → conformed card =====
-  // ----- OTD pricing + category system (Settings-driven) -----
-  var OTD_KEY="gcLabels.otd.v1", CATMAP_KEY="gcLabels.catMap.v1", SECTIONS_KEY="gcLabels.sections.v1", CATRULES_KEY="gcLabels.catRules.v1";
+  // ----- OTD pricing + category system (Settings — GLOBAL, shared via the engine) -----
+  var CONFIG_KEY = "gcLabels.config.v1";   // local cache of the shared config
   // Editable label sections (the 10 core + custom ones the team adds).
   var DEFAULT_SECTIONS = ["EDIBLE","BEVERAGE","VAPE","DISPOSABLE","EXTRACT","PRE ROLLS","TINCTURES","TOPICALS","ACCESSORIES","BRANDS","Blunts","Joint Pack"];
   // Keyword rules on the PRODUCT NAME — checked first, override the category map.
@@ -719,15 +719,57 @@
   };
   function lsGet(k,d){ try{ var v=JSON.parse(localStorage.getItem(k)); return v==null?d:v; }catch(e){ return d; } }
   function lsSet(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
-  function loadOtd(){ try{ return localStorage.getItem(OTD_KEY)==="1"; }catch(e){ return false; } }
-  function saveOtd(v){ try{ localStorage.setItem(OTD_KEY, v?"1":"0"); }catch(e){} }
-  var OTD_ON = loadOtd();
-  var USER_CATMAP = lsGet(CATMAP_KEY, {});
-  function saveCatMap(m){ lsSet(CATMAP_KEY, m); }
-  var SECTIONS = lsGet(SECTIONS_KEY, DEFAULT_SECTIONS.slice());
-  function saveSections(){ lsSet(SECTIONS_KEY, SECTIONS); }
-  var CAT_RULES = lsGet(CATRULES_KEY, DEFAULT_CATRULES.slice());
-  function saveRules(){ lsSet(CATRULES_KEY, CAT_RULES); }
+  // Load from local cache, migrating any older per-key storage.
+  var _c = lsGet(CONFIG_KEY, null) || {
+    otd: localStorage.getItem("gcLabels.otd.v1")==="1",
+    sections: lsGet("gcLabels.sections.v1", null),
+    catMap: lsGet("gcLabels.catMap.v1", null),
+    rules: lsGet("gcLabels.catRules.v1", null)
+  };
+  var OTD_ON      = !!_c.otd;
+  var SECTIONS    = (Array.isArray(_c.sections) && _c.sections.length) ? _c.sections : DEFAULT_SECTIONS.slice();
+  var USER_CATMAP = (_c.catMap && typeof _c.catMap === "object") ? _c.catMap : {};
+  var CAT_RULES   = Array.isArray(_c.rules) ? _c.rules : DEFAULT_CATRULES.slice();
+  function currentConfig(){ return { otd:OTD_ON, sections:SECTIONS, catMap:USER_CATMAP, rules:CAT_RULES }; }
+  var _cfgTimer = null;
+  function pushConfig(){                 // persist locally + to the shared engine store (debounced)
+    lsSet(CONFIG_KEY, currentConfig());
+    var url = (typeof loadWebapp === "function") ? (loadWebapp()||"").trim() : "";
+    if(!url) return;
+    clearTimeout(_cfgTimer);
+    _cfgTimer = setTimeout(function(){
+      fetch(url, { method:"POST", headers:{ "Content-Type":"text/plain;charset=utf-8" },
+        body: JSON.stringify({ action:"saveConfig", config: currentConfig() }) }).catch(function(){});
+    }, 500);
+  }
+  // all the Settings save hooks funnel to one global push
+  function saveOtd(){ pushConfig(); }
+  function saveSections(){ pushConfig(); }
+  function saveRules(){ pushConfig(); }
+  function saveCatMap(){ pushConfig(); }
+  function applyConfig(c){
+    if(!c) return false;
+    if(typeof c.otd === "boolean") OTD_ON = c.otd;
+    if(Array.isArray(c.sections) && c.sections.length) SECTIONS = c.sections;
+    if(c.catMap && typeof c.catMap === "object") USER_CATMAP = c.catMap;
+    if(Array.isArray(c.rules)) CAT_RULES = c.rules;
+    return true;
+  }
+  function fetchConfigGlobal(){          // adopt the shared config on load
+    var url = (typeof loadWebapp === "function") ? (loadWebapp()||"").trim() : "";
+    if(!url) return;
+    var sep = url.indexOf("?")<0 ? "?" : "&";
+    fetch(url+sep+"action=getConfig", {cache:"no-store"}).then(function(r){ return r.json(); })
+      .then(function(d){
+        if(d && d.ok && d.config && applyConfig(d.config)){
+          lsSet(CONFIG_KEY, currentConfig());
+          var ot = document.getElementById("otdToggle"); if(ot) ot.checked = OTD_ON;
+          buildSettingsUI(); rebuildLive();
+        } else if(d && d.ok && !d.config){
+          pushConfig();   // no shared config yet — seed it from this device's settings
+        }
+      }).catch(function(){});
+  }
   function catMapFor(cat){ if(!cat) return ""; if(USER_CATMAP[cat]!=null) return USER_CATMAP[cat]; return AUTO_CATMAP[cat]||""; }
   // Resolve a product's house section: keyword rules (by product name) win, then the category map.
   function houseCategoryFor(it){
@@ -1030,6 +1072,7 @@
 
   // ================= INIT =================
   loadStyle();
+  fetchConfigGlobal();   // adopt the shared (global) settings
   populateStores();
   renderTable();
   refreshPreview();
