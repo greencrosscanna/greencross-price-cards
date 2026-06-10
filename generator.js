@@ -791,7 +791,7 @@
   function rebuildLive(){
     if(STYLE.liveRaw && STYLE.liveRaw.length) buildLiveIndex(STYLE.liveRaw);
     if(typeof cbSearch !== "undefined" && cbSearch && cbSearch.value){
-      cbMatches = cbRun(cbSearch.value); cbActive = cbMatches.length ? 0 : -1; cbRender();
+      cbMatches = cbRun(cbSearch.value); cbRender();
     }
   }
   function sectionOptions(cur){
@@ -869,52 +869,95 @@
 
   var cbSearch  = document.getElementById("cbSearch");
   var cbResults = document.getElementById("cbResults");
-  var cbMatches = [], cbActive = -1;
+  var cbMatches = [], CB_GROUPS = [], CB_EXPANDED = {};
+
+  // Generic "base item" (product noun) — drop the leading flavor/strain words.
+  function baseItem(item){
+    var w = String(item||"").trim().split(/\s+/);
+    if(!w.length) return item||"";
+    if(w.length>=2 && /^(pack|roll|aio|bar)$/i.test(w[w.length-1])) return w.slice(-2).join(" ");
+    return w[w.length-1];
+  }
+  // Collapse flavor variants: group matches by brand + base item + size + price + section.
+  function cbGroupMatches(){
+    var groups = [], byKey = {};
+    cbMatches.forEach(function(e){
+      var base = baseItem(e.item), key = e.brand+"|"+base+"|"+e.size+"|"+e.price+"|"+e.category;
+      if(!byKey[key]){ byKey[key] = { key:key, base:base, items:[] }; groups.push(byKey[key]); }
+      byKey[key].items.push(e);
+    });
+    return groups;
+  }
+  function itemRowHtml(e, gi, ci, cls){
+    var meta = [e.desc, e.size, e.category].filter(Boolean).join(" · ");
+    return '<div class="cb-item '+cls+'" data-g="'+gi+'" data-c="'+ci+'">'+
+      '<div class="cb-row1"><span class="cb-main">'+esc(e.brand)+' · '+esc(e.item)+'</span>'+
+        (e.price ? '<span class="cb-price">$'+esc(e.price)+'</span>' : '')+'</div>'+
+      (meta ? '<div class="cb-row2">'+esc(meta)+'</div>' : '')+
+    '</div>';
+  }
   function cbRender(){
     if(!cbResults) return;
     if(!cbMatches.length){
       cbResults.innerHTML = '<div class="cb-empty">No match — refine your search, or add a blank row below.</div>';
       cbResults.hidden = false; return;
     }
-    cbResults.innerHTML = cbMatches.map(function(e,i){
-      var meta = [e.desc, e.size, e.category].filter(Boolean).join(" · ");
-      return '<div class="cb-item'+(i===cbActive?' active':'')+'" data-i="'+i+'">'+
-        '<div class="cb-row1">'+
-          '<span class="cb-main">'+esc(e.brand)+' · '+esc(e.item)+'</span>'+
-          (e.price ? '<span class="cb-price">$'+esc(e.price)+'</span>' : '')+
-        '</div>'+
-        (meta ? '<div class="cb-row2">'+esc(meta)+'</div>' : '')+
+    CB_GROUPS = cbGroupMatches();
+    cbResults.innerHTML = CB_GROUPS.map(function(g, gi){
+      if(g.items.length === 1) return itemRowHtml(g.items[0], gi, 0, "cb-single");
+      var e0 = g.items[0];
+      var commonDesc = g.items.every(function(x){ return x.desc === e0.desc; }) ? e0.desc : "";
+      var meta = [commonDesc, e0.size, e0.category].filter(Boolean).join(" · ");
+      var expanded = !!CB_EXPANDED[g.key];
+      var out = '<div class="cb-item cb-parent" data-g="'+gi+'" data-c="-1">'+
+        '<div class="cb-row1"><span class="cb-main">'+esc(e0.brand)+' · '+esc(g.base)+'</span>'+
+          '<span class="cb-count" title="'+g.items.length+' flavors collapse into this card">'+g.items.length+'</span>'+
+          (e0.price ? '<span class="cb-price">$'+esc(e0.price)+'</span>' : '')+'</div>'+
+        '<div class="cb-row2">'+(meta ? esc(meta)+' · ' : '')+
+          '<button class="cb-expand" data-g="'+gi+'">'+(expanded ? "hide flavors" : "choose flavor ("+g.items.length+")")+'</button></div>'+
       '</div>';
+      if(expanded) out += g.items.map(function(e, ci){ return itemRowHtml(e, gi, ci, "cb-child"); }).join("");
+      return out;
     }).join("");
     cbResults.hidden = false;
-    var act = cbResults.querySelector(".cb-item.active");
-    if(act && act.scrollIntoView) act.scrollIntoView({block:"nearest"});
   }
   function cbAdd(e){
     if(!e) return;
     rows.push(blankRow({ print:true, name:e.brand, product:e.item, description:e.desc, size:e.size, price:e.price, store:e.store||"" }));
     save(); renderTable(); refreshPreview();
     if(cbSearch) cbSearch.value = "";
-    cbMatches = []; cbActive = -1; if(cbResults) cbResults.hidden = true;
+    cbMatches = []; CB_GROUPS = []; CB_EXPANDED = {}; if(cbResults) cbResults.hidden = true;
     var tr = dataBody.lastElementChild;
     if(tr){ tr.classList.add("row-added"); setTimeout(function(){ tr.classList.remove("row-added"); }, 1300);
       tr.scrollIntoView({block:"nearest"}); }
   }
+  function cbAddGeneric(g){   // the collapsed parent → a generic, flavor-free card
+    if(!g) return;
+    var e0 = g.items[0];
+    var commonDesc = g.items.every(function(x){ return x.desc === e0.desc; }) ? e0.desc : "";
+    cbAdd({ brand:e0.brand, item:g.base, desc:commonDesc, size:e0.size, price:e0.price, category:e0.category, store:e0.store });
+  }
+  function cbActivate(){    // Enter → add the top result (generic if grouped, else the single item)
+    var g = CB_GROUPS[0]; if(!g) return;
+    if(g.items.length > 1) cbAddGeneric(g); else cbAdd(g.items[0]);
+  }
   if(cbSearch){
-    cbSearch.addEventListener("input", function(){ cbMatches = cbRun(cbSearch.value); cbActive = cbMatches.length ? 0 : -1; cbRender(); });
+    cbSearch.addEventListener("input", function(){ cbMatches = cbRun(cbSearch.value); cbRender(); });
     cbSearch.addEventListener("focus", function(){ if(cbSearch.value){ cbMatches = cbRun(cbSearch.value); cbRender(); } });
-    cbSearch.addEventListener("blur",  function(){ setTimeout(function(){ if(cbResults) cbResults.hidden = true; }, 150); });
+    cbSearch.addEventListener("blur",  function(){ setTimeout(function(){ if(cbResults) cbResults.hidden = true; }, 160); });
     cbSearch.addEventListener("keydown", function(ev){
-      if(ev.key === "ArrowDown"){ ev.preventDefault(); cbActive = Math.min(cbActive+1, cbMatches.length-1); cbRender(); }
-      else if(ev.key === "ArrowUp"){ ev.preventDefault(); cbActive = Math.max(cbActive-1, 0); cbRender(); }
-      else if(ev.key === "Enter"){ ev.preventDefault(); if(cbMatches[cbActive]) cbAdd(cbMatches[cbActive]); }
+      if(ev.key === "Enter"){ ev.preventDefault(); cbActivate(); }
       else if(ev.key === "Escape"){ cbMatches = []; if(cbResults) cbResults.hidden = true; }
     });
   }
   if(cbResults){
     cbResults.addEventListener("mousedown", function(ev){
-      var it = ev.target.closest(".cb-item"); if(!it) return;
-      ev.preventDefault(); cbAdd(cbMatches[+it.dataset.i]);
+      var exp = ev.target.closest(".cb-expand");
+      if(exp){ ev.preventDefault(); var ge = CB_GROUPS[+exp.dataset.g]; if(ge){ CB_EXPANDED[ge.key] = !CB_EXPANDED[ge.key]; cbRender(); } return; }
+      var row = ev.target.closest(".cb-item"); if(!row) return;
+      ev.preventDefault();
+      var g = CB_GROUPS[+row.dataset.g], ci = +row.dataset.c; if(!g) return;
+      if(ci === -1) cbAddGeneric(g); else cbAdd(g.items[ci]);
     });
   }
 
@@ -934,7 +977,7 @@
       .then(function(d){ if(!d || !d.ok) throw 0; STYLE.liveRaw = d.items || []; buildLiveIndex(STYLE.liveRaw); STYLE.liveReady = true;
         buildCatMapUI();
         setSource("● Live · "+store+" · "+(d.count||0)+" in-stock products"+(OTD_ON?" · OTD":""), "live");
-        if(cbSearch && cbSearch.value){ cbMatches = cbRun(cbSearch.value); cbActive = cbMatches.length?0:-1; cbRender(); } })
+        if(cbSearch && cbSearch.value){ cbMatches = cbRun(cbSearch.value); cbRender(); } })
       .catch(function(){ STYLE.liveReady = false; setSource("Couldn't load live inventory — using template prices", "tpl"); });
   }
   function populateStores(){
