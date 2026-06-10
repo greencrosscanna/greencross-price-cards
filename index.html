@@ -22,6 +22,7 @@
       <span class="sheet-spec">Avery&nbsp;95271 &middot; 9-up &middot; US&nbsp;Letter</span>
     </div>
     <div class="topbar-actions">
+      <button class="btn btn-ghost" id="btnSettings" title="Settings">&#9881; Settings</button>
       <button class="btn btn-ghost" id="btnAddRow">+ Add product</button>
       <button class="btn btn-ghost" id="btnClearQueue" title="Uncheck every Print box">Clear print queue</button>
       <button class="btn btn-primary" id="btnGenerate">Generate label sheets</button>
@@ -46,32 +47,6 @@
           <div class="cb-source" id="cbSource"></div>
           <div class="cb-results" id="cbResults" hidden></div>
         </div>
-        <div class="sheet-import" id="sheetImport">
-          <input type="url" id="sheetUrl" class="sheet-url" placeholder="Paste your Google Sheet link…" spellcheck="false"/>
-          <button class="btn btn-soft" id="btnImport"><span class="imp-ico">&#10227;</span> Import from Google Sheet</button>
-          <span class="import-status" id="importStatus"></span>
-        </div>
-        <div class="sheet-map" id="sheetMap" hidden>
-          <div class="sheet-map-head">
-            <span>Match your sheet columns to the label fields</span>
-            <button class="map-close" id="mapClose" title="Hide">&times;</button>
-          </div>
-          <div class="sheet-map-grid" id="sheetMapGrid"></div>
-          <div class="sheet-map-foot">
-            <button class="btn btn-primary" id="btnApplyMap">Apply mapping</button>
-            <span class="map-hint">Saved for next time. Re-import any time to pull fresh data.</span>
-          </div>
-        </div>
-        <details class="sheet-advanced" id="sheetAdvanced">
-          <summary>&#9881; Sheet settings &mdash; Apps Script data engine (read + write)</summary>
-          <div class="adv-body">
-            <label class="adv-field">Data engine URL <span class="adv-sub">(Apps Script web-app /exec)</span>
-              <input type="url" id="markDoneUrl" class="sheet-url" placeholder="https://script.google.com/macros/s/…/exec" spellcheck="false"/>
-            </label>
-            <label class="adv-toggle"><input type="checkbox" id="markDoneToggle" checked/> After importing, mark those rows <b>Done</b> in the sheet</label>
-            <p class="adv-note">With an engine URL set, the app reads rows <b>through</b> Apps Script — so your Sheet can stay <b>private</b> — and writes Done back after each import. Leave it blank to read the public CSV link instead (read-only). <b>Setup:</b> in the Sheet, Extensions ▸ Apps Script ▸ paste <b>Code.gs</b> ▸ Deploy ▸ Web app (Execute as <i>me</i>, Access <i>Anyone</i>) ▸ paste the <b>/exec</b> URL above.</p>
-          </div>
-        </details>
       </div>
       <div class="table-wrap">
         <table class="grid-table" id="dataTable">
@@ -106,7 +81,6 @@
         </div>
         <div class="preview-zoom">
           <label class="guides-toggle" title="Show trim &amp; safe-margin guides"><input type="checkbox" id="guidesChk" checked/> Guides</label>
-          <label class="guides-toggle" title="Overlay the master template PDF for alignment"><input type="checkbox" id="templateChk"/> Template</label>
           <button class="zbtn" id="zoomOut">&minus;</button>
           <span id="zoomVal">Fit</span>
           <button class="zbtn" id="zoomIn">+</button>
@@ -117,6 +91,67 @@
         <div class="sheets show-guides" id="sheets"></div>
       </div>
     </section>
+  </div>
+
+  <!-- ============ SETTINGS MODAL ============ -->
+  <div class="modal-overlay" id="settingsModal" hidden>
+    <div class="modal" role="dialog" aria-label="Settings">
+      <div class="modal-head">
+        <h2>Settings</h2>
+        <button class="map-close" id="settingsClose" title="Close">&times;</button>
+      </div>
+      <div class="modal-body">
+
+        <section class="set-block">
+          <h3>Pricing</h3>
+          <label class="set-toggle"><input type="checkbox" id="otdToggle"/>
+            <span><b>OTD pricing</b> (Out The Door) — show prices with the +20% markup, rounded to the nearest dollar
+            (e.g. $4.17 → $5). Applies to live search results and new cards.</span></label>
+        </section>
+
+        <section class="set-block">
+          <h3>Dutchie categories → our sections</h3>
+          <p class="set-note">Map each Dutchie category to one of our label sections. Used to group and color cards.</p>
+          <div class="catmap-grid" id="catMapGrid"><div class="set-note">Loads once live inventory is fetched…</div></div>
+        </section>
+
+        <section class="set-block">
+          <h3>Preview</h3>
+          <label class="set-toggle"><input type="checkbox" id="templateChk"/>
+            <span>Overlay the master template PDF for alignment</span></label>
+        </section>
+
+        <section class="set-block">
+          <h3>Import from Google Sheet</h3>
+          <div class="sheet-import" id="sheetImport">
+            <input type="url" id="sheetUrl" class="sheet-url" placeholder="Paste your Google Sheet link…" spellcheck="false"/>
+            <button class="btn btn-soft" id="btnImport"><span class="imp-ico">&#10227;</span> Import</button>
+            <span class="import-status" id="importStatus"></span>
+          </div>
+          <div class="sheet-map" id="sheetMap" hidden>
+            <div class="sheet-map-head">
+              <span>Match your sheet columns to the label fields</span>
+              <button class="map-close" id="mapClose" title="Hide">&times;</button>
+            </div>
+            <div class="sheet-map-grid" id="sheetMapGrid"></div>
+            <div class="sheet-map-foot">
+              <button class="btn btn-primary" id="btnApplyMap">Apply mapping</button>
+              <span class="map-hint">Saved for next time. Re-import any time to pull fresh data.</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="set-block">
+          <h3>Data engine</h3>
+          <label class="adv-field">Data engine URL <span class="adv-sub">(Apps Script web-app /exec)</span>
+            <input type="url" id="markDoneUrl" class="sheet-url" placeholder="https://script.google.com/macros/s/…/exec" spellcheck="false"/>
+          </label>
+          <label class="adv-toggle"><input type="checkbox" id="markDoneToggle" checked/> After importing, mark those rows <b>Done</b> in the sheet</label>
+          <p class="adv-note">With an engine URL set, the app reads rows <b>through</b> Apps Script — so your Sheet can stay <b>private</b> — and writes Done back after each import. Leave it blank to read the public CSV link instead (read-only).</p>
+        </section>
+
+      </div>
+    </div>
   </div>
 
   <!-- print-only render target -->

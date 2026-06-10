@@ -698,6 +698,27 @@
   }
 
   // ===== CARD BUILDER — search → conformed card =====
+  // ----- OTD pricing + Dutchie→house category mapping (Settings-driven) -----
+  var OTD_KEY = "gcLabels.otd.v1", CATMAP_KEY = "gcLabels.catMap.v1";
+  var HOUSE_SECTIONS = ["EDIBLE","BEVERAGE","VAPE","DISPOSABLE","EXTRACT","PRE ROLLS","TINCTURES","TOPICALS","ACCESSORIES","BRANDS"];
+  var AUTO_CATMAP = {
+    "Edible (Solid)":"EDIBLE","Edible (Liquid)":"BEVERAGE","Capsule":"EDIBLE","CBD Products":"EDIBLE",
+    "Inhalable Cannabinoid w/ Non-Cannabis Additives":"VAPE",
+    "Extract (Liquid)":"EXTRACT","Extract (Solid)":"EXTRACT","Concentrate":"EXTRACT",
+    "Infused Pre-roll":"PRE ROLLS","Pre-Roll Pack":"PRE ROLLS","1g Pre-Roll":"PRE ROLLS","Blunts":"PRE ROLLS",
+    "Tincture":"TINCTURES","Topical":"TOPICALS",
+    "Paraphernalia":"ACCESSORIES","Paraphernalia Accessories":"ACCESSORIES","Paraphernalia Electronics":"ACCESSORIES",
+    "Paraphernalia Pipe":"ACCESSORIES","Paraphernalia Bong":"ACCESSORIES","Paraphernalia Bubbler":"ACCESSORIES",
+    "Apparel":"BRANDS","Non Cannabinoid CPG":"BRANDS"
+  };
+  function loadOtd(){ try{ return localStorage.getItem(OTD_KEY)==="1"; }catch(e){ return false; } }
+  function saveOtd(v){ try{ localStorage.setItem(OTD_KEY, v?"1":"0"); }catch(e){} }
+  var OTD_ON = loadOtd();
+  function loadCatMap(){ try{ return JSON.parse(localStorage.getItem(CATMAP_KEY)) || {}; }catch(e){ return {}; } }
+  function saveCatMap(m){ try{ localStorage.setItem(CATMAP_KEY, JSON.stringify(m)); }catch(e){} }
+  var USER_CATMAP = loadCatMap();
+  function catMapFor(cat){ if(!cat) return ""; if(USER_CATMAP[cat]!=null) return USER_CATMAP[cat]; return AUTO_CATMAP[cat]||""; }
+
   // Conform a raw Dutchie inventory item into house Brand/Item/Desc/Size/Price.
   // First-pass heuristics — brand+price are exact; item/size/desc are best-effort.
   function conformDutchie(it){
@@ -720,7 +741,10 @@
     var ratio = (hay.match(/\b\d+:\d+(?::\d+)*\b/)||[""])[0];
     var item  = main.replace(/\b\d+\s*(pk|pack|pc|pcs|ct|pieces?)\b/ig,"").replace(/\b\d*\.?\d+\s*(g|oz|ml)\b/ig,"").replace(/\s{2,}/g," ").trim();
     var bits=[]; if(it.strainType) bits.push(it.strainType); if(ratio && item.indexOf(ratio)<0) bits.push(ratio); if(pot) bits.push(pot);
-    return { brand:brand, item:item||main, desc:bits.join(" | "), size:size, price:String(it.price||""), category:it.category||"", store:it.store||"" };
+    var price = it.price, n = parseFloat(price);
+    if(OTD_ON && !isNaN(n)) price = Math.round(n * 1.2);          // OTD: +20%, round to nearest $
+    var house = catMapFor(it.category||"");                       // Dutchie category → our section
+    return { brand:brand, item:item||main, desc:bits.join(" | "), size:size, price:String(price||""), category:house||(it.category||""), store:it.store||"" };
   }
   function idxEntry(o, hay){ o.hay = String(hay).toLowerCase(); return o; }
   function buildIndex(){    // static (template) catalog → searchable index
@@ -741,6 +765,31 @@
       var c = conformDutchie(it);
       return idxEntry({ brand:c.brand, item:c.item, desc:c.desc, size:c.size, price:c.price, category:c.category, store:c.store },
         (it.brand+" "+it.name+" "+(it.category||"")));
+    });
+  }
+  // Re-conform live data (after OTD / category-map changes) and refresh open results.
+  function rebuildLive(){
+    if(STYLE.liveRaw && STYLE.liveRaw.length) buildLiveIndex(STYLE.liveRaw);
+    if(typeof cbSearch !== "undefined" && cbSearch && cbSearch.value){
+      cbMatches = cbRun(cbSearch.value); cbActive = cbMatches.length ? 0 : -1; cbRender();
+    }
+  }
+  // Build the Settings category-map UI from the distinct Dutchie categories in live data.
+  function buildCatMapUI(){
+    var grid = document.getElementById("catMapGrid");
+    if(!grid) return;
+    var seen = {};
+    (STYLE.liveRaw||[]).forEach(function(it){ if(it.category) seen[it.category] = true; });
+    var list = Object.keys(seen).sort();
+    if(!list.length){ grid.innerHTML = '<div class="set-note">Loads once live inventory is fetched…</div>'; return; }
+    grid.innerHTML = list.map(function(cat){
+      var cur = catMapFor(cat);
+      var opts = '<option value="">— none —</option>' + HOUSE_SECTIONS.map(function(h){
+        return '<option value="'+esc(h)+'"'+(h===cur?' selected':'')+'>'+esc(h)+'</option>'; }).join("");
+      return '<div class="catmap-row-cat" title="'+esc(cat)+'">'+esc(cat)+'</div><select data-cat="'+esc(cat)+'">'+opts+'</select>';
+    }).join("");
+    grid.querySelectorAll("select").forEach(function(sel){
+      sel.addEventListener("change", function(){ USER_CATMAP[sel.dataset.cat] = sel.value; saveCatMap(USER_CATMAP); rebuildLive(); });
     });
   }
   function activeIndex(){ return (STYLE.liveReady && STYLE.liveIndex && STYLE.liveIndex.length) ? STYLE.liveIndex : (STYLE.catalogIndex||[]); }
@@ -825,8 +874,9 @@
     var sep = url.indexOf("?")<0 ? "?" : "&";
     fetch(url+sep+"action=liveCatalog&store="+encodeURIComponent(store), {cache:"no-store"})
       .then(function(r){ return r.json(); })
-      .then(function(d){ if(!d || !d.ok) throw 0; buildLiveIndex(d.items||[]); STYLE.liveReady = true;
-        setSource("● Live · "+store+" · "+(d.count||0)+" in-stock products", "live");
+      .then(function(d){ if(!d || !d.ok) throw 0; STYLE.liveRaw = d.items || []; buildLiveIndex(STYLE.liveRaw); STYLE.liveReady = true;
+        buildCatMapUI();
+        setSource("● Live · "+store+" · "+(d.count||0)+" in-stock products"+(OTD_ON?" · OTD":""), "live");
         if(cbSearch && cbSearch.value){ cbMatches = cbRun(cbSearch.value); cbActive = cbMatches.length?0:-1; cbRender(); } })
       .catch(function(){ STYLE.liveReady = false; setSource("Couldn't load live inventory — using template prices", "tpl"); });
   }
@@ -841,6 +891,25 @@
       .catch(function(){ fill(STORES_FALLBACK); });
   }
   if(cbStore) cbStore.addEventListener("change", function(){ fetchLive(cbStore.value); });
+
+  // ----- Settings modal -----
+  var settingsModal = document.getElementById("settingsModal");
+  var btnSettings   = document.getElementById("btnSettings");
+  var settingsClose = document.getElementById("settingsClose");
+  function openSettings(){ if(settingsModal){ buildCatMapUI(); settingsModal.hidden = false; } }
+  function closeSettings(){ if(settingsModal) settingsModal.hidden = true; }
+  if(btnSettings)   btnSettings.onclick = openSettings;
+  if(settingsClose) settingsClose.onclick = closeSettings;
+  if(settingsModal) settingsModal.addEventListener("mousedown", function(ev){ if(ev.target===settingsModal) closeSettings(); });
+  document.addEventListener("keydown", function(ev){ if(ev.key==="Escape" && settingsModal && !settingsModal.hidden) closeSettings(); });
+  var otdToggle = document.getElementById("otdToggle");
+  if(otdToggle){
+    otdToggle.checked = OTD_ON;
+    otdToggle.addEventListener("change", function(){
+      OTD_ON = otdToggle.checked; saveOtd(OTD_ON); rebuildLive();
+      if(STYLE.liveReady && cbStore) setSource("● Live · "+cbStore.value+" · "+((STYLE.liveRaw||[]).length)+" in-stock products"+(OTD_ON?" · OTD":""), "live");
+    });
+  }
 
   // ================= INIT =================
   loadStyle();
