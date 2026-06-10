@@ -70,6 +70,7 @@ function doGet(e) {
       case 'dutchieProbe': return json(dutchieProbe_(p));
       case 'liveCatalog':  return json(liveCatalog_(p));
       case 'getConfig':    return json(getConfig_());
+      case 'getQueue':     return json(getQueue_());
     }
     // default: read the bound Sheet
     var sheet  = pickSheet(p.gid);
@@ -87,7 +88,10 @@ function doGet(e) {
 function doPost(e) {
   try {
     var body = JSON.parse((e && e.postData && e.postData.contents) || '{}');
-    if (body.action === 'saveConfig') return json(saveConfig_(body));
+    if (body.action === 'saveConfig')  return json(saveConfig_(body));
+    if (body.action === 'submitCards') return json(submitCards_(body));
+    if (body.action === 'queueRemove') return json(queueRemove_(body));
+    if (body.action === 'clearQueue')  return json(clearQueue_());
     if (body.action !== 'markDone') return json({ ok: false, error: 'unknown-action' });
 
     var sheet = pickSheet(body.gid);
@@ -163,6 +167,48 @@ function saveConfig_(body) {
   }
   return { ok: false, error: 'no-config' };
 }
+
+/* ----- Shared print queue — employees submit cards, the printer pulls + clears ----- *
+ * Stored in Script Properties (app-only, no Google Sheet). Each entry:
+ *   { id, card:{brand,item,desc,size,price,store,status,category}, by, at }
+ * Concurrency-guarded with a short lock so simultaneous submits don't clobber.
+ * ------------------------------------------------------------------------------ */
+var GC_QUEUE_PROP = 'GC_QUEUE_JSON';
+function readQueue_() {
+  var raw = PropertiesService.getScriptProperties().getProperty(GC_QUEUE_PROP);
+  return raw ? JSON.parse(raw) : [];
+}
+function writeQueue_(q) {
+  PropertiesService.getScriptProperties().setProperty(GC_QUEUE_PROP, JSON.stringify(q));
+}
+function getQueue_() { return { ok: true, queue: readQueue_() }; }
+function submitCards_(body) {
+  var cards = (body && body.cards) || [];
+  if (!cards.length) return { ok: false, error: 'no-cards' };
+  var lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    var q = readQueue_();
+    var now = new Date().toISOString(), by = String(body.by || '');
+    for (var i = 0; i < cards.length; i++) {
+      q.push({ id: Utilities.getUuid(), card: cards[i], by: by, at: now });
+    }
+    writeQueue_(q);
+    return { ok: true, added: cards.length, count: q.length };
+  } finally { lock.releaseLock(); }
+}
+function queueRemove_(body) {
+  var ids = (body && body.ids) || [];
+  var lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    var set = {}; ids.forEach(function (id) { set[id] = true; });
+    var q = readQueue_().filter(function (e) { return !set[e.id]; });
+    writeQueue_(q);
+    return { ok: true, removed: ids.length, count: q.length };
+  } finally { lock.releaseLock(); }
+}
+function clearQueue_() { writeQueue_([]); return { ok: true, count: 0 }; }
 
 /* ===================== DUTCHIE — live active inventory ===================== *
  * Reads in-stock inventory per store from the Dutchie POS API so the card
