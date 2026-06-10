@@ -110,8 +110,25 @@
         </section>
 
         <section class="set-block">
+          <h3>Label sections</h3>
+          <p class="set-note">Your card categories. Add custom ones (e.g. Blunts, Joint Pack); they appear in the maps and rules below.</p>
+          <div class="chip-list" id="sectionsList"></div>
+          <div class="add-row">
+            <input type="text" id="newSection" placeholder="Add a section…" autocomplete="off"/>
+            <button class="btn btn-soft" id="addSection">Add</button>
+          </div>
+        </section>
+
+        <section class="set-block">
+          <h3>Smart rules <span class="set-sub">(by product name — these win over the category map)</span></h3>
+          <p class="set-note">First matching rule decides the section. E.g. name contains <b>AIO</b> → Disposable; <b>Joint Pack</b> → Joint Pack.</p>
+          <div class="rules-list" id="rulesList"></div>
+          <div class="add-row"><button class="btn btn-soft" id="addRule">+ Add rule</button></div>
+        </section>
+
+        <section class="set-block">
           <h3>Dutchie categories → our sections</h3>
-          <p class="set-note">Map each Dutchie category to one of our label sections. Used to group and color cards.</p>
+          <p class="set-note">Fallback map for products no rule matched. Each Dutchie category → one of your sections.</p>
           <div class="catmap-grid" id="catMapGrid"><div class="set-note">Loads once live inventory is fetched…</div></div>
         </section>
 

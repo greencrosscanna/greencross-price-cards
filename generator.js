@@ -698,9 +698,15 @@
   }
 
   // ===== CARD BUILDER — search → conformed card =====
-  // ----- OTD pricing + Dutchie→house category mapping (Settings-driven) -----
-  var OTD_KEY = "gcLabels.otd.v1", CATMAP_KEY = "gcLabels.catMap.v1";
-  var HOUSE_SECTIONS = ["EDIBLE","BEVERAGE","VAPE","DISPOSABLE","EXTRACT","PRE ROLLS","TINCTURES","TOPICALS","ACCESSORIES","BRANDS"];
+  // ----- OTD pricing + category system (Settings-driven) -----
+  var OTD_KEY="gcLabels.otd.v1", CATMAP_KEY="gcLabels.catMap.v1", SECTIONS_KEY="gcLabels.sections.v1", CATRULES_KEY="gcLabels.catRules.v1";
+  // Editable label sections (the 10 core + custom ones the team adds).
+  var DEFAULT_SECTIONS = ["EDIBLE","BEVERAGE","VAPE","DISPOSABLE","EXTRACT","PRE ROLLS","TINCTURES","TOPICALS","ACCESSORIES","BRANDS","Blunts","Joint Pack"];
+  // Keyword rules on the PRODUCT NAME — checked first, override the category map.
+  var DEFAULT_CATRULES = [
+    {kw:"AIO", section:"DISPOSABLE"}, {kw:"Disposable", section:"DISPOSABLE"},
+    {kw:"Joint Pack", section:"Joint Pack"}, {kw:"Blunt", section:"Blunts"}
+  ];
   var AUTO_CATMAP = {
     "Edible (Solid)":"EDIBLE","Edible (Liquid)":"BEVERAGE","Capsule":"EDIBLE","CBD Products":"EDIBLE",
     "Inhalable Cannabinoid w/ Non-Cannabis Additives":"VAPE",
@@ -711,13 +717,27 @@
     "Paraphernalia Pipe":"ACCESSORIES","Paraphernalia Bong":"ACCESSORIES","Paraphernalia Bubbler":"ACCESSORIES",
     "Apparel":"BRANDS","Non Cannabinoid CPG":"BRANDS"
   };
+  function lsGet(k,d){ try{ var v=JSON.parse(localStorage.getItem(k)); return v==null?d:v; }catch(e){ return d; } }
+  function lsSet(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
   function loadOtd(){ try{ return localStorage.getItem(OTD_KEY)==="1"; }catch(e){ return false; } }
   function saveOtd(v){ try{ localStorage.setItem(OTD_KEY, v?"1":"0"); }catch(e){} }
   var OTD_ON = loadOtd();
-  function loadCatMap(){ try{ return JSON.parse(localStorage.getItem(CATMAP_KEY)) || {}; }catch(e){ return {}; } }
-  function saveCatMap(m){ try{ localStorage.setItem(CATMAP_KEY, JSON.stringify(m)); }catch(e){} }
-  var USER_CATMAP = loadCatMap();
+  var USER_CATMAP = lsGet(CATMAP_KEY, {});
+  function saveCatMap(m){ lsSet(CATMAP_KEY, m); }
+  var SECTIONS = lsGet(SECTIONS_KEY, DEFAULT_SECTIONS.slice());
+  function saveSections(){ lsSet(SECTIONS_KEY, SECTIONS); }
+  var CAT_RULES = lsGet(CATRULES_KEY, DEFAULT_CATRULES.slice());
+  function saveRules(){ lsSet(CATRULES_KEY, CAT_RULES); }
   function catMapFor(cat){ if(!cat) return ""; if(USER_CATMAP[cat]!=null) return USER_CATMAP[cat]; return AUTO_CATMAP[cat]||""; }
+  // Resolve a product's house section: keyword rules (by product name) win, then the category map.
+  function houseCategoryFor(it){
+    var name = String(it.name||"").toLowerCase();
+    for(var i=0;i<CAT_RULES.length;i++){
+      var kw = String(CAT_RULES[i].kw||"").trim().toLowerCase();
+      if(kw && name.indexOf(kw)>=0) return CAT_RULES[i].section;
+    }
+    return catMapFor(it.category||"");
+  }
 
   // Conform a raw Dutchie inventory item into house Brand/Item/Desc/Size/Price.
   // First-pass heuristics — brand+price are exact; item/size/desc are best-effort.
@@ -743,7 +763,7 @@
     var bits=[]; if(it.strainType) bits.push(it.strainType); if(ratio && item.indexOf(ratio)<0) bits.push(ratio); if(pot) bits.push(pot);
     var price = it.price, n = parseFloat(price);
     if(OTD_ON && !isNaN(n)) price = Math.round(n * 1.2);          // OTD: +20%, round to nearest $
-    var house = catMapFor(it.category||"");                       // Dutchie category → our section
+    var house = houseCategoryFor(it);                             // keyword rules → category map
     return { brand:brand, item:item||main, desc:bits.join(" | "), size:size, price:String(price||""), category:house||(it.category||""), store:it.store||"" };
   }
   function idxEntry(o, hay){ o.hay = String(hay).toLowerCase(); return o; }
@@ -774,6 +794,46 @@
       cbMatches = cbRun(cbSearch.value); cbActive = cbMatches.length ? 0 : -1; cbRender();
     }
   }
+  function sectionOptions(cur){
+    return '<option value="">— none —</option>' + SECTIONS.map(function(h){
+      return '<option value="'+esc(h)+'"'+(h===cur?' selected':'')+'>'+esc(h)+'</option>'; }).join("");
+  }
+  function buildSettingsUI(){ buildSectionsUI(); buildRulesUI(); buildCatMapUI(); }
+
+  // Editable list of label sections (core 10 + custom).
+  function buildSectionsUI(){
+    var wrap = document.getElementById("sectionsList");
+    if(!wrap) return;
+    wrap.innerHTML = SECTIONS.map(function(s,i){
+      return '<span class="chip">'+esc(s)+'<button class="chip-x" data-i="'+i+'" title="Remove">&times;</button></span>';
+    }).join("");
+    wrap.querySelectorAll(".chip-x").forEach(function(b){
+      b.addEventListener("click", function(){ SECTIONS.splice(+b.dataset.i,1); saveSections(); buildSettingsUI(); rebuildLive(); });
+    });
+  }
+  // Keyword rules (product name → section), checked before the category map.
+  function buildRulesUI(){
+    var wrap = document.getElementById("rulesList");
+    if(!wrap) return;
+    wrap.innerHTML = CAT_RULES.map(function(r,i){
+      return '<div class="rule-row">'+
+        '<span class="rule-if">if name contains</span>'+
+        '<input class="rule-kw" data-i="'+i+'" value="'+esc(r.kw||"")+'" placeholder="e.g. AIO"/>'+
+        '<span class="rule-arrow">→</span>'+
+        '<select class="rule-sec" data-i="'+i+'">'+sectionOptions(r.section)+'</select>'+
+        '<button class="chip-x" data-i="'+i+'" title="Remove rule">&times;</button>'+
+      '</div>';
+    }).join("");
+    wrap.querySelectorAll(".rule-kw").forEach(function(inp){
+      inp.addEventListener("change", function(){ CAT_RULES[+inp.dataset.i].kw = inp.value; saveRules(); rebuildLive(); });
+    });
+    wrap.querySelectorAll(".rule-sec").forEach(function(sel){
+      sel.addEventListener("change", function(){ CAT_RULES[+sel.dataset.i].section = sel.value; saveRules(); rebuildLive(); });
+    });
+    wrap.querySelectorAll(".chip-x").forEach(function(b){
+      b.addEventListener("click", function(){ CAT_RULES.splice(+b.dataset.i,1); saveRules(); buildRulesUI(); rebuildLive(); });
+    });
+  }
   // Build the Settings category-map UI from the distinct Dutchie categories in live data.
   function buildCatMapUI(){
     var grid = document.getElementById("catMapGrid");
@@ -783,10 +843,7 @@
     var list = Object.keys(seen).sort();
     if(!list.length){ grid.innerHTML = '<div class="set-note">Loads once live inventory is fetched…</div>'; return; }
     grid.innerHTML = list.map(function(cat){
-      var cur = catMapFor(cat);
-      var opts = '<option value="">— none —</option>' + HOUSE_SECTIONS.map(function(h){
-        return '<option value="'+esc(h)+'"'+(h===cur?' selected':'')+'>'+esc(h)+'</option>'; }).join("");
-      return '<div class="catmap-row-cat" title="'+esc(cat)+'">'+esc(cat)+'</div><select data-cat="'+esc(cat)+'">'+opts+'</select>';
+      return '<div class="catmap-row-cat" title="'+esc(cat)+'">'+esc(cat)+'</div><select data-cat="'+esc(cat)+'">'+sectionOptions(catMapFor(cat))+'</select>';
     }).join("");
     grid.querySelectorAll("select").forEach(function(sel){
       sel.addEventListener("change", function(){ USER_CATMAP[sel.dataset.cat] = sel.value; saveCatMap(USER_CATMAP); rebuildLive(); });
@@ -896,12 +953,24 @@
   var settingsModal = document.getElementById("settingsModal");
   var btnSettings   = document.getElementById("btnSettings");
   var settingsClose = document.getElementById("settingsClose");
-  function openSettings(){ if(settingsModal){ buildCatMapUI(); settingsModal.hidden = false; } }
+  function openSettings(){ if(settingsModal){ buildSettingsUI(); settingsModal.hidden = false; } }
   function closeSettings(){ if(settingsModal) settingsModal.hidden = true; }
   if(btnSettings)   btnSettings.onclick = openSettings;
   if(settingsClose) settingsClose.onclick = closeSettings;
   if(settingsModal) settingsModal.addEventListener("mousedown", function(ev){ if(ev.target===settingsModal) closeSettings(); });
   document.addEventListener("keydown", function(ev){ if(ev.key==="Escape" && settingsModal && !settingsModal.hidden) closeSettings(); });
+  // add a label section
+  var newSection = document.getElementById("newSection"), addSection = document.getElementById("addSection");
+  function doAddSection(){
+    var v = (newSection && newSection.value || "").trim();
+    if(v && SECTIONS.indexOf(v)<0){ SECTIONS.push(v); saveSections(); buildSettingsUI(); rebuildLive(); }
+    if(newSection) newSection.value = "";
+  }
+  if(addSection) addSection.onclick = doAddSection;
+  if(newSection) newSection.addEventListener("keydown", function(ev){ if(ev.key==="Enter"){ ev.preventDefault(); doAddSection(); } });
+  // add a keyword rule
+  var addRule = document.getElementById("addRule");
+  if(addRule) addRule.onclick = function(){ CAT_RULES.push({ kw:"", section:"" }); saveRules(); buildRulesUI(); };
   var otdToggle = document.getElementById("otdToggle");
   if(otdToggle){
     otdToggle.checked = OTD_ON;
