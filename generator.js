@@ -629,7 +629,7 @@
   // ================= STYLE GUIDE: autocomplete + smart-naming =================
   // Loads the canonical tag dictionary (style/tags.json) and powers brand
   // type-ahead + on-blur normalization, so cards stay uniform across stores.
-  var STYLE = { brands:[], brandNorm:{}, sizes:[], catalog:{}, index:[] };
+  var STYLE = { brands:[], brandNorm:{}, sizes:[], catalog:{}, catalogIndex:[], liveIndex:[], liveReady:false };
   function ensureDatalist(id, values){
     var dl = document.getElementById(id);
     if(!dl){ dl = document.createElement("datalist"); dl.id = id; document.body.appendChild(dl); }
@@ -699,26 +699,57 @@
   }
 
   // ===== CARD BUILDER — search → conformed card =====
-  // Flatten the catalog into a searchable index. (Same shape Dutchie will
-  // provide, so this swaps to live active inventory later with no UI change.)
-  function buildIndex(){
+  // Conform a raw Dutchie inventory item into house Brand/Item/Desc/Size/Price.
+  // First-pass heuristics — brand+price are exact; item/size/desc are best-effort.
+  function conformDutchie(it){
+    var brand = normalizeBrand(it.brand||"");
+    var name  = String(it.name||"").replace(/^\$[\d.]+\s*\|\s*/, "");   // strip accessory "$10.00 | "
+    var parts = name.split(/\s*\|\s*/);
+    if(parts.length>1){                                                 // drop trailing SKU-like code
+      var last = parts[parts.length-1];
+      if(last.indexOf(" ")<0 && /\d/.test(last) && /^[A-Za-z0-9\-\/"']+$/.test(last) && !/mg|:/.test(last)) parts.pop();
+    }
+    if(parts.length>1 && normalizeBrand(parts[parts.length-1])===brand) parts.pop(); // bulk "Strain | Brand"
+    var main = parts[0]||"", hay = name;
+    var size="", mPack=hay.match(/(\d+)\s*(pk|pack)\b/i), mPc=hay.match(/(\d+)\s*(pc|pcs|ct|pieces?)\b/i), mWt=hay.match(/(\d*\.?\d+)\s*(g|oz|ml)\b/i);
+    if(mPack)        size = mPack[1]+" Pack";
+    else if(mPc)     size = mPc[1]+(mPc[1]==="1"?" Piece":" Pieces");
+    else if(mWt)     size = mWt[1]+mWt[2].toLowerCase();
+    else if(it.unitWeight && it.unitWeightUnit) size = String(it.unitWeight)+String(it.unitWeightUnit);
+    else if(/^(Paraphernalia|Apparel)/i.test(it.category||"")) size = "Each";
+    var pot   = (hay.match(/\d+(?::\d+)*\s*mg(?:\s*:\s*\d+\s*mg)*/i)||[""])[0].replace(/\s+/g,"");
+    var ratio = (hay.match(/\b\d+:\d+(?::\d+)*\b/)||[""])[0];
+    var item  = main.replace(/\b\d+\s*(pk|pack|pc|pcs|ct|pieces?)\b/ig,"").replace(/\b\d*\.?\d+\s*(g|oz|ml)\b/ig,"").replace(/\s{2,}/g," ").trim();
+    var bits=[]; if(it.strainType) bits.push(it.strainType); if(ratio && item.indexOf(ratio)<0) bits.push(ratio); if(pot) bits.push(pot);
+    return { brand:brand, item:item||main, desc:bits.join(" | "), size:size, price:String(it.price||""), category:it.category||"", store:it.store||"" };
+  }
+  function idxEntry(o, hay){ o.hay = String(hay).toLowerCase(); return o; }
+  function buildIndex(){    // static (template) catalog → searchable index
     var idx = [];
     Object.keys(STYLE.catalog).forEach(function(brand){
       var prods = STYLE.catalog[brand];
       Object.keys(prods).forEach(function(item){
         prods[item].forEach(function(v){
-          idx.push({ brand:brand, item:item, desc:v.desc||"", size:v.size||"", price:v.price||"", category:v.category||"",
-            hay:(brand+" "+item+" "+(v.desc||"")+" "+(v.size||"")+" "+(v.category||"")).toLowerCase() });
+          idx.push(idxEntry({ brand:brand, item:item, desc:v.desc||"", size:v.size||"", price:v.price||"", category:v.category||"", store:"" },
+            brand+" "+item+" "+(v.desc||"")+" "+(v.size||"")+" "+(v.category||"")));
         });
       });
     });
-    STYLE.index = idx;
+    STYLE.catalogIndex = idx;
   }
+  function buildLiveIndex(items){   // live Dutchie inventory → conformed searchable index
+    STYLE.liveIndex = (items||[]).map(function(it){
+      var c = conformDutchie(it);
+      return idxEntry({ brand:c.brand, item:c.item, desc:c.desc, size:c.size, price:c.price, category:c.category, store:c.store },
+        (it.brand+" "+it.name+" "+(it.category||"")));
+    });
+  }
+  function activeIndex(){ return (STYLE.liveReady && STYLE.liveIndex && STYLE.liveIndex.length) ? STYLE.liveIndex : (STYLE.catalogIndex||[]); }
   function cbRun(q){
     q = String(q||"").trim().toLowerCase();
     if(!q) return [];
     var toks = q.split(/\s+/), scored = [];
-    STYLE.index.forEach(function(e){
+    activeIndex().forEach(function(e){
       var s = 0, ok = true;
       for(var i=0;i<toks.length;i++){
         var t = toks[i], at = e.hay.indexOf(t);
@@ -753,7 +784,7 @@
   }
   function cbAdd(e){
     if(!e) return;
-    rows.push(blankRow({ print:true, name:e.brand, product:e.item, description:e.desc, size:e.size, price:e.price }));
+    rows.push(blankRow({ print:true, name:e.brand, product:e.item, description:e.desc, size:e.size, price:e.price, store:e.store||"" }));
     save(); renderTable(); refreshPreview();
     if(cbSearch) cbSearch.value = "";
     cbMatches = []; cbActive = -1; if(cbResults) cbResults.hidden = true;
@@ -779,8 +810,39 @@
     });
   }
 
+  // ----- live inventory: store picker + fetch through the engine -----
+  var cbStore = document.getElementById("cbStore");
+  var cbSource = document.getElementById("cbSource");
+  var STORES_FALLBACK = ["Center","Portland Rd","Hillsboro","Bend","River Rd","Commercial"];
+  function setSource(msg, kind){ if(cbSource){ cbSource.textContent = msg||""; cbSource.className = "cb-source"+(kind?" "+kind:""); } }
+  function engineUrl(){ return (loadWebapp()||"").trim(); }
+  function fetchLive(store){
+    var url = engineUrl();
+    if(!url){ STYLE.liveReady=false; setSource("Template prices — set an engine URL in ⚙ Sheet settings for live inventory", "tpl"); return; }
+    STYLE.liveReady = false; setSource("Loading "+store+" inventory…", "load");
+    var sep = url.indexOf("?")<0 ? "?" : "&";
+    fetch(url+sep+"action=liveCatalog&store="+encodeURIComponent(store), {cache:"no-store"})
+      .then(function(r){ return r.json(); })
+      .then(function(d){ if(!d || !d.ok) throw 0; buildLiveIndex(d.items||[]); STYLE.liveReady = true;
+        setSource("● Live · "+store+" · "+(d.count||0)+" in-stock products", "live");
+        if(cbSearch && cbSearch.value){ cbMatches = cbRun(cbSearch.value); cbActive = cbMatches.length?0:-1; cbRender(); } })
+      .catch(function(){ STYLE.liveReady = false; setSource("Couldn't load live inventory — using template prices", "tpl"); });
+  }
+  function populateStores(){
+    if(!cbStore) return;
+    var fill = function(list){ cbStore.innerHTML = list.map(function(s){ return '<option>'+esc(s)+'</option>'; }).join(""); fetchLive(cbStore.value); };
+    var url = engineUrl();
+    if(!url){ fill(STORES_FALLBACK); return; }
+    var sep = url.indexOf("?")<0 ? "?" : "&";
+    fetch(url+sep+"action=stores", {cache:"no-store"}).then(function(r){ return r.json(); })
+      .then(function(d){ fill(d && d.ok && d.stores && d.stores.length ? d.stores : STORES_FALLBACK); })
+      .catch(function(){ fill(STORES_FALLBACK); });
+  }
+  if(cbStore) cbStore.addEventListener("change", function(){ fetchLive(cbStore.value); });
+
   // ================= INIT =================
   loadStyle();
+  populateStores();
   renderTable();
   refreshPreview();
   // re-fit once fonts + layout settle (first paint can mis-measure)

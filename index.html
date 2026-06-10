@@ -35,9 +35,15 @@
         <h2>Product data</h2>
         <p class="editor-sub">Search a product to build a card — it conforms to house style automatically. Or edit rows directly. Check <b>Print</b> for the labels you want; sheets fill 9-up.</p>
         <div class="card-builder" id="cardBuilder">
-          <span class="cb-ico">⌕</span>
-          <input type="text" id="cbSearch" class="cb-search" autocomplete="off" spellcheck="false"
-                 placeholder="Build a card — find a product, e.g. &ldquo;Wyld 1:1 gummies&rdquo;"/>
+          <div class="cb-bar">
+            <select id="cbStore" class="cb-store" title="Which store's live inventory to search"></select>
+            <div class="cb-field">
+              <span class="cb-ico">⌕</span>
+              <input type="text" id="cbSearch" class="cb-search" autocomplete="off" spellcheck="false"
+                     placeholder="Build a card — find a product, e.g. &ldquo;Wyld 1:1 gummies&rdquo;"/>
+            </div>
+          </div>
+          <div class="cb-source" id="cbSource"></div>
           <div class="cb-results" id="cbResults" hidden></div>
         </div>
         <div class="sheet-import" id="sheetImport">

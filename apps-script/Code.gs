@@ -191,28 +191,42 @@ function dutchieProbe_(p) {
   };
 }
 
-// Conformed live catalog for the card builder. One store (?store=) or all merged.
+// Live catalog for the card builder — in-stock, deduped to one row per
+// product, carrying the structured fields the browser uses to conform to
+// house style. One store (?store=) or all stores merged.
 function liveCatalog_(p) {
   var stores = p.store ? [p.store] : dutchieStores_();
-  var items = [], errors = {};
+  var map = {}, errors = {};
   for (var s = 0; s < stores.length; s++) {
     try {
       var inv = dutchieInventory_(stores[s]);
       for (var i = 0; i < inv.length; i++) {
         var it = inv[i];
-        if (Number(it.quantityAvailable || 0) <= 0) continue;   // active = in stock
-        items.push({
-          store:    stores[s],
-          brand:    String(it.brandName || '').trim(),
-          name:     String(it.productName || '').trim(),
-          category: String(it.masterCategory || it.category || '').trim(),
-          size:     String(it.size || it.unitWeight || it.netWeight || it.weight || '').trim(),
-          sku:      it.sku || '',
-          price:    priceOf_(it) ? String(priceOf_(it)) : '',
-          qty:      Number(it.quantityAvailable || 0)
-        });
+        if (Number(it.quantityAvailable || 0) <= 0) continue;        // active = in stock
+        var name = String(it.productName || '').trim();
+        if (!name || /^sample\b/i.test(name)) continue;              // drop samples
+        var price = priceOf_(it);
+        if (price <= 0) continue;                                    // drop no-price lines
+        var key = stores[s] + '|' + name + '|' + price;              // dedupe per product+price
+        if (map[key]) { map[key].qty += Number(it.quantityAvailable || 0); continue; }
+        map[key] = {
+          store:      stores[s],
+          brand:      String(it.brandName || '').trim(),
+          name:       name,
+          category:   String(it.masterCategory || it.category || '').trim(),
+          strain:     String(it.strain || '').trim(),
+          strainType: String(it.strainType || '').trim(),
+          potencyMg:  it.effectivePotencyMg || '',
+          unitWeight: it.unitWeight || '',
+          unitWeightUnit: it.unitWeightUnit || '',
+          size:       String(it.size || '').trim(),
+          price:      String(price),
+          sku:        it.sku || '',
+          qty:        Number(it.quantityAvailable || 0)
+        };
       }
     } catch (err) { errors[stores[s]] = String(err); }
   }
+  var items = Object.keys(map).map(function (k) { return map[k]; });
   return { ok: true, count: items.length, stores: stores, errors: errors, items: items };
 }
