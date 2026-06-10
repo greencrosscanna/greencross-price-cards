@@ -128,96 +128,92 @@
     return {queued:q, problems:problems};
   }
 
-  // ================= RENDER: editor table =================
+  // ================= RENDER: editor (two-row product blocks) =================
   var dataBody = document.getElementById("dataBody");
   function renderTable(){
     dataBody.innerHTML="";
-    rows.forEach(function(r,idx){ dataBody.appendChild(renderRow(r,idx)); });
-  }
-  function renderRow(r,idx){
-    var tr = el('<tr></tr>');
-    if(r.print) tr.classList.add("queued");
-    // print checkbox
-    var tdc = el('<td class="col-print"></td>');
-    var wrap = el('<label class="chk-wrap"></label>');
-    var chk = el('<input type="checkbox" class="chk"/>');
-    chk.checked = !!r.print;
-    chk.addEventListener("change",function(){ r.print=chk.checked; tr.classList.toggle("queued",r.print); save(); refreshPreview(); });
-    wrap.appendChild(chk); tdc.appendChild(wrap); tr.appendChild(tdc);
-    // field cells
-    var cells = [
-      {f:"store",        ph:"Store",        tag:"input"},
-      {f:"name",         ph:"Brand *",      tag:"input"},
-      {f:"product",      ph:"Item",         tag:"input"},
-      {f:"description",  ph:"Description",  tag:"input"},
-      {f:"description2", ph:"Description 2",tag:"input"},
-      {f:"size",         ph:"Size",         tag:"input"},
-      {f:"price",        ph:"Price *",      tag:"input"}
-    ];
-    var inputs = {};
-    cells.forEach(function(c){
-      var td = el('<td class="col-'+c.f+'"></td>');
-      var inp = el('<input class="cell-input" type="text"/>');
-      inp.value = r[c.f]||"";
-      inp.placeholder = c.ph;
-      inp.dataset.field = c.f;
-      inputs[c.f] = inp;
-      inp.addEventListener("input",function(){ r[c.f]=inp.value; save(); schedulePreview(); td.classList.remove("invalid"); });
-      inp.addEventListener("keydown",onCellKey);
-      // ── style-guide autocomplete + smart-naming + cascading catalog ──
-      if(c.f==="name"){                                   // Brand: type-ahead + conform on blur
-        inp.setAttribute("list","brandList"); inp.setAttribute("autocomplete","off");
-        inp.addEventListener("blur",function(){
-          var norm = normalizeBrand(inp.value);
-          if(norm !== inp.value){
-            inp.value = norm; r.name = norm; save(); schedulePreview();
-            td.classList.add("conformed");
-            setTimeout(function(){ td.classList.remove("conformed"); }, 1000);
-          }
-        });
+    var queued = 0;
+    rows.forEach(function(r,idx){
+      if(r.print && queued>0 && queued%LABELS_PER_SHEET===0){      // sheet break every 9 print-checked cards
+        dataBody.appendChild(el('<div class="erow-divider"><span>Sheet '+(queued/LABELS_PER_SHEET+1)+'</span></div>'));
       }
-      if(c.f==="product"){                                // Item: options filtered to the row's brand
-        inp.setAttribute("list","itemList"); inp.setAttribute("autocomplete","off");
-        inp.addEventListener("focus",function(){ ensureDatalist("itemList", productsFor(normalizeBrand(r.name))); });
-        inp.addEventListener("change",function(){ cascadeFill(r, inputs, "product"); });
-        inp.addEventListener("blur",function(){ cascadeFill(r, inputs, "product"); });
-      }
-      if(c.f==="size"){                                   // Size: options filtered to brand+item; sets price
-        inp.setAttribute("list","sizeList"); inp.setAttribute("autocomplete","off");
-        inp.addEventListener("focus",function(){
-          var vs = variantsFor(normalizeBrand(r.name), (r.product||"").trim());
-          ensureDatalist("sizeList", vs.length ? uniq(vs.map(function(v){ return v.size; })) : STYLE.sizes);
-        });
-        inp.addEventListener("change",function(){ cascadeFill(r, inputs, "size"); });
-        inp.addEventListener("blur",function(){ cascadeFill(r, inputs, "size"); });
-      }
-      td.appendChild(inp); tr.appendChild(td);
+      dataBody.appendChild(renderRow(r,idx));
+      if(r.print) queued++;
     });
-    // flag (new / special) — print-time instruction to attach a physical flag
-    var tdf = el('<td class="col-flag"></td>');
-    var sel = el('<select class="cell-flag"><option value="">—</option><option value="new">NEW</option><option value="special">SPECIAL</option></select>');
-    sel.value = r.status || "";
-    sel.className = "cell-flag" + (r.status ? " has-"+r.status : "");
-    sel.addEventListener("change",function(){ r.status=sel.value; sel.className="cell-flag"+(r.status?" has-"+r.status:""); save(); schedulePreview(); });
-    tdf.appendChild(sel); tr.appendChild(tdf);
-    // delete
-    var tdt = el('<td class="col-tools"></td>');
-    var del = el('<button class="row-del" title="Delete row">&times;</button>');
-    del.addEventListener("click",function(){ rows.splice(idx,1); if(!rows.length) rows.push(blankRow()); save(); renderTable(); refreshPreview(); });
-    tdt.appendChild(del); tr.appendChild(tdt);
-    return tr;
+  }
+  function flashInput(inp){ if(inp){ inp.classList.add("conformed"); setTimeout(function(){ inp.classList.remove("conformed"); }, 1000); } }
+  // one editable field + its autocomplete / smart-naming / cascade hooks
+  function makeField(r, f, ph, cls, inputs){
+    var inp = el('<input class="ef '+cls+'" type="text"/>');
+    inp.value = r[f]||""; inp.placeholder = ph; inp.dataset.field = f;
+    inputs[f] = inp;
+    inp.addEventListener("input", function(){ r[f]=inp.value; save(); schedulePreview(); inp.classList.remove("invalid"); });
+    inp.addEventListener("keydown", onCellKey);
+    if(f==="name"){                                       // Brand: type-ahead + conform on blur
+      inp.setAttribute("list","brandList"); inp.setAttribute("autocomplete","off");
+      inp.addEventListener("blur", function(){
+        var norm = normalizeBrand(inp.value);
+        if(norm !== inp.value){ inp.value = norm; r.name = norm; save(); schedulePreview(); flashInput(inp); }
+      });
+    }
+    if(f==="product"){                                    // Item: options filtered to the brand
+      inp.setAttribute("list","itemList"); inp.setAttribute("autocomplete","off");
+      inp.addEventListener("focus", function(){ ensureDatalist("itemList", productsFor(normalizeBrand(r.name))); });
+      inp.addEventListener("change", function(){ cascadeFill(r, inputs, "product"); });
+      inp.addEventListener("blur",   function(){ cascadeFill(r, inputs, "product"); });
+    }
+    if(f==="size"){                                       // Size: options filtered to brand+item; sets price
+      inp.setAttribute("list","sizeList"); inp.setAttribute("autocomplete","off");
+      inp.addEventListener("focus", function(){
+        var vs = variantsFor(normalizeBrand(r.name), (r.product||"").trim());
+        ensureDatalist("sizeList", vs.length ? uniq(vs.map(function(v){ return v.size; })) : STYLE.sizes);
+      });
+      inp.addEventListener("change", function(){ cascadeFill(r, inputs, "size"); });
+      inp.addEventListener("blur",   function(){ cascadeFill(r, inputs, "size"); });
+    }
+    return inp;
+  }
+  function renderRow(r, idx){
+    var block = el('<div class="erow" data-idx="'+idx+'"></div>');
+    if(r.print) block.classList.add("queued");
+    var inputs = {};
+    // print checkbox
+    var chk = el('<input type="checkbox" class="ef-print"/>'); chk.checked = !!r.print;
+    chk.addEventListener("change", function(){ r.print=chk.checked; save(); renderTable(); refreshPreview(); });
+    var check = el('<label class="erow-check" title="Print this card"></label>'); check.appendChild(chk);
+    // line 1 (the card essentials): brand · item · size · price
+    var l1 = el('<div class="erow-l1"></div>');
+    l1.appendChild(makeField(r,"name","Brand *","ef-brand",inputs));
+    l1.appendChild(makeField(r,"product","Item","ef-item",inputs));
+    l1.appendChild(makeField(r,"size","Size","ef-size",inputs));
+    l1.appendChild(makeField(r,"price","Price *","ef-price",inputs));
+    // line 2: store · flag · description · description 2
+    var sel = el('<select class="ef-flag"><option value="">— flag —</option><option value="new">NEW</option><option value="special">SPECIAL</option></select>');
+    sel.value = r.status||""; sel.className = "ef-flag"+(r.status?" has-"+r.status:"");
+    sel.addEventListener("change", function(){ r.status=sel.value; sel.className="ef-flag"+(r.status?" has-"+r.status:""); save(); schedulePreview(); });
+    var l2 = el('<div class="erow-l2"></div>');
+    l2.appendChild(makeField(r,"store","Store","ef-store",inputs));
+    l2.appendChild(sel);
+    l2.appendChild(makeField(r,"description","Description","ef-desc",inputs));
+    l2.appendChild(makeField(r,"description2","Description 2","ef-desc2",inputs));
+    var fields = el('<div class="erow-fields"></div>'); fields.appendChild(l1); fields.appendChild(l2);
+    var del = el('<button class="erow-del" title="Delete card">&times;</button>');
+    del.addEventListener("click", function(){ var i=rows.indexOf(r); if(i>=0) rows.splice(i,1); if(!rows.length) rows.push(blankRow()); save(); renderTable(); refreshPreview(); });
+    var main = el('<div class="erow-main"></div>');
+    main.appendChild(check); main.appendChild(fields); main.appendChild(del);
+    block.appendChild(main);
+    return block;
   }
 
   function onCellKey(e){
-    var inp=e.target, td=inp.closest("td"), tr=td.parentNode;
-    if(e.key==="Enter"){
-      e.preventDefault();
-      var next = tr.nextElementSibling;
-      var colIndex = Array.prototype.indexOf.call(tr.children, td);
-      if(!next){ addRow(); next = dataBody.lastElementChild; }
-      var target = next.children[colIndex].querySelector(".cell-input");
-      if(target) target.focus();
-    }
+    if(e.key!=="Enter") return;                            // Enter → same field, next card (Tab still moves across fields)
+    e.preventDefault();
+    var inp=e.target, f=inp.dataset.field, block=inp.closest(".erow");
+    var next=block && block.nextElementSibling;
+    while(next && !next.classList.contains("erow")) next=next.nextElementSibling;  // skip sheet dividers
+    if(!next){ addRow(); next=dataBody.lastElementChild; }
+    var target=next && next.querySelector('.ef[data-field="'+f+'"]');
+    if(target) target.focus();
   }
 
   // ================= RENDER: preview =================
@@ -293,7 +289,7 @@
 
   // ================= ACTIONS =================
   function addRow(){ rows.push(blankRow()); save(); renderTable(); }
-  document.getElementById("btnAddRow").onclick=function(){ addRow(); dataBody.lastElementChild.querySelector(".cell-input").focus(); };
+  document.getElementById("btnAddRow").onclick=function(){ addRow(); var f=dataBody.lastElementChild.querySelector(".ef-brand"); if(f) f.focus(); };
   document.getElementById("btnClearQueue").onclick=function(){
     rows.forEach(function(r){r.print=false;}); save(); renderTable(); refreshPreview();
   };
@@ -328,12 +324,11 @@
   };
 
   function markInvalid(problems){
-    var rowsTr = dataBody.children;
     problems.forEach(function(p){
-      var tr = rowsTr[p.row-1]; if(!tr) return;
+      var block = dataBody.querySelector('.erow[data-idx="'+(p.row-1)+'"]'); if(!block) return;
       p.missing.forEach(function(f){
-        var inp=tr.querySelector('.cell-input[data-field="'+f+'"]');
-        if(inp) inp.closest("td").classList.add("invalid");
+        var inp = block.querySelector('.ef[data-field="'+f+'"]');
+        if(inp) inp.classList.add("invalid");
       });
     });
   }
@@ -643,7 +638,7 @@
   function uniq(a){ var o=[]; (a||[]).forEach(function(x){ if(x && o.indexOf(x)<0) o.push(x); }); return o; }
   function productsFor(brand){ var b = STYLE.catalog[brand]; return b ? Object.keys(b) : []; }
   function variantsFor(brand, product){ var b = STYLE.catalog[brand]; return (b && b[product]) ? b[product] : []; }
-  function flashCell(inp){ var c = inp && inp.closest && inp.closest("td"); if(c){ c.classList.add("conformed"); setTimeout(function(){ c.classList.remove("conformed"); }, 1000); } }
+  function flashCell(inp){ if(inp){ inp.classList.add("conformed"); setTimeout(function(){ inp.classList.remove("conformed"); }, 1000); } }
 
   // Cascade: once Brand+Item (and Size) narrow to a known card, auto-fill size/price/desc.
   function cascadeFill(r, inputs, stage){
