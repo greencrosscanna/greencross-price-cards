@@ -330,7 +330,10 @@ td.invalid .cell-input{box-shadow:inset 0 0 0 2px #E8836B;border-radius:5px;}
 .av-flag.new{background:#1a8a3c;}
 .av-flag.special{background:#c2261d;}
 .av-name{
-  position:absolute;left:calc(0.389in - 1px);right:0.2in;bottom:2.06in;
+  /* Top-anchored so a single line sits exactly where it always did
+     (bottom 2.06in == 0.69in from the label top, minus one 24.7px line),
+     but extra wrapped lines now grow DOWNWARD instead of upward. */
+  position:absolute;left:calc(0.389in - 1px);right:0.2in;top:calc(0.69in - 24.7px);
   font-family:var(--gotham);font-weight:900;color:var(--gc-black);
   font-size:26px;line-height:.95;letter-spacing:-0.4pt;
   word-break:break-word;
