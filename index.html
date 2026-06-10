@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="fonts.css"/>
-<link rel="stylesheet" href="generator.css?v=4"/>
+<link rel="stylesheet" href="generator.css?v=5"/>
 </head>
 <body>
 <div id="app">
@@ -25,6 +25,7 @@
       <button class="btn btn-ghost" id="btnSettings" title="Settings">&#9881; Settings</button>
       <button class="btn btn-ghost" id="btnAddRow">+ Add product</button>
       <button class="btn btn-ghost" id="btnClearQueue" title="Uncheck every Print box">Clear print queue</button>
+      <button class="btn btn-ghost" id="btnSubmitQueue" title="Send the checked cards to the shared print queue">&uarr; Submit to queue</button>
       <button class="btn btn-primary" id="btnGenerate">Generate label sheets</button>
     </div>
   </header>
@@ -46,6 +47,11 @@
           </div>
           <div class="cb-source" id="cbSource"></div>
           <div class="cb-results" id="cbResults" hidden></div>
+        </div>
+        <div class="queue-strip" id="queueStrip" hidden>
+          <span class="queue-ico">&#128229;</span>
+          <span id="queueInfo"></span>
+          <button class="btn btn-soft" id="btnLoadQueue">Load to print</button>
         </div>
       </div>
       <div class="table-wrap">
@@ -159,6 +165,6 @@
   <div id="printRoot" aria-hidden="true"></div>
 </div>
 
-<script src="generator.js?v=4"></script>
+<script src="generator.js?v=5"></script>
 </body>
 </html>

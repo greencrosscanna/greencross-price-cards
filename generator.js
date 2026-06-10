@@ -340,9 +340,15 @@
       '<button class="btn btn-soft" id="btnClearPrinted">Clear printed</button> '+
       '<button class="btn btn-ghost" id="btnKeepPrinted">Keep</button>';
     document.getElementById("btnClearPrinted").onclick=function(){
+      var qids = printed.map(function(r){ return r.qid; }).filter(Boolean);
       rows = rows.filter(function(r){ return printed.indexOf(r)<0; });
       if(!rows.length) rows.push(blankRow());
       save(); renderTable(); refreshPreview(); valEl.hidden=true;
+      if(qids.length){                                  // also clear them from the shared queue
+        var url = engineUrl();
+        if(url) fetch(url, { method:"POST", headers:{ "Content-Type":"text/plain;charset=utf-8" },
+          body:JSON.stringify({ action:"queueRemove", ids:qids }) }).then(function(){ refreshQueueCount(); }).catch(function(){});
+      }
     };
     document.getElementById("btnKeepPrinted").onclick=function(){ valEl.hidden=true; };
   }
@@ -1089,10 +1095,60 @@
     });
   }
 
+  // ----- Shared print queue: submit · load · clear -----
+  var queueStrip = document.getElementById("queueStrip");
+  var queueInfo  = document.getElementById("queueInfo");
+  var btnLoadQueue = document.getElementById("btnLoadQueue");
+  function showQueue(html, hasItems){
+    if(queueInfo) queueInfo.innerHTML = html;
+    if(queueStrip) queueStrip.hidden = false;
+    if(btnLoadQueue) btnLoadQueue.style.display = hasItems ? "" : "none";
+  }
+  function refreshQueueCount(){
+    var url = engineUrl(); if(!url){ if(queueStrip) queueStrip.hidden = true; return; }
+    var sep = url.indexOf("?")<0 ? "?" : "&";
+    fetch(url+sep+"action=getQueue", {cache:"no-store"}).then(function(r){ return r.json(); })
+      .then(function(d){ if(!d || !d.ok) return; var n=(d.queue||[]).length;
+        showQueue(n ? ("<b>"+n+"</b> card"+(n>1?"s":"")+" waiting in the shared queue") : "Shared queue is empty", n>0);
+      }).catch(function(){});
+  }
+  function submitToQueue(){
+    var url = engineUrl(); if(!url){ flashError("No engine configured — set the data engine URL in ⚙ Settings."); return; }
+    var v = validate();
+    var cards = v.queued.filter(function(r){ return REQUIRED.every(function(f){ return String(r[f]||"").trim(); }); });
+    if(!cards.length){ flashError("Check <b>Print</b> on at least one complete card (Brand + Price) to submit."); return; }
+    var payload = cards.map(function(r){ return { brand:r.name, item:r.product, desc:r.description, desc2:r.description2, size:r.size, price:r.price, store:r.store, status:r.status }; });
+    fetch(url, { method:"POST", headers:{ "Content-Type":"text/plain;charset=utf-8" }, body:JSON.stringify({ action:"submitCards", by:"", cards:payload }) })
+      .then(function(r){ return r.json(); }).then(function(d){
+        if(d && d.ok){
+          rows = rows.filter(function(r){ return cards.indexOf(r)<0; }); if(!rows.length) rows.push(blankRow());
+          save(); renderTable(); refreshPreview();
+          showQueue("<b>Submitted "+d.added+"</b> · "+d.count+" now waiting", d.count>0);
+        } else flashError("Submit failed.");
+      }).catch(function(){ flashError("Submit failed — check your connection."); });
+  }
+  function loadQueue(){
+    var url = engineUrl(); if(!url) return;
+    var sep = url.indexOf("?")<0 ? "?" : "&";
+    fetch(url+sep+"action=getQueue", {cache:"no-store"}).then(function(r){ return r.json(); })
+      .then(function(d){ if(!d || !d.ok) return;
+        var have={}; rows.forEach(function(r){ if(r.qid) have[r.qid]=true; });
+        var added=0;
+        (d.queue||[]).forEach(function(e){ if(have[e.id]) return; var c=e.card||{};
+          rows.push(blankRow({ print:true, name:c.brand||"", product:c.item||"", description:c.desc||"", description2:c.desc2||"", size:c.size||"", price:c.price||"", store:c.store||"", status:c.status||"", qid:e.id })); added++; });
+        save(); renderTable(); refreshPreview();
+        showQueue(added ? ("Loaded <b>"+added+"</b> from the queue") : "Already loaded — nothing new", (d.queue||[]).length>0);
+      }).catch(function(){});
+  }
+  var btnSubmitQueue = document.getElementById("btnSubmitQueue"); if(btnSubmitQueue) btnSubmitQueue.onclick = submitToQueue;
+  if(btnLoadQueue) btnLoadQueue.onclick = loadQueue;
+
   // ================= INIT =================
   loadStyle();
   fetchConfigGlobal();   // adopt the shared (global) settings
   populateStores();
+  refreshQueueCount();
+  setInterval(refreshQueueCount, 30000);   // keep the shared-queue count fresh
   renderTable();
   refreshPreview();
   // re-fit once fonts + layout settle (first paint can mis-measure)
