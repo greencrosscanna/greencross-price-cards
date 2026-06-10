@@ -294,7 +294,6 @@
   // ================= ACTIONS =================
   function addRow(){ rows.push(blankRow()); save(); renderTable(); }
   document.getElementById("btnAddRow").onclick=function(){ addRow(); dataBody.lastElementChild.querySelector(".cell-input").focus(); };
-  document.getElementById("btnAddRow2").onclick=function(){ addRow(); dataBody.lastElementChild.querySelector(".cell-input").focus(); };
   document.getElementById("btnClearQueue").onclick=function(){
     rows.forEach(function(r){r.print=false;}); save(); renderTable(); refreshPreview();
   };
@@ -759,7 +758,7 @@
       if(ok) scored.push({ e:e, s:s });
     });
     scored.sort(function(a,b){ return b.s - a.s; });
-    return scored.slice(0,8).map(function(x){ return x.e; });
+    return scored.map(function(x){ return x.e; });   // all matches (results list scrolls)
   }
 
   var cbSearch  = document.getElementById("cbSearch");
@@ -772,15 +771,18 @@
       cbResults.hidden = false; return;
     }
     cbResults.innerHTML = cbMatches.map(function(e,i){
-      var sub = [e.desc, e.size].filter(Boolean).join(" · ");
+      var meta = [e.desc, e.size, e.category].filter(Boolean).join(" · ");
       return '<div class="cb-item'+(i===cbActive?' active':'')+'" data-i="'+i+'">'+
-        (e.category ? '<span class="cb-cat">'+esc(e.category)+'</span>' : '')+
-        '<span class="cb-text"><span class="cb-main">'+esc(e.brand)+' · '+esc(e.item)+'</span>'+
-          (sub ? ' <span class="cb-sub">'+esc(sub)+'</span>' : '')+'</span>'+
-        (e.price ? '<span class="cb-price">$'+esc(e.price)+'</span>' : '')+
+        '<div class="cb-row1">'+
+          '<span class="cb-main">'+esc(e.brand)+' · '+esc(e.item)+'</span>'+
+          (e.price ? '<span class="cb-price">$'+esc(e.price)+'</span>' : '')+
+        '</div>'+
+        (meta ? '<div class="cb-row2">'+esc(meta)+'</div>' : '')+
       '</div>';
     }).join("");
     cbResults.hidden = false;
+    var act = cbResults.querySelector(".cb-item.active");
+    if(act && act.scrollIntoView) act.scrollIntoView({block:"nearest"});
   }
   function cbAdd(e){
     if(!e) return;
