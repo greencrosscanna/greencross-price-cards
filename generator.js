@@ -890,10 +890,13 @@
   }
   function itemRowHtml(e, gi, ci, cls){
     var meta = [e.desc, e.size, e.category].filter(Boolean).join(" · ");
-    return '<div class="cb-item '+cls+'" data-g="'+gi+'" data-c="'+ci+'">'+
-      '<div class="cb-row1"><span class="cb-main">'+esc(e.brand)+' · '+esc(e.item)+'</span>'+
-        (e.price ? '<span class="cb-price">$'+esc(e.price)+'</span>' : '')+'</div>'+
-      (meta ? '<div class="cb-row2">'+esc(meta)+'</div>' : '')+
+    var gutter = (cls === "cb-child") ? "" : '<span class="cb-spacer"></span>';   // align brand/meta past the chevron
+    return '<div class="cb-item '+cls+'" data-g="'+gi+'" data-c="'+ci+'">'+ gutter +
+      '<div class="cb-body">'+
+        '<div class="cb-row1"><span class="cb-main">'+esc(e.brand)+' · '+esc(e.item)+'</span>'+
+          (e.price ? '<span class="cb-price">$'+esc(e.price)+'</span>' : '')+'</div>'+
+        (meta ? '<div class="cb-row2">'+esc(meta)+'</div>' : '')+
+      '</div>'+
     '</div>';
   }
   function cbRender(){
@@ -909,12 +912,14 @@
       var commonDesc = g.items.every(function(x){ return x.desc === e0.desc; }) ? e0.desc : "";
       var meta = [commonDesc, e0.size, e0.category].filter(Boolean).join(" · ");
       var expanded = !!CB_EXPANDED[g.key];
-      var out = '<div class="cb-item cb-parent" data-g="'+gi+'" data-c="-1">'+
-        '<div class="cb-row1"><span class="cb-main">'+esc(e0.brand)+' · '+esc(g.base)+'</span>'+
-          '<span class="cb-count" title="'+g.items.length+' flavors collapse into this card">'+g.items.length+'</span>'+
-          (e0.price ? '<span class="cb-price">$'+esc(e0.price)+'</span>' : '')+'</div>'+
-        '<div class="cb-row2">'+(meta ? esc(meta)+' · ' : '')+
-          '<button class="cb-expand" data-g="'+gi+'">'+(expanded ? "hide flavors" : "choose flavor ("+g.items.length+")")+'</button></div>'+
+      var out = '<div class="cb-item cb-parent'+(expanded?" expanded":"")+'" data-g="'+gi+'" data-c="-1">'+
+        '<button class="cb-chev" data-g="'+gi+'" title="Show flavors">&#9656;</button>'+
+        '<div class="cb-body">'+
+          '<div class="cb-row1"><span class="cb-main">'+esc(e0.brand)+' · '+esc(g.base)+'</span>'+
+            '<span class="cb-count" data-g="'+gi+'" title="'+g.items.length+' flavors collapse into this card">'+g.items.length+'</span>'+
+            (e0.price ? '<span class="cb-price">$'+esc(e0.price)+'</span>' : '')+'</div>'+
+          (meta ? '<div class="cb-row2">'+esc(meta)+'</div>' : '')+
+        '</div>'+
       '</div>';
       if(expanded) out += g.items.map(function(e, ci){ return itemRowHtml(e, gi, ci, "cb-child"); }).join("");
       return out;
@@ -952,8 +957,8 @@
   }
   if(cbResults){
     cbResults.addEventListener("mousedown", function(ev){
-      var exp = ev.target.closest(".cb-expand");
-      if(exp){ ev.preventDefault(); var ge = CB_GROUPS[+exp.dataset.g]; if(ge){ CB_EXPANDED[ge.key] = !CB_EXPANDED[ge.key]; cbRender(); } return; }
+      var toggle = ev.target.closest(".cb-chev, .cb-count");   // chevron or count pill → reveal flavors
+      if(toggle){ ev.preventDefault(); var gt = CB_GROUPS[+toggle.dataset.g]; if(gt){ CB_EXPANDED[gt.key] = !CB_EXPANDED[gt.key]; cbRender(); } return; }
       var row = ev.target.closest(".cb-item"); if(!row) return;
       ev.preventDefault();
       var g = CB_GROUPS[+row.dataset.g], ci = +row.dataset.c; if(!g) return;
