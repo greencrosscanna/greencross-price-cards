@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" width="600" height="600">
+  <defs>
+    <path id="d-spark" d="M0,-22 C3,-7 7,-3 22,0 C7,3 3,7 0,22 C-3,7 -7,3 -22,0 C-7,-3 -3,-7 0,-22 Z"/>
+    <path id="d-bolt" d="M5,-20 L-10,4 L-1,4 L-6,20 L12,-6 L3,-6 Z"/>
+    <g id="d-spade">
+      <path d="M0,-20 C-16,-3 -20,7 -11,13 C-6,16 -1,13 0,9 C1,13 6,16 11,13 C20,7 16,-3 0,-20 Z"/>
+      <path d="M0,7 L-6,22 L6,22 Z"/>
+    </g>
+    <path id="d-star" d="M0,-20 L5.9,-6.2 L20.7,-6.2 L8.4,2.4 L13,16.2 L0,7.6 L-13,16.2 L-8.4,2.4 L-20.7,-6.2 L-5.9,-6.2 Z"/>
+    <path id="d-cross" d="M-3.5,-14 H3.5 V-3.5 H14 V3.5 H3.5 V14 H-3.5 V3.5 H-14 V-3.5 H-3.5 Z"/>
+    <g id="d-cloud">
+      <circle cx="-15" cy="3" r="12"/><circle cx="4" cy="-5" r="16"/><circle cx="21" cy="4" r="11"/>
+      <rect x="-27" y="3" width="50" height="13" rx="6.5"/>
+    </g>
+    <path id="d-skull" fill-rule="evenodd" d="M-18,-4 a18,17 0 0 1 36,0 c0,7 -4,12 -9,14 l0,5 a3,3 0 0 1 -6,0 a3,3 0 0 1 -6,0 a3,3 0 0 1 -6,0 l0,-5 c-5,-2 -9,-7 -9,-14 Z M-8,-4 a4.5,4.5 0 1 0 9,0 a4.5,4.5 0 1 0 -9,0 Z M2,-4 a4.5,4.5 0 1 0 9,0 a4.5,4.5 0 1 0 -9,0 Z M-2,5 l-2.5,5 h5 Z"/>
+  </defs>
+  <g fill="#e9e1cd">
+    <use href="#d-spark" transform="translate(86,92) scale(1.5)"/>
+    <use href="#d-spark" transform="translate(522,150) scale(0.85)" opacity="0.82"/>
+    <use href="#d-spark" transform="translate(312,328) scale(1.05)" opacity="0.9"/>
+    <use href="#d-bolt"  transform="translate(214,252) rotate(-8) scale(1.25)"/>
+    <use href="#d-bolt"  transform="translate(470,442) rotate(14) scale(1.05)" opacity="0.9"/>
+    <use href="#d-spade" transform="translate(150,468) rotate(-6) scale(1.1)"/>
+    <use href="#d-spade" transform="translate(452,92) rotate(8) scale(0.9)" opacity="0.9"/>
+    <use href="#d-star"  transform="translate(556,302) scale(1.05)"/>
+    <use href="#d-star"  transform="translate(58,308) scale(0.78)" opacity="0.84"/>
+    <use href="#d-cross" transform="translate(360,158)"/>
+    <use href="#d-cross" transform="translate(252,540) scale(0.85)" opacity="0.9"/>
+    <use href="#d-cloud" transform="translate(478,252) scale(1.1)"/>
+    <use href="#d-skull" transform="translate(120,212) scale(1.45)"/>
+    <use href="#d-skull" transform="translate(392,402) scale(1.05)" opacity="0.95"/>
+    <circle cx="300" cy="70" r="4"/><circle cx="540" cy="520" r="5"/><circle cx="40" cy="440" r="4"/>
+    <circle cx="432" cy="540" r="3.5"/><circle cx="182" cy="360" r="3.5"/><circle cx="560" cy="58" r="4"/>
+    <circle cx="92" cy="540" r="3.5"/><circle cx="330" cy="470" r="3.5"/>
+  </g>
+</svg>
