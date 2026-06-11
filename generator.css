@@ -196,6 +196,22 @@ body{
 .queue-strip #queueInfo{flex:1 1 auto;}
 .queue-strip .btn{padding:5px 11px;font-size:12px;}
 
+/* ===== New-in-Dutchie "needs a tag" ===== */
+.newprod-strip{display:flex;align-items:center;gap:9px;margin:0 0 12px;padding:8px 12px;
+  background:#fef6e9;border:1px solid #f1dcae;border-radius:9px;font-size:12.5px;color:#7a5a17;}
+.newprod-strip .np-ico{font-size:15px;}
+.newprod-strip #newprodInfo{flex:1 1 auto;}
+.newprod-strip .btn{padding:5px 11px;font-size:12px;}
+.newprod-list{margin:-6px 0 12px;border:1px solid #f1dcae;border-radius:9px;background:#fffdf8;max-height:240px;overflow:auto;}
+.np-row{display:flex;align-items:center;gap:8px;padding:7px 11px;border-bottom:1px solid #f4eddc;}
+.np-row:last-child{border-bottom:0;}
+.np-text{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12.5px;color:#3a3a3a;}
+.np-cat{font-size:10px;text-transform:uppercase;letter-spacing:.3px;color:#fff;background:#c4a05a;border-radius:5px;padding:1px 5px;}
+.np-find{flex:none;padding:4px 10px !important;font-size:11.5px !important;}
+.np-dismiss{flex:none;border:0;background:transparent;color:#b0a487;font-size:17px;line-height:1;cursor:pointer;padding:0 3px;}
+.np-dismiss:hover{color:#c2261d;}
+.np-empty{padding:11px;color:#9a8c6e;font-size:12.5px;}
+
 /* ===== Card builder (search → conformed card) ===== */
 .card-builder{position:relative;margin:10px 0 14px;}
 .cb-bar{display:flex;gap:8px;align-items:stretch;}

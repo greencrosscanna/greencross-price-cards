@@ -71,6 +71,8 @@ function doGet(e) {
       case 'liveCatalog':  return json(liveCatalog_(p));
       case 'getConfig':    return json(getConfig_());
       case 'getQueue':     return json(getQueue_());
+      case 'newProducts':  return json(newProducts_());
+      case 'scanNow':      return json(scanNewProducts());
     }
     // default: read the bound Sheet
     var sheet  = pickSheet(p.gid);
@@ -92,6 +94,7 @@ function doPost(e) {
     if (body.action === 'submitCards') return json(submitCards_(body));
     if (body.action === 'queueRemove') return json(queueRemove_(body));
     if (body.action === 'clearQueue')  return json(clearQueue_());
+    if (body.action === 'ackProducts') return json(ackProducts_(body));
     if (body.action !== 'markDone') return json({ ok: false, error: 'unknown-action' });
 
     var sheet = pickSheet(body.gid);
@@ -286,6 +289,83 @@ function sendDigestTest() {
     htmlBody: '<p style="font-family:Arial"><b>Test digest</b> (sent only to you).</p>' + buildDigestBody_(q, q)
   });
   return { ok: true, sentTo: DIGEST_OWNER, total: q.length };
+}
+
+/* ----- New-in-Dutchie detection — products that need a price-card tag ----- *
+ * Daily scan diffs the Dutchie catalog against a baselined known-set; any
+ * genuinely-new productIds accumulate in a "needs a tag" list the app shows.
+ * Known-set is chunked across properties (can be thousands of ids).
+ * ------------------------------------------------------------------------- */
+var KNOWN_KEY = 'GC_KNOWN_PRODUCTS', NEWPROD_KEY = 'GC_NEW_PRODUCTS';
+function _putBig_(key, str) {
+  var props = PropertiesService.getScriptProperties(), all = props.getProperties();
+  Object.keys(all).forEach(function (k) { if (k.indexOf(key + '__') === 0) props.deleteProperty(k); });
+  var size = 8000, n = Math.ceil(str.length / size) || 1, o = {}; o[key + '__n'] = String(n);
+  for (var i = 0; i < n; i++) o[key + '__' + i] = str.substr(i * size, size);
+  props.setProperties(o);
+}
+function _getBig_(key) {
+  var props = PropertiesService.getScriptProperties();
+  var n = parseInt(props.getProperty(key + '__n') || '0', 10);
+  if (!n) return '';
+  var s = ''; for (var i = 0; i < n; i++) s += (props.getProperty(key + '__' + i) || '');
+  return s;
+}
+// Map of productId -> {id,name,brand,category} across all stores' catalogs.
+function buildProductDict_() {
+  var stores = dutchieStores_();
+  var reqs = stores.map(function (s) {
+    return { url: DUTCHIE_BASE + '/products', headers: { Authorization: dutchieAuth_(s), Accept: 'application/json' }, muteHttpExceptions: true };
+  });
+  var resps = UrlFetchApp.fetchAll(reqs), dict = {};
+  for (var i = 0; i < resps.length; i++) {
+    if (resps[i].getResponseCode() !== 200) continue;
+    var raw = JSON.parse(resps[i].getContentText());
+    var items = Array.isArray(raw) ? raw : (raw.data || raw.items || []);
+    for (var j = 0; j < items.length; j++) {
+      var it = items[j], pid = it.productId;
+      if (pid == null || dict[pid]) continue;
+      var name = String(it.productName || '').trim();
+      if (!name) continue;
+      dict[pid] = { id: String(pid), name: name, brand: String(it.brandName || '').trim(),
+                    category: String(it.masterCategory || it.category || '').trim() };
+    }
+  }
+  return dict;
+}
+// Trigger handler: baseline on first run, else accumulate newly-seen products.
+function scanNewProducts() {
+  var props = PropertiesService.getScriptProperties();
+  var dict = buildProductDict_(), ids = Object.keys(dict);
+  var known = JSON.parse(_getBig_(KNOWN_KEY) || '[]'), knownSet = {};
+  known.forEach(function (id) { knownSet[id] = true; });
+  if (!known.length) {                                  // first run → baseline, nothing flagged
+    _putBig_(KNOWN_KEY, JSON.stringify(ids));
+    _putBig_(NEWPROD_KEY, '[]');
+    return { ok: true, baselined: ids.length, 'new': 0 };
+  }
+  var fresh = ids.filter(function (id) { return !knownSet[id]; }).map(function (id) { return dict[id]; });
+  var list = JSON.parse(_getBig_(NEWPROD_KEY) || '[]'), have = {};
+  list.forEach(function (p) { have[p.id] = true; });
+  fresh.forEach(function (p) { if (!have[p.id]) { list.push(p); have[p.id] = true; } });
+  _putBig_(NEWPROD_KEY, JSON.stringify(list));
+  _putBig_(KNOWN_KEY, JSON.stringify(ids));
+  return { ok: true, 'new': fresh.length, pending: list.length };
+}
+function newProducts_() { return { ok: true, products: JSON.parse(_getBig_(NEWPROD_KEY) || '[]') }; }
+function ackProducts_(body) {                            // staff handled/dismissed these
+  var ids = (body && body.ids) || [], set = {}; ids.forEach(function (id) { set[String(id)] = true; });
+  var list = JSON.parse(_getBig_(NEWPROD_KEY) || '[]').filter(function (p) { return !set[p.id]; });
+  _putBig_(NEWPROD_KEY, JSON.stringify(list));
+  return { ok: true, removed: ids.length, pending: list.length };
+}
+// Run once in the editor: daily 7am scan (before the 8am digest).
+function installNewScanTrigger() {
+  ScriptApp.getProjectTriggers().forEach(function (t) {
+    if (t.getHandlerFunction() === 'scanNewProducts') ScriptApp.deleteTrigger(t);
+  });
+  ScriptApp.newTrigger('scanNewProducts').timeBased().everyDays(1).atHour(7).create();
+  return { ok: true, installed: 'daily ~7am' };
 }
 
 /* ===================== DUTCHIE — live active inventory ===================== *

@@ -1143,12 +1143,60 @@
   var btnSubmitQueue = document.getElementById("btnSubmitQueue"); if(btnSubmitQueue) btnSubmitQueue.onclick = submitToQueue;
   if(btnLoadQueue) btnLoadQueue.onclick = loadQueue;
 
+  // ----- New-in-Dutchie products that need a tag -----
+  var NEW_PRODUCTS = [];
+  var newprodStrip = document.getElementById("newprodStrip");
+  var newprodInfo  = document.getElementById("newprodInfo");
+  var newprodList  = document.getElementById("newprodList");
+  function refreshNewProducts(){
+    var url = engineUrl(); if(!url) return;
+    var sep = url.indexOf("?")<0 ? "?" : "&";
+    fetch(url+sep+"action=newProducts", {cache:"no-store"}).then(function(r){ return r.json(); })
+      .then(function(d){ if(!d || !d.ok) return;
+        NEW_PRODUCTS = d.products || [];
+        var n = NEW_PRODUCTS.length;
+        if(n>0 && newprodStrip){ newprodInfo.innerHTML = "<b>"+n+"</b> new product"+(n>1?"s":"")+" in Dutchie need"+(n>1?"":"s")+" a tag"; newprodStrip.hidden = false; }
+        else if(newprodStrip){ newprodStrip.hidden = true; if(newprodList) newprodList.hidden = true; }
+      }).catch(function(){});
+  }
+  function renderNewProductsList(){
+    if(!newprodList) return;
+    newprodList.innerHTML = NEW_PRODUCTS.length ? NEW_PRODUCTS.map(function(p,i){
+      return '<div class="np-row" data-i="'+i+'">'+
+        '<span class="np-text"><b>'+esc(normalizeBrand(p.brand||""))+'</b> · '+esc(p.name||"")+
+          (p.category ? ' <span class="np-cat">'+esc(p.category)+'</span>' : '')+'</span>'+
+        '<button class="btn btn-soft np-find" data-i="'+i+'" title="Find in live inventory to build a card">Find</button>'+
+        '<button class="np-dismiss" data-i="'+i+'" title="Dismiss — already handled">&times;</button>'+
+      '</div>';
+    }).join("") : '<div class="np-empty">All caught up — no new products waiting.</div>';
+    newprodList.hidden = false;
+  }
+  function ackNewProduct(p){
+    var url = engineUrl();
+    if(url) fetch(url, { method:"POST", headers:{ "Content-Type":"text/plain;charset=utf-8" },
+      body:JSON.stringify({ action:"ackProducts", ids:[p.id] }) }).catch(function(){});
+    NEW_PRODUCTS = NEW_PRODUCTS.filter(function(x){ return x.id !== p.id; });
+    renderNewProductsList(); refreshNewProducts();
+  }
+  var btnReviewNew = document.getElementById("btnReviewNew");
+  if(btnReviewNew) btnReviewNew.onclick = function(){
+    if(newprodList && !newprodList.hidden){ newprodList.hidden = true; return; }
+    renderNewProductsList();
+  };
+  if(newprodList) newprodList.addEventListener("click", function(ev){
+    var find = ev.target.closest(".np-find"), dis = ev.target.closest(".np-dismiss");
+    if(find){ var p = NEW_PRODUCTS[+find.dataset.i]; if(p && cbSearch){ cbSearch.value = p.name||""; cbSearch.focus(); cbMatches = cbRun(cbSearch.value); cbRender(); } return; }
+    if(dis){ var p2 = NEW_PRODUCTS[+dis.dataset.i]; if(p2) ackNewProduct(p2); }
+  });
+
   // ================= INIT =================
   loadStyle();
   fetchConfigGlobal();   // adopt the shared (global) settings
   populateStores();
   refreshQueueCount();
+  refreshNewProducts();
   setInterval(refreshQueueCount, 30000);   // keep the shared-queue count fresh
+  setInterval(refreshNewProducts, 120000);
   renderTable();
   refreshPreview();
   // re-fit once fonts + layout settle (first paint can mis-measure)
