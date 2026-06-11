@@ -210,6 +210,84 @@ function queueRemove_(body) {
 }
 function clearQueue_() { writeQueue_([]); return { ok: true, count: 0 }; }
 
+/* ----- EOD digest email — "N card requests waiting" ----- *
+ * GUARDRAIL: emails ONLY sky@ unless GC_DIGEST_TO_TAWNY === '1' (off by
+ * default). Do not enable Tawny until approved. Skips sending if nothing
+ * new since the last digest.
+ * ------------------------------------------------------------------- */
+var DIGEST_OWNER = 'sky@greencrosscanna.com';
+var DIGEST_LAST_PROP = 'GC_DIGEST_LAST';
+var DIGEST_TAWNY_PROP = 'GC_DIGEST_TO_TAWNY';
+
+function digestRecipients_() {
+  var to = [DIGEST_OWNER];
+  if (PropertiesService.getScriptProperties().getProperty(DIGEST_TAWNY_PROP) === '1') {
+    to.push('tawny@greencrosscanna.com');
+  }
+  return to;
+}
+function esc_(s) {
+  return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+    return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c];
+  });
+}
+function buildDigestBody_(q, fresh) {
+  var rows = q.map(function (e) {
+    var c = e.card || {};
+    var when = e.at ? e.at.slice(0,10) : '';
+    return '<tr>'+
+      '<td style="padding:5px 10px;border-bottom:1px solid #eee">'+esc_(c.brand)+'</td>'+
+      '<td style="padding:5px 10px;border-bottom:1px solid #eee">'+esc_(c.item)+'</td>'+
+      '<td style="padding:5px 10px;border-bottom:1px solid #eee">'+esc_(c.size)+'</td>'+
+      '<td style="padding:5px 10px;border-bottom:1px solid #eee;text-align:right">$'+esc_(c.price)+'</td>'+
+      '<td style="padding:5px 10px;border-bottom:1px solid #eee">'+esc_(c.store)+'</td>'+
+      '<td style="padding:5px 10px;border-bottom:1px solid #eee;color:#888">'+esc_(when)+'</td>'+
+    '</tr>';
+  }).join('');
+  return '<div style="font-family:Arial,sans-serif;font-size:14px;color:#222">'+
+    '<p><b>'+q.length+'</b> price card request'+(q.length===1?'':'s')+' waiting in the queue'+
+    (fresh.length ? ' &middot; <b>'+fresh.length+'</b> new today' : '')+'.</p>'+
+    '<table style="border-collapse:collapse;font-size:13px"><thead><tr>'+
+      ['Brand','Item','Size','Price','Store','Submitted'].map(function(h){
+        return '<th style="padding:5px 10px;text-align:left;border-bottom:2px solid #ccc">'+h+'</th>'; }).join('')+
+    '</tr></thead><tbody>'+rows+'</tbody></table>'+
+    '<p style="color:#888;font-size:12px;margin-top:14px">Green Cross price-card queue · automated daily summary.</p></div>';
+}
+// Trigger handler: send the digest only if there are new requests since last run.
+function sendQueueDigest() {
+  var props = PropertiesService.getScriptProperties();
+  var last  = props.getProperty(DIGEST_LAST_PROP) || '';
+  var q     = readQueue_();
+  var fresh = q.filter(function (e) { return !last || (e.at && e.at > last); });
+  props.setProperty(DIGEST_LAST_PROP, new Date().toISOString());
+  if (!fresh.length) return { ok: true, sent: false, reason: 'nothing new' };
+  var to = digestRecipients_();
+  MailApp.sendEmail({
+    to: to.join(','),
+    subject: '🖨️ Price card queue — ' + q.length + ' waiting (' + fresh.length + ' new)',
+    htmlBody: buildDigestBody_(q, fresh)
+  });
+  return { ok: true, sent: true, to: to, total: q.length, fresh: fresh.length };
+}
+// Run once in the editor to (re)install the daily 6pm trigger.
+function installDigestTrigger() {
+  ScriptApp.getProjectTriggers().forEach(function (t) {
+    if (t.getHandlerFunction() === 'sendQueueDigest') ScriptApp.deleteTrigger(t);
+  });
+  ScriptApp.newTrigger('sendQueueDigest').timeBased().everyDays(1).atHour(18).create();
+  return { ok: true, installed: 'daily ~6pm' };
+}
+// Run in the editor to send yourself a sample digest now (forces send to sky@ only).
+function sendDigestTest() {
+  var q = readQueue_();
+  MailApp.sendEmail({
+    to: DIGEST_OWNER,
+    subject: '🖨️ [TEST] Price card queue — ' + q.length + ' waiting',
+    htmlBody: '<p style="font-family:Arial"><b>Test digest</b> (sent only to you).</p>' + buildDigestBody_(q, q)
+  });
+  return { ok: true, sentTo: DIGEST_OWNER, total: q.length };
+}
+
 /* ===================== DUTCHIE — live active inventory ===================== *
  * Reads in-stock inventory per store from the Dutchie POS API so the card
  * builder can search real products with real per-store prices. Keys live in
