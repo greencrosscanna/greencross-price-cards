@@ -1190,6 +1190,16 @@
   });
 
   // ================= INIT =================
+  // Role mode: ?role=employee = submit-only employee app. Default = full Tawny app.
+  var ROLE = (new URLSearchParams(location.search).get("role") || "").toLowerCase();
+  if(ROLE === "employee"){
+    document.body.classList.add("mode-employee");
+    var sub = document.querySelector(".editor-sub");
+    if(sub) sub.innerHTML = "Find a product, build your price-tag request, then <b>Submit</b> — it goes to the print queue for the team to print.";
+    var sq = document.getElementById("btnSubmitQueue");
+    if(sq){ sq.className = "btn btn-primary"; sq.textContent = "Submit request"; }
+  }
+
   loadStyle();
   fetchConfigGlobal();   // adopt the shared (global) settings
   populateStores();
