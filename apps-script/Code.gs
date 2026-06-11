@@ -269,13 +269,13 @@ function sendQueueDigest() {
   });
   return { ok: true, sent: true, to: to, total: q.length, fresh: fresh.length };
 }
-// Run once in the editor to (re)install the daily 6pm trigger.
+// Run once in the editor to (re)install the daily 8am trigger.
 function installDigestTrigger() {
   ScriptApp.getProjectTriggers().forEach(function (t) {
     if (t.getHandlerFunction() === 'sendQueueDigest') ScriptApp.deleteTrigger(t);
   });
-  ScriptApp.newTrigger('sendQueueDigest').timeBased().everyDays(1).atHour(18).create();
-  return { ok: true, installed: 'daily ~6pm' };
+  ScriptApp.newTrigger('sendQueueDigest').timeBased().everyDays(1).atHour(8).create();
+  return { ok: true, installed: 'daily ~8am' };
 }
 // Run in the editor to send yourself a sample digest now (forces send to sky@ only).
 function sendDigestTest() {
