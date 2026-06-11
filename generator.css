@@ -196,11 +196,28 @@ body{
 .queue-strip #queueInfo{flex:1 1 auto;}
 .queue-strip .btn{padding:5px 11px;font-size:12px;}
 
-/* ===== Employee mode (?role=employee): submit-only ===== */
+/* ===== Employee mode (?role=employee): edit the card directly ===== */
 .mode-employee #btnSettings,
 .mode-employee #btnGenerate,
 .mode-employee #btnClearQueue,
-.mode-employee #btnLoadQueue{ display:none !important; }
+.mode-employee #btnLoadQueue,
+.mode-employee .table-wrap,
+.mode-employee .editor-foot,
+.mode-employee #previewPane{ display:none !important; }
+.mode-employee .workspace{ grid-template-columns:1fr !important; }
+.mode-employee .editor{ border-right:0; }
+.card-editor{ display:flex; flex-direction:column; align-items:center; gap:18px; padding:30px 16px 40px; flex:1 1 auto; overflow:auto; }
+.ce-card-wrap{ zoom:1.35; }                        /* scales the card's layout box (Chrome/Safari) */
+.ce-card-wrap .emp-card{ box-shadow:0 4px 20px rgba(16,22,26,.18); outline:1px solid #e7eaee; }
+.emp-card [contenteditable]{ cursor:text; }
+.emp-card [contenteditable]:hover{ background:rgba(139,195,74,.10); }
+.emp-card [contenteditable]:focus{ outline:1.5px solid rgba(139,195,74,.75); outline-offset:1px; background:#fff; }
+.emp-card [contenteditable]:empty:before{ content:attr(data-ph); color:#c6cace; }
+.emp-card .av-store{ overflow:visible; }           /* let the store field grow while editing */
+.emp-card .av-price-num{ display:inline-block; min-width:14px; }
+.ce-controls{ display:flex; align-items:center; gap:14px; font-size:13px; color:#5a626b; }
+.ce-flag select{ font:inherit; font-size:13px; padding:4px 8px; border:1px solid var(--gc-line,#d7dbe0); border-radius:7px; margin-left:6px; }
+.ce-hint{ color:#9aa0a6; }
 
 /* ===== New-in-Dutchie "needs a tag" ===== */
 .newprod-strip{display:flex;align-items:center;gap:9px;margin:0 0 12px;padding:8px 12px;

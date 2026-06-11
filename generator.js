@@ -140,6 +140,7 @@
       dataBody.appendChild(renderRow(r,idx));
       if(r.print) queued++;
     });
+    if(document.body.classList.contains("mode-employee")) renderEmpCard();   // keep the editable card in sync
   }
   function flashInput(inp){ if(inp){ inp.classList.add("conformed"); setTimeout(function(){ inp.classList.remove("conformed"); }, 1000); } }
   // one editable field + its autocomplete / smart-naming / cascade hooks
@@ -995,13 +996,51 @@
   }
   function cbAdd(e){
     if(!e) return;
-    rows.push(blankRow({ print:true, name:e.brand, product:e.item, description:e.desc, size:e.size, price:e.price, store:e.store||"" }));
-    save(); renderTable(); refreshPreview();
+    var card = blankRow({ print:true, name:e.brand, product:e.item, description:e.desc, size:e.size, price:e.price, store:e.store||"" });
     if(cbSearch) cbSearch.value = "";
     cbMatches = []; CB_GROUPS = []; CB_EXPANDED = {}; if(cbResults) cbResults.hidden = true;
+    if(document.body.classList.contains("mode-employee")){    // employee: one editable card, not a table row
+      rows = [card]; save(); renderTable(); refreshPreview(); renderEmpCard();
+      return;
+    }
+    rows.push(card); save(); renderTable(); refreshPreview();
     var tr = dataBody.lastElementChild;
     if(tr){ tr.classList.add("row-added"); setTimeout(function(){ tr.classList.remove("row-added"); }, 1300);
       tr.scrollIntoView({block:"nearest"}); }
+  }
+  // ----- Employee mode: the rendered card IS the editor (edit text in place) -----
+  function buildEmpLabel(r){
+    var num = String(r.price==null?"":r.price).replace(/^\$+/,"");
+    var node = el(
+      '<div class="av-label emp-card">'+
+        '<div class="av-pad">'+
+          '<div class="av-store" contenteditable="true" data-f="store" data-ph="Store">'+esc(r.store)+'</div>'+
+          (r.status ? '<span class="av-flag '+esc(r.status)+'">'+(r.status==="special"?"SPECIAL":"NEW")+'</span>' : '')+
+        '</div>'+
+        '<div class="av-name" contenteditable="true" data-f="name" data-ph="Brand">'+esc(r.name)+'</div>'+
+        '<div class="av-body">'+
+          '<div class="av-product" contenteditable="true" data-f="product" data-ph="Item">'+esc(r.product)+'</div>'+
+          '<div class="av-desc" contenteditable="true" data-f="description" data-ph="Description">'+esc(r.description)+'</div>'+
+          '<div class="av-desc" contenteditable="true" data-f="description2" data-ph="Description 2">'+esc(r.description2)+'</div>'+
+        '</div>'+
+        '<div class="av-footer">'+
+          '<span class="av-size" contenteditable="true" data-f="size" data-ph="Size">'+esc(r.size)+'</span>'+
+          '<span class="av-price"><span class="cur">$</span><span class="av-price-num" contenteditable="true" data-f="price" data-ph="0">'+esc(num)+'</span></span>'+
+        '</div>'+
+      '</div>'
+    );
+    node.querySelectorAll("[data-f]").forEach(function(field){
+      field.addEventListener("input", function(){ r[field.dataset.f] = field.textContent.trim(); save(); });
+      field.addEventListener("keydown", function(ev){ if(ev.key==="Enter"){ ev.preventDefault(); field.blur(); } });
+    });
+    return node;
+  }
+  function renderEmpCard(){
+    var host = document.getElementById("ceCardWrap"); if(!host) return;
+    if(!rows.length) rows.push(blankRow({print:true}));
+    host.innerHTML = "";
+    host.appendChild(buildEmpLabel(rows[0]));
+    var f = document.getElementById("ceFlag"); if(f) f.value = rows[0].status || "";
   }
   function cbAddGeneric(g){   // the collapsed parent → a generic, flavor-free card
     if(!g) return;
@@ -1195,9 +1234,16 @@
   if(ROLE === "employee"){
     document.body.classList.add("mode-employee");
     var sub = document.querySelector(".editor-sub");
-    if(sub) sub.innerHTML = "Find a product, build your price-tag request, then <b>Submit</b> — it goes to the print queue for the team to print.";
+    if(sub) sub.innerHTML = "Find a product to fill the card, click any text on it to edit, then <b>Submit request</b> — it goes to the print queue.";
     var sq = document.getElementById("btnSubmitQueue");
     if(sq){ sq.className = "btn btn-primary"; sq.textContent = "Submit request"; }
+    var ce = document.getElementById("cardEditor"); if(ce) ce.hidden = false;
+    var ceFlag = document.getElementById("ceFlag");
+    if(ceFlag) ceFlag.addEventListener("change", function(){
+      if(!rows.length) rows.push(blankRow({print:true}));
+      rows[0].status = ceFlag.value; save(); renderEmpCard();
+    });
+    rows = [blankRow({print:true})];   // start with one clean card
   }
 
   loadStyle();
