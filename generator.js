@@ -1040,7 +1040,39 @@
     if(!rows.length) rows.push(blankRow({print:true}));
     host.innerHTML = "";
     host.appendChild(buildEmpLabel(rows[0]));
-    var f = document.getElementById("ceFlag"); if(f) f.value = rows[0].status || "";
+    syncFlagPills();
+    var r = rows[0];
+    var empty = !String(r.name||"").trim() && !String(r.product||"").trim() && !String(r.price||"").trim();
+    var tip = document.querySelector(".ce-tip");
+    if(tip) tip.textContent = empty ? "↑ search up top to whip one up ✨" : "psst — tap any words on the card to change them ✏️";
+  }
+  function syncFlagPills(){
+    var st = (rows[0] && rows[0].status) || "";
+    document.querySelectorAll(".ce-flagbtn").forEach(function(b){ b.classList.toggle("active", b.dataset.flag === st); });
+  }
+  function celebrate(){
+    var layer = document.getElementById("confettiLayer");
+    if(layer){
+      var colors = ["#8bc34a","#5fa027","#c5e1a5","#ffd54f","#4fc3f7","#ff8a65","#ba68c8"];
+      for(var i=0;i<54;i++){
+        var p = document.createElement("i");
+        p.className = "confetti-bit";
+        p.style.left = (6 + Math.random()*88) + "%";
+        p.style.background = colors[i % colors.length];
+        p.style.animationDelay = (Math.random()*0.25) + "s";
+        p.style.transform = "rotate(" + (Math.random()*360) + "deg)";
+        layer.appendChild(p);
+        (function(node){ setTimeout(function(){ node.remove(); }, 2400); })(p);
+      }
+    }
+    var picks = ["Boom! Off to the printer 🎉","Nailed it — sent to print ✅","Tag submitted! High five ✋","Off it goes! 🚀"];
+    showToast(picks[Math.floor(Math.random()*picks.length)]);
+  }
+  function showToast(msg){
+    var t = document.createElement("div"); t.className = "ce-toast"; t.textContent = msg;
+    document.body.appendChild(t);
+    requestAnimationFrame(function(){ t.classList.add("show"); });
+    setTimeout(function(){ t.classList.remove("show"); setTimeout(function(){ t.remove(); }, 400); }, 2400);
   }
   function cbAddGeneric(g){   // the collapsed parent → a generic, flavor-free card
     if(!g) return;
@@ -1155,16 +1187,17 @@
     var url = engineUrl(); if(!url){ flashError("No engine configured — set the data engine URL in ⚙ Settings."); return; }
     var v = validate();
     var cards = v.queued.filter(function(r){ return REQUIRED.every(function(f){ return String(r[f]||"").trim(); }); });
-    if(!cards.length){ flashError("Check <b>Print</b> on at least one complete card (Brand + Price) to submit."); return; }
+    var emp = document.body.classList.contains("mode-employee");
+    if(!cards.length){ emp ? showToast("Pop in a brand and a price first 🙂") : flashError("Check <b>Print</b> on at least one complete card (Brand + Price) to submit."); return; }
     var payload = cards.map(function(r){ return { brand:r.name, item:r.product, desc:r.description, desc2:r.description2, size:r.size, price:r.price, store:r.store, status:r.status }; });
     fetch(url, { method:"POST", headers:{ "Content-Type":"text/plain;charset=utf-8" }, body:JSON.stringify({ action:"submitCards", by:"", cards:payload }) })
       .then(function(r){ return r.json(); }).then(function(d){
         if(d && d.ok){
           rows = rows.filter(function(r){ return cards.indexOf(r)<0; }); if(!rows.length) rows.push(blankRow());
           save(); renderTable(); refreshPreview();
-          showQueue("<b>Submitted "+d.added+"</b> · "+d.count+" now waiting", d.count>0);
-        } else flashError("Submit failed.");
-      }).catch(function(){ flashError("Submit failed — check your connection."); });
+          emp ? celebrate() : showQueue("<b>Submitted "+d.added+"</b> · "+d.count+" now waiting", d.count>0);
+        } else { emp ? showToast("Hmm, that didn't send — try again") : flashError("Submit failed."); }
+      }).catch(function(){ emp ? showToast("Couldn't send — check your connection") : flashError("Submit failed — check your connection."); });
   }
   function loadQueue(){
     var url = engineUrl(); if(!url) return;
@@ -1233,16 +1266,21 @@
   var ROLE = (new URLSearchParams(location.search).get("role") || "").toLowerCase();
   if(ROLE === "employee"){
     document.body.classList.add("mode-employee");
+    var h2 = document.querySelector(".editor-head h2");
+    if(h2) h2.textContent = "Super-Fancy Price Tag Maker ✨";
     var sub = document.querySelector(".editor-sub");
-    if(sub) sub.innerHTML = "Find a product to fill the card, click any text on it to edit, then <b>Submit request</b> — it goes to the print queue.";
-    var sq = document.getElementById("btnSubmitQueue");
-    if(sq){ sq.className = "btn btn-primary"; sq.textContent = "Submit request"; }
+    if(sub) sub.innerHTML = "Find your product, make it look just right, fire it off to the printer. That's the whole game. 🎉";
+    if(cbSearch) cbSearch.placeholder = "What are we tagging today? 🔍";
     var ce = document.getElementById("cardEditor"); if(ce) ce.hidden = false;
-    var ceFlag = document.getElementById("ceFlag");
-    if(ceFlag) ceFlag.addEventListener("change", function(){
-      if(!rows.length) rows.push(blankRow({print:true}));
-      rows[0].status = ceFlag.value; save(); renderEmpCard();
+    document.querySelectorAll(".ce-flagbtn").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        if(!rows.length) rows.push(blankRow({print:true}));
+        rows[0].status = (rows[0].status === btn.dataset.flag) ? "" : btn.dataset.flag;
+        save(); renderEmpCard();
+      });
     });
+    var ceSubmit = document.getElementById("ceSubmit");
+    if(ceSubmit) ceSubmit.addEventListener("click", submitToQueue);
     rows = [blankRow({print:true})];   // start with one clean card
   }
 

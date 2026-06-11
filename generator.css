@@ -196,28 +196,79 @@ body{
 .queue-strip #queueInfo{flex:1 1 auto;}
 .queue-strip .btn{padding:5px 11px;font-size:12px;}
 
-/* ===== Employee mode (?role=employee): edit the card directly ===== */
+/* ===== Employee mode (?role=employee): the fun price-tag maker ===== */
 .mode-employee #btnSettings,
 .mode-employee #btnGenerate,
 .mode-employee #btnClearQueue,
 .mode-employee #btnLoadQueue,
+.mode-employee #btnSubmitQueue,
+.mode-employee #btnAddRow,
+.mode-employee .sheet-spec,
+.mode-employee .cb-source,
+.mode-employee #queueStrip,
+.mode-employee .newprod-strip,
+.mode-employee .newprod-list,
 .mode-employee .table-wrap,
 .mode-employee .editor-foot,
 .mode-employee #previewPane{ display:none !important; }
 .mode-employee .workspace{ grid-template-columns:1fr !important; }
 .mode-employee .editor{ border-right:0; }
-.card-editor{ display:flex; flex-direction:column; align-items:center; gap:18px; padding:30px 16px 40px; flex:1 1 auto; overflow:auto; }
+.mode-employee .editor-head h2{ font-size:30px; font-weight:900; letter-spacing:-.5px;
+  background:linear-gradient(90deg,#5fa027,#8bc34a); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; }
+.mode-employee .editor-sub{ font-size:14.5px; color:#6b7a52; }
+
+/* the stage the card lives on */
+.card-editor{ display:none; position:relative; flex-direction:column; align-items:center; justify-content:center;
+  gap:22px; padding:36px 16px 48px; flex:1 1 auto; overflow:auto; isolation:isolate;
+  background:radial-gradient(130% 80% at 50% -10%, #eefbe0 0%, #e7f8ee 45%, #f6fbf4 100%); }
+.mode-employee .card-editor{ display:flex; }
+.ce-blobs{ position:absolute; inset:0; overflow:hidden; z-index:-1; }
+.ce-blobs span{ position:absolute; border-radius:50%; filter:blur(46px); opacity:.55; }
+.ce-blobs span:nth-child(1){ width:320px; height:320px; background:#bfe793; top:-70px; left:-50px; animation:ceFloat1 11s ease-in-out infinite; }
+.ce-blobs span:nth-child(2){ width:260px; height:260px; background:#9fe3c4; bottom:-60px; right:-30px; animation:ceFloat2 13s ease-in-out infinite; }
+.ce-blobs span:nth-child(3){ width:200px; height:200px; background:#ffe08a; top:40%; right:18%; opacity:.4; animation:ceFloat3 9s ease-in-out infinite; }
+@keyframes ceFloat1{ 50%{ transform:translate(50px,40px) scale(1.08); } }
+@keyframes ceFloat2{ 50%{ transform:translate(-44px,-30px) scale(1.1); } }
+@keyframes ceFloat3{ 50%{ transform:translate(-30px,40px) scale(.9); } }
+
+.ce-stage{ position:relative; display:flex; flex-direction:column; align-items:center; gap:14px; }
 .ce-card-wrap{ zoom:1.35; }                        /* scales the card's layout box (Chrome/Safari) */
-.ce-card-wrap .emp-card{ box-shadow:0 4px 20px rgba(16,22,26,.18); outline:1px solid #e7eaee; }
-.emp-card [contenteditable]{ cursor:text; }
-.emp-card [contenteditable]:hover{ background:rgba(139,195,74,.10); }
-.emp-card [contenteditable]:focus{ outline:1.5px solid rgba(139,195,74,.75); outline-offset:1px; background:#fff; }
+.ce-card-wrap .emp-card{ border-radius:7px; box-shadow:0 20px 44px rgba(60,95,25,.24);
+  animation:cePop .5s cubic-bezier(.18,.9,.24,1.1); transition:transform .25s ease, box-shadow .25s ease; }
+.ce-card-wrap:hover .emp-card{ transform:translateY(-5px) rotate(-.4deg); box-shadow:0 30px 60px rgba(60,95,25,.3); }
+@keyframes cePop{ from{ opacity:0; transform:scale(.9) translateY(14px); } to{ opacity:1; transform:none; } }
+.emp-card [contenteditable]{ cursor:text; border-radius:3px; transition:background .12s; }
+.emp-card [contenteditable]:hover{ background:rgba(139,195,74,.14); box-shadow:0 0 0 4px rgba(139,195,74,.14); }
+.emp-card [contenteditable]:focus{ outline:2px solid rgba(139,195,74,.85); outline-offset:1px; background:#fff; }
 .emp-card [contenteditable]:empty:before{ content:attr(data-ph); color:#c6cace; }
-.emp-card .av-store{ overflow:visible; }           /* let the store field grow while editing */
+.emp-card .av-store{ overflow:visible; }
 .emp-card .av-price-num{ display:inline-block; min-width:14px; }
-.ce-controls{ display:flex; align-items:center; gap:14px; font-size:13px; color:#5a626b; }
-.ce-flag select{ font:inherit; font-size:13px; padding:4px 8px; border:1px solid var(--gc-line,#d7dbe0); border-radius:7px; margin-left:6px; }
-.ce-hint{ color:#9aa0a6; }
+.ce-tip{ margin:0; font-size:13px; color:#7e8e62; font-style:italic; }
+
+.ce-controls{ position:relative; display:flex; flex-direction:column; align-items:center; gap:16px; }
+.ce-flags{ display:flex; gap:9px; }
+.ce-flagbtn{ border:1.6px solid #d6e4be; background:#fff; font:inherit; font-size:13px; font-weight:700;
+  padding:7px 15px; border-radius:30px; cursor:pointer; color:#5d6e44; transition:transform .12s, border-color .12s, background .12s; }
+.ce-flagbtn:hover{ transform:translateY(-1px); border-color:#9fc46a; }
+.ce-flagbtn.active[data-flag="new"]{ background:#1a8a3c; border-color:#1a8a3c; color:#fff; }
+.ce-flagbtn.active[data-flag="special"]{ background:#c2261d; border-color:#c2261d; color:#fff; }
+.ce-submit{ border:0; cursor:pointer; font:inherit; font-weight:800; font-size:17px; color:#fff;
+  padding:15px 36px; border-radius:44px; background:linear-gradient(135deg,#8bc34a,#5fa027);
+  box-shadow:0 10px 26px rgba(95,160,39,.42); transition:transform .14s ease, box-shadow .14s ease; }
+.ce-submit:hover{ transform:translateY(-2px) scale(1.03); box-shadow:0 16px 34px rgba(95,160,39,.5); }
+.ce-submit:active{ transform:translateY(0) scale(.97); }
+
+/* celebration */
+.confetti-layer{ position:fixed; inset:0; pointer-events:none; z-index:400; overflow:hidden; }
+.confetti-bit{ position:absolute; top:-24px; width:9px; height:15px; border-radius:2px; opacity:.95; animation:ceConfetti 2s ease-in forwards; }
+@keyframes ceConfetti{ to{ transform:translateY(108vh) rotate(680deg); opacity:.25; } }
+.ce-toast{ position:fixed; bottom:34px; left:50%; transform:translate(-50%,22px); z-index:401;
+  background:#21331f; color:#fff; font-weight:700; font-size:15px; padding:13px 24px; border-radius:36px;
+  box-shadow:0 12px 30px rgba(0,0,0,.28); opacity:0; transition:opacity .35s, transform .35s; }
+.ce-toast.show{ opacity:1; transform:translate(-50%,0); }
+@media (prefers-reduced-motion: reduce){
+  .ce-blobs span, .ce-card-wrap .emp-card, .confetti-bit{ animation:none !important; }
+}
 
 /* ===== New-in-Dutchie "needs a tag" ===== */
 .newprod-strip{display:flex;align-items:center;gap:9px;margin:0 0 12px;padding:8px 12px;

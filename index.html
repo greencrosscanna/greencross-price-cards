@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="fonts.css"/>
-<link rel="stylesheet" href="generator.css?v=9"/>
+<link rel="stylesheet" href="generator.css?v=10"/>
 </head>
 <body>
 <div id="app">
@@ -62,14 +62,20 @@
       </div>
       <!-- Employee mode: edit the card directly (no table) -->
       <div class="card-editor" id="cardEditor" hidden>
-        <div class="ce-card-wrap" id="ceCardWrap"></div>
+        <div class="ce-blobs" aria-hidden="true"><span></span><span></span><span></span></div>
+        <div class="ce-stage">
+          <div class="ce-card-wrap" id="ceCardWrap"></div>
+          <p class="ce-tip">psst — tap any words on the card to change them ✏️</p>
+        </div>
         <div class="ce-controls">
-          <label class="ce-flag">Flag
-            <select id="ceFlag"><option value="">— none —</option><option value="new">NEW</option><option value="special">SPECIAL</option></select>
-          </label>
-          <span class="ce-hint">Click any text on the card to edit it, then <b>Submit request</b>.</span>
+          <div class="ce-flags">
+            <button type="button" class="ce-flagbtn" data-flag="new">🆕 New</button>
+            <button type="button" class="ce-flagbtn" data-flag="special">⭐ Special</button>
+          </div>
+          <button type="button" class="ce-submit" id="ceSubmit">Send it to print&nbsp;🖨️</button>
         </div>
       </div>
+      <div class="confetti-layer" id="confettiLayer" aria-hidden="true"></div>
       <div class="table-wrap">
         <div class="erows" id="dataBody"></div>
       </div>
@@ -181,6 +187,6 @@
   <div id="printRoot" aria-hidden="true"></div>
 </div>
 
-<script src="generator.js?v=9"></script>
+<script src="generator.js?v=10"></script>
 </body>
 </html>
