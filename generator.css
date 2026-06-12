@@ -222,10 +222,10 @@ body{
   gap:22px; padding:36px 16px 48px; flex:1 1 auto; overflow:auto; isolation:isolate;
   background-color:#1c1e1a;
   background-image:url(doodle-bg.svg);
-  background-size:380px;
-  animation:doodleDrift 100s linear infinite; }
+  background-size:460px;
+  animation:doodleDrift 110s linear infinite; }
 .mode-employee .card-editor{ display:flex; }
-@keyframes doodleDrift{ from{ background-position:0 0; } to{ background-position:380px 380px; } }
+@keyframes doodleDrift{ from{ background-position:0 0; } to{ background-position:460px 460px; } }
 .ce-blobs{ display:none; }                          /* doodle texture replaces the soft blobs */
 
 .ce-stage{ position:relative; display:flex; flex-direction:column; align-items:center; gap:14px; }

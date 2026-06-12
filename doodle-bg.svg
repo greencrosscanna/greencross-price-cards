@@ -13,24 +13,61 @@
       <rect x="-27" y="3" width="50" height="13" rx="6.5"/>
     </g>
     <path id="d-skull" fill-rule="evenodd" d="M-18,-4 a18,17 0 0 1 36,0 c0,7 -4,12 -9,14 l0,5 a3,3 0 0 1 -6,0 a3,3 0 0 1 -6,0 a3,3 0 0 1 -6,0 l0,-5 c-5,-2 -9,-7 -9,-14 Z M-8,-4 a4.5,4.5 0 1 0 9,0 a4.5,4.5 0 1 0 -9,0 Z M2,-4 a4.5,4.5 0 1 0 9,0 a4.5,4.5 0 1 0 -9,0 Z M-2,5 l-2.5,5 h5 Z"/>
+    <!-- joint: tapered paper, ember, smoke curl -->
+    <g id="d-joint">
+      <path d="M-24,3 L15,-4 L19,-1 L-22,6 Z"/>
+      <circle cx="18" cy="-2.5" r="2.6"/>
+      <path d="M20,-7 q5,-5 1,-11 q-4,-5 1,-10" fill="none" stroke="#e9e1cd" stroke-width="2" stroke-linecap="round"/>
+    </g>
+    <!-- bong: round base, neck, flared mouthpiece, bowl stem -->
+    <g id="d-bong">
+      <circle cx="0" cy="10" r="12"/>
+      <rect x="-4" y="-22" width="8" height="32"/>
+      <path d="M-7,-22 L7,-22 L4,-16 L-4,-16 Z"/>
+      <path d="M-10,7 L-21,13 L-19,17 L-8,12 Z"/>
+    </g>
+    <!-- gummy bear silhouette -->
+    <g id="d-gummy">
+      <circle cx="-7" cy="-13" r="4"/><circle cx="7" cy="-13" r="4"/>
+      <circle cx="0" cy="-8" r="8"/>
+      <rect x="-9" y="-3" width="18" height="20" rx="8"/>
+      <circle cx="-11" cy="4" r="4.2"/><circle cx="11" cy="4" r="4.2"/>
+      <circle cx="-6" cy="17" r="4.6"/><circle cx="6" cy="17" r="4.6"/>
+    </g>
+    <!-- beverage can: cylinder body with banded label cut-out + tab -->
+    <g id="d-can">
+      <path fill-rule="evenodd" d="M-9,-13 a9,3.5 0 0 1 18,0 l0,26 a9,3.5 0 0 1 -18,0 l0,-26 Z M-9,-1 h18 v5 h-18 Z"/>
+      <circle cx="0" cy="-13" r="2"/>
+    </g>
+    <!-- cannabis leaf: 7 radiating leaflets + stem -->
+    <path id="d-leaflet" d="M0,16 C-3,4 -2,-12 0,-22 C2,-12 3,4 0,16 Z"/>
+    <g id="d-leaf">
+      <use href="#d-leaflet" transform="rotate(0 0 16)"/>
+      <use href="#d-leaflet" transform="rotate(24 0 16) translate(0,16) scale(0.9) translate(0,-16)"/>
+      <use href="#d-leaflet" transform="rotate(-24 0 16) translate(0,16) scale(0.9) translate(0,-16)"/>
+      <use href="#d-leaflet" transform="rotate(48 0 16) translate(0,16) scale(0.72) translate(0,-16)"/>
+      <use href="#d-leaflet" transform="rotate(-48 0 16) translate(0,16) scale(0.72) translate(0,-16)"/>
+      <use href="#d-leaflet" transform="rotate(72 0 16) translate(0,16) scale(0.52) translate(0,-16)"/>
+      <use href="#d-leaflet" transform="rotate(-72 0 16) translate(0,16) scale(0.52) translate(0,-16)"/>
+      <rect x="-1.2" y="14" width="2.4" height="12" rx="1"/>
+    </g>
   </defs>
-  <g fill="#e9e1cd">
-    <use href="#d-spark" transform="translate(86,92) scale(1.5)"/>
-    <use href="#d-spark" transform="translate(522,150) scale(0.85)" opacity="0.82"/>
-    <use href="#d-spark" transform="translate(312,328) scale(1.05)" opacity="0.9"/>
-    <use href="#d-bolt"  transform="translate(214,252) rotate(-8) scale(1.25)"/>
-    <use href="#d-bolt"  transform="translate(470,442) rotate(14) scale(1.05)" opacity="0.9"/>
-    <use href="#d-spade" transform="translate(150,468) rotate(-6) scale(1.1)"/>
-    <use href="#d-spade" transform="translate(452,92) rotate(8) scale(0.9)" opacity="0.9"/>
-    <use href="#d-star"  transform="translate(556,302) scale(1.05)"/>
-    <use href="#d-star"  transform="translate(58,308) scale(0.78)" opacity="0.84"/>
-    <use href="#d-cross" transform="translate(360,158)"/>
-    <use href="#d-cross" transform="translate(252,540) scale(0.85)" opacity="0.9"/>
-    <use href="#d-cloud" transform="translate(478,252) scale(1.1)"/>
-    <use href="#d-skull" transform="translate(120,212) scale(1.45)"/>
-    <use href="#d-skull" transform="translate(392,402) scale(1.05)" opacity="0.95"/>
-    <circle cx="300" cy="70" r="4"/><circle cx="540" cy="520" r="5"/><circle cx="40" cy="440" r="4"/>
-    <circle cx="432" cy="540" r="3.5"/><circle cx="182" cy="360" r="3.5"/><circle cx="560" cy="58" r="4"/>
-    <circle cx="92" cy="540" r="3.5"/><circle cx="330" cy="470" r="3.5"/>
+  <g fill="#e9e1cd" opacity="0.8">
+    <use href="#d-skull"  transform="translate(112,122) scale(1.15)"/>
+    <use href="#d-spark"  transform="translate(302,100) scale(1.2)"/>
+    <use href="#d-leaf"   transform="translate(492,140) scale(1.1)"/>
+    <use href="#d-joint"  transform="translate(128,300) rotate(-20) scale(1.1)"/>
+    <use href="#d-bong"   transform="translate(320,312) scale(1.0)"/>
+    <use href="#d-gummy"  transform="translate(516,310) scale(1.05)"/>
+    <use href="#d-can"    transform="translate(112,482) scale(1.05)"/>
+    <use href="#d-star"   transform="translate(300,468) scale(1.0)"/>
+    <use href="#d-spade"  transform="translate(516,492) scale(0.95)"/>
+    <use href="#d-cloud"  transform="translate(432,560) scale(1.0)"/>
+    <use href="#d-bolt"   transform="translate(190,560) rotate(8) scale(1.0)"/>
+    <use href="#d-cross"  transform="translate(560,212) scale(0.9)"/>
+    <use href="#d-spark"  transform="translate(40,236) scale(0.55)"/>
+    <circle cx="252" cy="200" r="3.5"/><circle cx="402" cy="392" r="4"/>
+    <circle cx="62" cy="396" r="3.5"/><circle cx="560" cy="402" r="3.5"/>
+    <circle cx="246" cy="560" r="3.5"/>
   </g>
 </svg>
