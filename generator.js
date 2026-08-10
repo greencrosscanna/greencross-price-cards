@@ -996,7 +996,7 @@
   }
   function cbAdd(e){
     if(!e) return;
-    var card = blankRow({ print:true, name:e.brand, product:e.item, description:e.desc, size:e.size, price:e.price, store:e.store||"" });
+    var card = blankRow({ print:true, name:e.brand, product:e.item, description:e.desc, size:e.size, price:e.price, store:tagStore(selectedStore())||e.store||"" });
     if(cbSearch) cbSearch.value = "";
     cbMatches = []; CB_GROUPS = []; CB_EXPANDED = {}; if(cbResults) cbResults.hidden = true;
     if(document.body.classList.contains("mode-employee")){    // employee: one editable card, not a table row
@@ -1108,6 +1108,17 @@
   var cbStore = document.getElementById("cbStore");
   var cbSource = document.getElementById("cbSource");
   var STORES_FALLBACK = ["Center","Portland Rd","Hillsboro","Bend","River Rd","Commercial"];
+  // Remember this computer's store so e.g. the River machine always defaults to River.
+  var STORE_KEY = "gcLabels.store.v1";
+  function savedStore(){ try{ return localStorage.getItem(STORE_KEY) || ""; }catch(e){ return ""; } }
+  function rememberStore(s){ try{ localStorage.setItem(STORE_KEY, s||""); }catch(e){} }
+  function selectedStore(){ return (cbStore && cbStore.value) ? cbStore.value : savedStore(); }
+  // Engine store key -> short label printed on the tag (River Rd -> River). Unlisted stores print as-is.
+  var STORE_TAG_LABELS = { "River Rd":"River" };
+  function tagStore(s){ return (s && STORE_TAG_LABELS.hasOwnProperty(s)) ? STORE_TAG_LABELS[s] : (s||""); }
+  function stampStoreOnCard(){   // employee: keep the live card's store in sync with the picker
+    if(document.body.classList.contains("mode-employee") && rows[0]){ rows[0].store = tagStore(selectedStore()); save(); renderEmpCard(); }
+  }
   function setSource(msg, kind){ if(cbSource){ cbSource.textContent = msg||""; cbSource.className = "cb-source"+(kind?" "+kind:""); } }
   function engineUrl(){ return (loadWebapp()||"").trim(); }
   function fetchLive(store){
@@ -1125,7 +1136,13 @@
   }
   function populateStores(){
     if(!cbStore) return;
-    var fill = function(list){ cbStore.innerHTML = list.map(function(s){ return '<option>'+esc(s)+'</option>'; }).join(""); fetchLive(cbStore.value); };
+    var fill = function(list){
+      cbStore.innerHTML = list.map(function(s){ return '<option>'+esc(s)+'</option>'; }).join("");
+      var want = savedStore();                       // restore this computer's store if it's in the list
+      if(want && list.indexOf(want) >= 0) cbStore.value = want;
+      stampStoreOnCard();
+      fetchLive(cbStore.value);
+    };
     var url = engineUrl();
     if(!url){ fill(STORES_FALLBACK); return; }
     var sep = url.indexOf("?")<0 ? "?" : "&";
@@ -1133,7 +1150,7 @@
       .then(function(d){ fill(d && d.ok && d.stores && d.stores.length ? d.stores : STORES_FALLBACK); })
       .catch(function(){ fill(STORES_FALLBACK); });
   }
-  if(cbStore) cbStore.addEventListener("change", function(){ fetchLive(cbStore.value); });
+  if(cbStore) cbStore.addEventListener("change", function(){ rememberStore(cbStore.value); stampStoreOnCard(); fetchLive(cbStore.value); });
 
   // ----- Settings modal -----
   var settingsModal = document.getElementById("settingsModal");
