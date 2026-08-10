@@ -7,7 +7,7 @@
 (function(){
   "use strict";
 
-  var STORAGE_KEY = "gcLabels.rows.v2";
+  var STORAGE_KEY = "pricecards.rows.v2";
   var REQUIRED = ["name","price"];   // trigger errors when blank (Product optional — Item Name is the product)
   var FIELDS = ["store","name","product","description","description2","size","price"];
   var LABELS_PER_SHEET = 9;
@@ -370,7 +370,7 @@
   }
 
   // ================= GOOGLE SHEET IMPORT =================
-  var SHEET_URL_KEY = "gcLabels.sheetUrl";
+  var SHEET_URL_KEY = "pricecards.sheetUrl";
   var DEFAULT_SHEET_URL = "https://docs.google.com/spreadsheets/d/1Zy2Og9SrrqX2--FxSFkvTEosrJ6m-DfCGX3h19GzJ0I/edit?usp=sharing";
 
   var sheetUrlInput = document.getElementById("sheetUrl");
@@ -445,7 +445,7 @@
   }
 
   // ---- column mapping (persisted as field -> header NAME so it survives reorders) ----
-  var MAP_KEY = "gcLabels.colMap.v1";
+  var MAP_KEY = "pricecards.colMap.v1";
   var MAP_FIELDS = [
     {f:"name",         label:"Brand",         req:true},
     {f:"product",      label:"Item",          req:false},
@@ -578,8 +578,8 @@
   if(sheetUrlInput) sheetUrlInput.addEventListener("keydown", function(e){ if(e.key==="Enter"){ e.preventDefault(); doImport(); } });
 
   // ---- write-back: mark imported rows Done in the sheet (needs an Apps Script web app) ----
-  var WEBAPP_KEY = "gcLabels.markDoneUrl";
-  var WEBAPP_ON_KEY = "gcLabels.markDoneOn";
+  var WEBAPP_KEY = "pricecards.markDoneUrl";
+  var WEBAPP_ON_KEY = "pricecards.markDoneOn";
   // Team default: the deployed Apps Script data engine. Baked in so staff never
   // have to configure anything — open the page, click Import, and it reads the
   // (private) Sheet through this engine and writes Done back. Override per-machine
@@ -725,7 +725,7 @@
 
   // ===== CARD BUILDER — search → conformed card =====
   // ----- OTD pricing + category system (Settings — GLOBAL, shared via the engine) -----
-  var CONFIG_KEY = "gcLabels.config.v1";   // local cache of the shared config
+  var CONFIG_KEY = "pricecards.config.v1";   // local cache of the shared config
   // Editable label sections (the 10 core + custom ones the team adds).
   var DEFAULT_SECTIONS = ["EDIBLE","BEVERAGE","VAPE","DISPOSABLE","EXTRACT","PRE ROLLS","TINCTURES","TOPICALS","ACCESSORIES","BRANDS","Blunts","Joint Pack"];
   // Keyword rules on the PRODUCT NAME — checked first, override the category map.
@@ -747,10 +747,10 @@
   function lsSet(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
   // Load from local cache, migrating any older per-key storage.
   var _c = lsGet(CONFIG_KEY, null) || {
-    otd: localStorage.getItem("gcLabels.otd.v1")==="1",
-    sections: lsGet("gcLabels.sections.v1", null),
-    catMap: lsGet("gcLabels.catMap.v1", null),
-    rules: lsGet("gcLabels.catRules.v1", null)
+    otd: localStorage.getItem("pricecards.otd.v1")==="1",
+    sections: lsGet("pricecards.sections.v1", null),
+    catMap: lsGet("pricecards.catMap.v1", null),
+    rules: lsGet("pricecards.catRules.v1", null)
   };
   var OTD_ON      = !!_c.otd;
   var SECTIONS    = (Array.isArray(_c.sections) && _c.sections.length) ? _c.sections : DEFAULT_SECTIONS.slice();
@@ -1109,7 +1109,7 @@
   var cbSource = document.getElementById("cbSource");
   var STORES_FALLBACK = ["Center","Portland Rd","Hillsboro","Bend","River Rd","Commercial"];
   // Remember this computer's store so e.g. the River machine always defaults to River.
-  var STORE_KEY = "gcLabels.store.v1";
+  var STORE_KEY = "pricecards.store.v1";
   function savedStore(){ try{ return localStorage.getItem(STORE_KEY) || ""; }catch(e){ return ""; } }
   function rememberStore(s){ try{ localStorage.setItem(STORE_KEY, s||""); }catch(e){} }
   function selectedStore(){ return (cbStore && cbStore.value) ? cbStore.value : savedStore(); }
