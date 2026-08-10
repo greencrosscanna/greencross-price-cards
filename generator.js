@@ -1,5 +1,5 @@
 /* ============================================================
-   GREEN CROSS LABELS — generator logic
+   GREEN CROSS PRICE CARDS — generator logic
    Staff edit DATA ONLY. The label markup/styles are fixed in
    generator.css (.av-* classes). This file never lets staff
    change type, size, color, or layout.
@@ -1284,7 +1284,7 @@
   if(ROLE === "employee"){
     document.body.classList.add("mode-employee");
     var h2 = document.querySelector(".editor-head h2");
-    if(h2) h2.textContent = "Super-Fancy Price Tag Maker ✨";
+    if(h2) h2.textContent = "Super-Fancy Price Card Maker ✨";
     var sub = document.querySelector(".editor-sub");
     if(sub) sub.innerHTML = "Find your product, make it look just right, fire it off to the printer. That's the whole game. 🎉";
     if(cbSearch) cbSearch.placeholder = "What are we tagging today? 🔍";

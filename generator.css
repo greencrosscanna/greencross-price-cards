@@ -1,5 +1,5 @@
 /* ============================================================
-   GREEN CROSS LABELS — generator chrome + LOCKED label design
+   GREEN CROSS PRICE CARDS — generator chrome + LOCKED label design
    The .av-label block below is the print-accurate Avery 95271
    label. Nothing here is editable by staff; only data changes.
    ============================================================ */
@@ -196,7 +196,7 @@ body{
 .queue-strip #queueInfo{flex:1 1 auto;}
 .queue-strip .btn{padding:5px 11px;font-size:12px;}
 
-/* ===== Employee mode (?role=employee): the fun price-tag maker ===== */
+/* ===== Employee mode (?role=employee): the fun price-card maker ===== */
 .mode-employee #btnSettings,
 .mode-employee #btnGenerate,
 .mode-employee #btnClearQueue,
