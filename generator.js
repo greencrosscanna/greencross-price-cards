@@ -1002,8 +1002,13 @@
   function cbGroupMatches(){
     var groups = [], byKey = {};
     cbMatches.forEach(function(e){
-      var base = baseItem(e.item), key = e.brand+"|"+base+"|"+e.size+"|"+e.price+"|"+e.category;
-      if(!byKey[key]){ byKey[key] = { key:key, base:base, items:[] }; groups.push(byKey[key]); }
+      var base = baseItem(e.item);
+      // case-insensitive key so "…gummy" (Dutchie's casing) groups with "…Gummy"
+      var key = e.brand.toLowerCase()+"|"+base.toLowerCase()+"|"+e.size+"|"+e.price+"|"+e.category;
+      if(!byKey[key]){
+        var disp = base.charAt(0).toUpperCase()+base.slice(1);   // tidy display casing for the parent
+        byKey[key] = { key:key, base:disp, items:[] }; groups.push(byKey[key]);
+      }
       byKey[key].items.push(e);
     });
     return groups;
