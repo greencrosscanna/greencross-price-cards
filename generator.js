@@ -7,6 +7,13 @@
 (function(){
   "use strict";
 
+  // App version (vNN). Single-sourced from this script's own ?v= cache-buster in index.html,
+  // so bumping that one number drives the cache-bust, the bug-report appVer, and the deploy log.
+  var APP_VERSION = (function(){
+    try{ var m = (document.currentScript && document.currentScript.src || "").match(/[?&]v=(\d+)/); return m ? "v"+m[1] : "v0"; }
+    catch(e){ return "v0"; }
+  })();
+
   var STORAGE_KEY = "pricecards.rows.v2";
   var REQUIRED = ["name","price"];   // trigger errors when blank (Product optional — Item Name is the product)
   var FIELDS = ["store","name","product","description","description2","size","price"];
