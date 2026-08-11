@@ -661,7 +661,7 @@
   // ================= STYLE GUIDE: autocomplete + smart-naming =================
   // Loads the canonical tag dictionary (style/tags.json) and powers brand
   // type-ahead + on-blur normalization, so cards stay uniform across stores.
-  var STYLE = { brands:[], brandNorm:{}, sizes:[], catalog:{}, catalogIndex:[], liveIndex:[], liveReady:false };
+  var STYLE = { brands:[], brandNorm:{}, sizes:[], catalog:{}, catalogIndex:[], lexIndex:{}, liveIndex:[], liveReady:false };
   function ensureDatalist(id, values){
     var dl = document.getElementById(id);
     if(!dl){ dl = document.createElement("datalist"); dl.id = id; document.body.appendChild(dl); }
@@ -726,7 +726,7 @@
       .catch(function(){ /* dictionary optional — app still works without it */ });
     fetch("style/catalog.json", {cache:"no-store"})
       .then(function(res){ if(!res.ok) throw 0; return res.json(); })
-      .then(function(c){ STYLE.catalog = c || {}; buildIndex(); })
+      .then(function(c){ STYLE.catalog = c || {}; buildIndex(); buildLexIndex(); if(STYLE.liveReady) rebuildLive(); })
       .catch(function(){ /* catalog optional */ });
   }
 
@@ -816,6 +816,49 @@
 
   // Conform a raw Dutchie inventory item into house Brand/Item/Desc/Size/Price.
   // First-pass heuristics — brand+price are exact; item/size/desc are best-effort.
+  // ----- House-style lexicon (style/catalog.json) → canonical desc/size for known products -----
+  // Match a live Dutchie item to its lexicon entry by brand + flavor-free product noun + ratio,
+  // then apply the canonical Description 1 + Size (live price is kept). No match → the Dutchie parse stands.
+  function lexNoun(item){
+    var w = String(item||"").toLowerCase()
+      .replace(/\b\d+\s*(pk|pack|pcs?|ct|pieces?|piece)\b/g," ")   // drop counts / packs
+      .replace(/\b\d*\.?\d+\s*(g|oz|ml)\b/g," ")                   // drop weights
+      .replace(/\bgummies\b/g,"gummy")                            // singularize the common plural
+      .replace(/[^a-z0-9:\s]/g," ").replace(/\s+/g," ").trim().split(" ");
+    // Peel TRAILING potency/ratio/cannabinoid tokens so the product noun is exposed
+    // (e.g. "strawberry gummy 1:1 thc cbd" → "gummy"). Leading "cbd" is kept (CBD product line).
+    while(w.length>1 && /^(thc|cbd|cbg|cbn|thcv|mg|\d+mg|\d+:\d+(?::\d+)*)$/.test(w[w.length-1])) w.pop();
+    if(!w.length || !w[0]) return "";
+    if(w.length>=2 && /^(pack|roll|aio|bar)$/.test(w[w.length-1])) return w.slice(-2).join(" ");
+    return w[w.length-1];   // the product noun (flavor/strain words dropped)
+  }
+  function buildLexIndex(){
+    var map = {}, owner = {};   // key = brand|noun|ratio → single lexicon line, or null when ambiguous
+    Object.keys(STYLE.catalog||{}).forEach(function(brand){
+      var b = brand.toLowerCase(), prods = STYLE.catalog[brand];
+      Object.keys(prods).forEach(function(item){
+        var vs = prods[item]; if(!vs || !vs.length) return;
+        var r = (item.match(/\b\d+:\d+(?::\d+)*\b/)||[""])[0];    // ratio baked into the product-line name
+        var noun = lexNoun(item); if(!noun) return;
+        var key = b+"|"+noun+"|"+r;
+        if(owner[key] === undefined){ owner[key] = item; map[key] = { variants:vs, item:item }; }
+        else if(owner[key] !== item){ map[key] = null; }         // >1 distinct line shares this key → ambiguous, don't auto-apply
+      });
+    });
+    STYLE.lexIndex = map;
+  }
+  function applyLexicon(out, ratio){
+    var lx = STYLE.lexIndex; if(!lx || !out.brand) return;
+    var noun = lexNoun(out.item); if(!noun) return;
+    var hit = lx[out.brand.toLowerCase()+"|"+noun+"|"+(ratio||"")];   // exact brand+noun+ratio only
+    if(!hit) return;                                                  // missing or ambiguous(null) → keep the Dutchie parse
+    var vs = hit.variants;
+    // one variant → apply its desc + size; several → match by the parsed size, else override desc only.
+    var pick = (vs.length===1) ? vs[0] : (vs.filter(function(v){ return v.size===out.size; })[0] || null);
+    if(pick){ if(pick.desc) out.desc = pick.desc; if(pick.size) out.size = pick.size; }
+    else if(vs[0] && vs[0].desc){ out.desc = vs[0].desc; }
+  }
+
   function conformDutchie(it){
     var brand = normalizeBrand(it.brand||"");
     var name  = String(it.name||"").replace(/^\$[\d.]+\s*\|\s*/, "");   // strip accessory "$10.00 | "
@@ -839,7 +882,9 @@
     var price = it.price, n = parseFloat(price);
     if(OTD_ON && !isNaN(n)) price = Math.round(n * 1.2);          // OTD: +20%, round to nearest $
     var house = houseCategoryFor(it);                             // keyword rules → category map
-    return { brand:brand, item:item||main, desc:bits.join(" | "), size:size, price:String(price||""), category:house||(it.category||""), store:it.store||"" };
+    var out = { brand:brand, item:item||main, desc:bits.join(" | "), size:size, price:String(price||""), category:house||(it.category||""), store:it.store||"" };
+    applyLexicon(out, ratio);                                     // house-style desc/size for known products
+    return out;
   }
   function idxEntry(o, hay){ o.hay = String(hay).toLowerCase(); return o; }
   function buildIndex(){    // static (template) catalog → searchable index
