@@ -23,7 +23,9 @@ POSTs `deploy_version` (app=pricecards) to GX Core; `APP_VERSION` (vNN) is singl
 **gx-theme** linked (`gx-theme.css` — `--gx-*` tokens available; kept light, no restyle of the bespoke
 generator/doodle canvas). **Bug forwarding: deferred** — app not in standalone use yet + embedded in
 Inventory (its reporter covers it); when warranted, forward via `GXCore.gxIngestBug('inventory', reporter,
-{tab:'pricecards', …})` — needs the `GXCore` library script id + engine redeploy. Still not bound to
+{tab:'pricecards', …})`. **GXCore library script id (from CC):**
+`1sfa3quXRgk6JiDzsHgzG7DgMaxN9XJv2LnNapAT2gCss0ghblufvOTjP` — add to `appsscript.json`
+`dependencies.libraries` (userSymbol `GXCore`, latest version) + engine redeploy when wiring. Still not bound to
 `GXCore` for shared login (separate future follow-up). **Stores** are pulled live from GX Core
 `?action=stores` (`loadStores()` builds `STORE_MAP` from `dutchie_name→display_name` by `sort_order`;
 local hardcode is offline fallback only) — don't re-hardcode store names; CC edits flow on next load.
