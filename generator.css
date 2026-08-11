@@ -284,9 +284,16 @@ body{
 .np-empty{padding:11px;color:#9a8c6e;font-size:12.5px;}
 
 /* ===== Card builder (search → conformed card) ===== */
+/* Per-store kiosk links (Settings) */
+.storelinks{display:flex;flex-direction:column;gap:7px;}
+.storelink-row{display:flex;align-items:center;gap:8px;}
+.storelink-name{flex:none;width:92px;font-weight:700;font-size:13px;color:var(--gc-ink,#2a2d31);}
+.storelink-url{flex:1 1 auto;font:inherit;font-size:12.5px;color:#5a626b;padding:6px 9px;border:1px solid var(--gc-line,#d7dbe0);border-radius:8px;background:#f7f8fa;}
+.storelink-copy{flex:none;}
 .card-builder{position:relative;margin:10px 0 14px;}
 .cb-bar{display:flex;gap:8px;align-items:stretch;}
 .cb-store{flex:none;font:inherit;font-size:14px;padding:0 30px 0 12px;border:1.5px solid var(--gc-line,#d7dbe0);border-radius:10px;background:#fff;color:var(--gc-ink,#2a2d31);cursor:pointer;max-width:140px;}
+body.store-locked .cb-store{opacity:1;cursor:default;-webkit-appearance:none;appearance:none;padding:0 12px;background:#f3f4f6;font-weight:600;}
 .cb-field{position:relative;flex:1 1 auto;}
 .card-builder .cb-ico{position:absolute;left:13px;top:50%;transform:translateY(-50%);font-size:17px;color:#8a9099;pointer-events:none;}
 .cb-source{font-size:11.5px;color:#6b7280;margin:5px 2px 0;min-height:14px;}
