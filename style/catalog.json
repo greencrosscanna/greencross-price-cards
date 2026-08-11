@@ -568,14 +568,6 @@
     "category": "EDIBLE"
    }
   ],
-  "Cherry 1:1 Sour Cherry 1:1": [
-   {
-    "desc": "THC | THCv",
-    "size": "1 Piece",
-    "price": "14",
-    "category": "EDIBLE"
-   }
-  ],
   "Fruit Chew": [
    {
     "desc": "Various | 100mg THC",
@@ -603,6 +595,14 @@
     "desc": "Mixed Ratios | Various",
     "size": "10 Pieces",
     "price": "13",
+    "category": "EDIBLE"
+   }
+  ],
+  "Sour Cherry 1:1": [
+   {
+    "desc": "THC | THCV",
+    "size": "1 Piece",
+    "price": "14",
     "category": "EDIBLE"
    }
   ]
@@ -906,21 +906,9 @@
   ],
   "Fruit Punch": [
    {
-    "desc": "Lemonade | Limeade | | Live Rosin | 25mg THC",
-    "size": "8oz",
-    "price": "8",
-    "category": "BEVERAGE"
-   },
-   {
     "desc": "Live Rosin | 25mg THC",
     "size": "8oz",
     "price": "8",
-    "category": "BEVERAGE"
-   },
-   {
-    "desc": "Lemonade | Limeade | | Live Rosin | 100mg THC",
-    "size": "8oz",
-    "price": "17",
     "category": "BEVERAGE"
    },
    {
