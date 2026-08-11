@@ -1245,6 +1245,11 @@
       var urlWant = resolveStoreParam(URL_STORE);     // ...but a ?store= deep link wins (and sticks)
       if(urlWant){ want = urlWant; rememberStore(urlWant); }
       if(want && opts.some(function(s){ return s.key===want; })) cbStore.value = want;
+      if(urlWant){                                    // a per-store link LOCKS the store — can't be changed
+        cbStore.disabled = true; cbStore.setAttribute("aria-disabled","true");
+        cbStore.title = "Locked to "+tagStore(cbStore.value)+" for this store link";
+        document.body.classList.add("store-locked");
+      }
       syncStoreUrl(cbStore.value);                    // reflect the resolved store in the address bar
       stampStoreOnCard();
       fetchLive(cbStore.value);
