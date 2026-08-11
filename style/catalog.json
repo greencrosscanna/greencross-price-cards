@@ -1,34 +1,24 @@
 {
- "Good Tide": {
-  "Rosin Gummies 1:1": [
+ "Wyld": {
+  "Entrourage Gummies": [
    {
-    "desc": "Various | 100mg THC",
-    "size": "10 Pieces",
-    "price": "22",
+    "desc": "Mixed Ratios",
+    "size": "20 Pieces",
+    "price": "35",
     "category": "EDIBLE"
    }
   ],
-  "Rosin Gummies": [
-   {
-    "desc": "Various | 100mg THC",
-    "size": "10 Pieces",
-    "price": "19",
-    "category": "EDIBLE"
-   }
-  ]
- },
- "Wyld": {
   "Gummies": [
-   {
-    "desc": "Mixed Ratios",
-    "size": "10 Pieces",
-    "price": "21",
-    "category": "EDIBLE"
-   },
    {
     "desc": "Various | 100mg THC",
     "size": "10 Pieces",
     "price": "18",
+    "category": "EDIBLE"
+   },
+   {
+    "desc": "Various | 100mg THC",
+    "size": "1 Piece",
+    "price": "6",
     "category": "EDIBLE"
    },
    {
@@ -39,14 +29,8 @@
    },
    {
     "desc": "Mixed Ratios",
-    "size": "20 Pieces",
-    "price": "35",
-    "category": "EDIBLE"
-   },
-   {
-    "desc": "Various | 100mg THC",
-    "size": "1 Piece",
-    "price": "6",
+    "size": "10 Pieces",
+    "price": "21",
     "category": "EDIBLE"
    },
    {
@@ -73,107 +57,199 @@
    }
   ]
  },
- "Smokiez": {
-  "Fruit Chews": [
+ "Good Tide": {
+  "Rosin Gummies": [
    {
     "desc": "Various | 100mg THC",
     "size": "10 Pieces",
-    "price": "13",
+    "price": "19",
     "category": "EDIBLE"
    }
   ],
-  "Hemp Infused": [
+  "Rosin Gummies 1:1": [
    {
-    "desc": "500mg",
-    "size": "20 Pieces",
-    "price": "20",
+    "desc": "Various | 100mg THC",
+    "size": "10 Pieces",
+    "price": "22",
+    "category": "EDIBLE"
+   }
+  ]
+ },
+ "Grön": {
+  "Mini Bar": [
+   {
+    "desc": "100mg THC",
+    "size": "1 Piece",
+    "price": "8",
+    "category": "EDIBLE"
+   }
+  ],
+  "Mega Rosin Gummy": [
+   {
+    "desc": "Various | 100mg THC",
+    "size": "1 Piece",
+    "price": "6",
+    "category": "EDIBLE"
+   }
+  ],
+  "Pearls": [
+   {
+    "desc": "Various | 100mg THC",
+    "size": "10 Pieces",
+    "price": "10",
     "category": "EDIBLE"
    },
    {
-    "desc": "Gummies 500mg CBD",
-    "size": "20 Pieces",
+    "desc": "Mixed Ratio",
+    "size": "10 Pieces",
     "price": "20",
     "category": "EDIBLE"
    }
   ],
-  "Cherry 1:1": [
+  "Mini Bar 1:1": [
    {
-    "desc": "Sour Cherry 1:1 THC | THCv",
-    "size": "1 Piece",
-    "price": "14",
-    "category": "EDIBLE"
-   }
-  ],
-  "1 Piece Fruit Chew 1:1": [
-   {
-    "desc": "Various",
+    "desc": "100mg THC | CBG",
     "size": "1 Piece",
     "price": "11",
     "category": "EDIBLE"
    }
   ],
-  "1 Piece Gummy": [
+  "Mega Rosin Gummy 1:1": [
    {
     "desc": "Various",
     "size": "1 Piece",
-    "price": "7",
+    "price": "8",
+    "category": "EDIBLE"
+   }
+  ],
+  "Chocolate Bar": [
+   {
+    "desc": "100mg THC",
+    "size": "10 Pieces",
+    "price": "14",
+    "category": "EDIBLE"
+   }
+  ],
+  "Chocolate Bar 1:1": [
+   {
+    "desc": "100mg THC",
+    "size": "10 Pieces",
+    "price": "20",
+    "category": "EDIBLE"
+   }
+  ]
+ },
+ "Mule": {
+  "Kicker Gummy": [
+   {
+    "desc": "Mixed Ratios",
+    "size": "1 Piece",
+    "price": "12",
+    "category": "EDIBLE"
+   },
+   {
+    "desc": "100mg THC",
+    "size": "1 Piece",
+    "price": "6",
     "category": "EDIBLE"
    },
    {
     "desc": "Mixed Ratio",
     "size": "1 Piece",
-    "price": "10",
+    "price": "8",
     "category": "EDIBLE"
    }
   ],
-  "Mixed Ratios": [
+  "Live Resin Glass Cart": [
    {
     "desc": "Various",
-    "size": "10 Pieces",
-    "price": "13",
-    "category": "EDIBLE"
+    "size": "1g",
+    "price": "30",
+    "category": "VAPE"
    }
   ],
-  "Sour Blackberry 1:1": [
+  "FTX Tank": [
    {
-    "desc": "100mg THC | CBN",
-    "size": "10 Pieces",
-    "price": "17",
-    "category": "EDIBLE"
+    "desc": "Various",
+    "size": "2g",
+    "price": "40",
+    "category": "VAPE"
    }
   ],
-  "Sour Cherry 1:1:1": [
-   {
-    "desc": "100mg THCV | CBG | CBD",
-    "size": "10 Pieces",
-    "price": "18",
-    "category": "EDIBLE"
-   }
-  ],
-  "Various 1:1:1": [
+  "Live Resin Dank Tank All-in-One": [
    {
     "desc": "",
-    "size": "10 Pieces",
-    "price": "16",
-    "category": "EDIBLE"
+    "size": "1g",
+    "price": "35",
+    "category": "DISPOSABLE"
+   },
+   {
+    "desc": "",
+    "size": "2g",
+    "price": "55",
+    "category": "DISPOSABLE"
    }
   ],
-  "Fruit Chew": [
+  "FXT Tank All-in-One": [
    {
-    "desc": "Various | 100mg THC",
-    "size": "1 Piece",
-    "price": "10",
-    "category": "EDIBLE"
+    "desc": "",
+    "size": "2g",
+    "price": "40",
+    "category": "DISPOSABLE"
    }
-  ]
- },
- "Buzz Bites": {
-  "10 Piece Gummies": [
+  ],
+  "Live Resin": [
    {
     "desc": "Various",
-    "size": "10 Pieces",
-    "price": "10",
-    "category": "EDIBLE"
+    "size": "2g",
+    "price": "34",
+    "category": "EXTRACT"
+   }
+  ],
+  "Concrete Jungle x Strawberry Watermelon": [
+   {
+    "desc": "Infused Joint | Sativa",
+    "size": "1g",
+    "price": "5",
+    "category": "PRE ROLLS"
+   }
+  ],
+  "Kick Sticks Live Resin Infused Joint": [
+   {
+    "desc": "",
+    "size": "1g",
+    "price": "5",
+    "category": "PRE ROLLS"
+   }
+  ],
+  "Muleshine": [
+   {
+    "desc": "Various | 250mg THC Various",
+    "size": "2oz",
+    "price": "14",
+    "category": "TINCTURES"
+   },
+   {
+    "desc": "| 500mg THC Various",
+    "size": "2oz",
+    "price": "20",
+    "category": "TINCTURES"
+   }
+  ],
+  "Nanoshine": [
+   {
+    "desc": "Various | 250mg THC",
+    "size": "1oz",
+    "price": "20",
+    "category": "TINCTURES"
+   }
+  ],
+  "2:1 Muleshine": [
+   {
+    "desc": "Various | 1000mg THC",
+    "size": "2oz",
+    "price": "30",
+    "category": "TINCTURES"
    }
   ]
  },
@@ -181,14 +257,14 @@
   "Jellies": [
    {
     "desc": "Various | 100mg THC",
-    "size": "20 Pieces",
-    "price": "16",
+    "size": "2 Pieces",
+    "price": "8",
     "category": "EDIBLE"
    },
    {
     "desc": "Various | 100mg THC",
-    "size": "2 Pieces",
-    "price": "8",
+    "size": "20 Pieces",
+    "price": "16",
     "category": "EDIBLE"
    }
   ]
@@ -205,15 +281,15 @@
   "Live Rosin Gummy 1:1": [
    {
     "desc": "100mg THC",
-    "size": "1 Piece",
+    "size": "1 Piece 1",
     "price": "9",
     "category": "EDIBLE"
    }
   ],
   "Live Rosin Gummy 4:1": [
    {
-    "desc": "100mg THC | CBD | CBG | CBN",
-    "size": "1 Piece",
+    "desc": "100 mg | THC | CBD | CBG | CBN",
+    "size": "Piece",
     "price": "11",
     "category": "EDIBLE"
    }
@@ -243,205 +319,73 @@
    }
   ]
  },
- "Grön": {
-  "Pearls": [
+ "Hapy Kitchen": {
+  "Brownies & Cookies": [
    {
     "desc": "Various | 100mg THC",
-    "size": "10 Pieces",
+    "size": "1 Piece",
+    "price": "8",
+    "category": "EDIBLE"
+   }
+  ],
+  "Specialty Brownie": [
+   {
+    "desc": "Various",
+    "size": "1 Piece",
     "price": "10",
     "category": "EDIBLE"
-   },
+   }
+  ],
+  "Butter Bliss Cookie": [
    {
-    "desc": "Mixed Ratio",
-    "size": "10 Pieces",
+    "desc": "100mg THC | CBN",
+    "size": "1 Piece",
+    "price": "9",
+    "category": "EDIBLE"
+   }
+  ],
+  "Tincture": [
+   {
+    "desc": "Mixed Ratios",
+    "size": "1oz",
     "price": "20",
-    "category": "EDIBLE"
-   }
-  ],
-  "Mega Rosin Gummy": [
-   {
-    "desc": "Various | 100mg THC",
-    "size": "1 Piece",
-    "price": "6",
-    "category": "EDIBLE"
-   }
-  ],
-  "Mega Rosin Gummy 1:1": [
-   {
-    "desc": "Various",
-    "size": "1 Piece",
-    "price": "8",
-    "category": "EDIBLE"
-   }
-  ],
-  "Mini Bar": [
-   {
-    "desc": "100mg THC",
-    "size": "1 Piece",
-    "price": "8",
-    "category": "EDIBLE"
-   }
-  ],
-  "Chocolate Bar": [
-   {
-    "desc": "100mg THC",
-    "size": "10 Pieces",
-    "price": "14",
-    "category": "EDIBLE"
-   }
-  ],
-  "Mini Bar 1:1": [
-   {
-    "desc": "100mg THC | CBG",
-    "size": "1 Piece",
-    "price": "11",
-    "category": "EDIBLE"
-   }
-  ],
-  "Chocolate Bar 1:1": [
-   {
-    "desc": "100mg THC",
-    "size": "10 Pieces",
-    "price": "20",
-    "category": "EDIBLE"
-   }
-  ]
- },
- "Mule": {
-  "Kicker Gummy": [
-   {
-    "desc": "100mg THC",
-    "size": "1 Piece",
-    "price": "6",
-    "category": "EDIBLE"
+    "category": "TINCTURES"
    },
    {
-    "desc": "Multi Rati",
-    "size": "1 Piece",
-    "price": "12",
-    "category": "EDIBLE"
-   },
-   {
-    "desc": "Mixed Ratio",
-    "size": "1 Piece",
-    "price": "8",
-    "category": "EDIBLE"
-   }
-  ],
-  "Live Resin Glass Cart": [
-   {
-    "desc": "Various",
-    "size": "1g",
-    "price": "30",
-    "category": "VAPE"
-   }
-  ],
-  "FTX Tank": [
-   {
-    "desc": "Various",
-    "size": "2g",
-    "price": "40",
-    "category": "VAPE"
-   }
-  ],
-  "Live Resin Dank Tank": [
-   {
-    "desc": "All-in-One",
-    "size": "1g",
-    "price": "35",
-    "category": "DISPOSABLE"
-   },
-   {
-    "desc": "All-in-One",
-    "size": "2g",
-    "price": "55",
-    "category": "DISPOSABLE"
-   }
-  ],
-  "FXT Tank": [
-   {
-    "desc": "All-in-One",
-    "size": "2g",
-    "price": "40",
-    "category": "DISPOSABLE"
-   }
-  ],
-  "Live Resin": [
-   {
-    "desc": "Various",
-    "size": "2g",
+    "desc": "Mixed Ratios",
+    "size": "1oz",
     "price": "34",
-    "category": "EXTRACT"
+    "category": "TINCTURES"
    }
   ],
-  "Infused Joint | Sativa": [
+  "High THC Tincture": [
    {
-    "desc": "Concrete Jungle x Strawberry Watermelon",
-    "size": "1g",
-    "price": "5",
-    "category": "PRE ROLLS"
-   }
-  ],
-  "Kick Sticks": [
-   {
-    "desc": "Live Resin Infused Joint",
-    "size": "1g",
-    "price": "5",
-    "category": "PRE ROLLS"
-   }
-  ],
-  "Nanoshine": [
-   {
-    "desc": "Various | 250mg THC",
+    "desc": "Various | 1000mg THC",
     "size": "1oz",
     "price": "20",
     "category": "TINCTURES"
    }
   ],
-  "Muleshine 2:1": [
-   {
-    "desc": "Various",
-    "size": "2oz",
-    "price": "30",
-    "category": "TINCTURES"
-   }
-  ],
-  "Muleshine": [
+  "Stone’d Fruit Syrup": [
    {
     "desc": "Various | 250mg THC",
-    "size": "2oz",
-    "price": "14",
+    "size": "1.5oz",
+    "price": "15",
     "category": "TINCTURES"
    },
    {
-    "desc": "Various | 500mg THC",
-    "size": "2oz",
+    "desc": "Mixed Ratios",
+    "size": "1.5oz",
     "price": "20",
     "category": "TINCTURES"
-   },
-   {
-    "desc": "Various | 1000mg THC",
-    "size": "2oz",
-    "price": "35",
-    "category": "TINCTURES"
-   }
-  ]
- },
- "Dave's Nuttz": {
-  "Chocolate Covered": [
-   {
-    "desc": "Hazelnuts Various | 100mg THC",
-    "size": "Each",
-    "price": "10",
-    "category": "EDIBLE"
    }
   ],
-  "Comet Chocolate": [
+  "Full Spectrum RSO": [
    {
-    "desc": "Hash Rosin",
-    "size": "10 Pack",
-    "price": "12",
-    "category": "EDIBLE"
+    "desc": "Various",
+    "size": "1g",
+    "price": "18",
+    "category": "TINCTURES"
    }
   ]
  },
@@ -478,14 +422,6 @@
     "category": "PRE ROLLS"
    }
   ],
-  "Concealable": [
-   {
-    "desc": "Battery",
-    "size": "Each",
-    "price": "22",
-    "category": "ACCESSORIES"
-   }
-  ],
   "Variable Voltage": [
    {
     "desc": "Battery",
@@ -502,11 +438,11 @@
     "category": "ACCESSORIES"
    }
   ],
-  "Flower Starter Kit": [
+  "Concealable": [
    {
-    "desc": "2g Flower",
-    "size": "Kit",
-    "price": "30",
+    "desc": "Battery",
+    "size": "Each",
+    "price": "22",
     "category": "ACCESSORIES"
    }
   ],
@@ -514,7 +450,7 @@
    {
     "desc": "",
     "size": "Each",
-    "price": "2.50",
+    "price": "2.5",
     "category": "ACCESSORIES"
    },
    {
@@ -522,6 +458,14 @@
     "size": "Each",
     "price": "2",
     "category": "BRANDS"
+   }
+  ],
+  "Flower Starter Kit": [
+   {
+    "desc": "2g Flower",
+    "size": "Kit",
+    "price": "30",
+    "category": "ACCESSORIES"
    }
   ],
   "Ceramic Mug": [
@@ -538,6 +482,24 @@
     "size": "Each",
     "price": "10",
     "category": "BRANDS"
+   }
+  ]
+ },
+ "Dave's Nuttz": {
+  "Chocolate Covered Hazelnuts": [
+   {
+    "desc": "Various | 100mg THC",
+    "size": "Each",
+    "price": "10",
+    "category": "EDIBLE"
+   }
+  ],
+  "Comet Chocolate Hash Rosin": [
+   {
+    "desc": "",
+    "size": "10 Pack",
+    "price": "12",
+    "category": "EDIBLE"
    }
   ]
  },
@@ -559,73 +521,115 @@
    }
   ]
  },
- "Hapy Kitchen": {
-  "Specialty Brownie": [
+ "Smokiez": {
+  "Sour Cherry 1:1:1": [
+   {
+    "desc": "100mg THCV | CBG | CBD",
+    "size": "10 Pieces",
+    "price": "18",
+    "category": "EDIBLE"
+   }
+  ],
+  "Fruit Chews": [
+   {
+    "desc": "Various | 100mg THC",
+    "size": "10 Pieces",
+    "price": "13",
+    "category": "EDIBLE"
+   }
+  ],
+  "Hemp Infused": [
+   {
+    "desc": "500mg",
+    "size": "20 Pieces",
+    "price": "20",
+    "category": "EDIBLE"
+   }
+  ],
+  "1 Piece Fruit Chew 1:1": [
    {
     "desc": "Various",
+    "size": "1 Piece",
+    "price": "11",
+    "category": "EDIBLE"
+   }
+  ],
+  "1 Piece Gummy": [
+   {
+    "desc": "Various",
+    "size": "1 Piece",
+    "price": "7",
+    "category": "EDIBLE"
+   },
+   {
+    "desc": "Mixed Ratio",
     "size": "1 Piece",
     "price": "10",
     "category": "EDIBLE"
    }
   ],
-  "Brownies & Cookies": [
+  "Cherry 1:1 Sour Cherry 1:1": [
+   {
+    "desc": "THC | THCv",
+    "size": "1 Piece",
+    "price": "14",
+    "category": "EDIBLE"
+   }
+  ],
+  "Fruit Chew": [
    {
     "desc": "Various | 100mg THC",
     "size": "1 Piece",
-    "price": "8",
+    "price": "10",
     "category": "EDIBLE"
    }
   ],
-  "Butter Bliss Cookie": [
+  "Sour Blackberry 1:1": [
    {
     "desc": "100mg THC | CBN",
-    "size": "1 Piece",
-    "price": "9",
+    "size": "10 Pieces",
+    "price": "17",
     "category": "EDIBLE"
    }
   ],
-  "Tincture": [
+  "Gummies": [
    {
-    "desc": "Mixed Ratios",
-    "size": "1oz",
-    "price": "20",
-    "category": "TINCTURES"
+    "desc": "Various 1:1:1",
+    "size": "10 Pieces",
+    "price": "16",
+    "category": "EDIBLE"
    },
    {
-    "desc": "Mixed Ratios",
-    "size": "1oz",
-    "price": "34",
-    "category": "TINCTURES"
+    "desc": "Mixed Ratios | Various",
+    "size": "10 Pieces",
+    "price": "13",
+    "category": "EDIBLE"
    }
-  ],
-  "Full Spectrum RSO": [
+  ]
+ },
+ "Willamette Valley Alchemy": {
+  "Cannabis Capsules": [
+   {
+    "desc": "10mg THC",
+    "size": "10 Pieces",
+    "price": "20",
+    "category": "EDIBLE"
+   },
+   {
+    "desc": "10mg THC",
+    "size": "10 Pieces",
+    "price": "50",
+    "category": "EXTRACT"
+   }
+  ]
+ },
+ "Buzz Bites": {
+  "10 Piece Gummies": [
    {
     "desc": "Various",
-    "size": "1g",
-    "price": "18",
-    "category": "TINCTURES"
-   }
-  ],
-  "High THC Tincture": [
-   {
-    "desc": "Various | 1000mg THC",
-    "size": "1oz",
-    "price": "20",
-    "category": "TINCTURES"
-   }
-  ],
-  "Stone’d Fruit Syrup": [
-   {
-    "desc": "Various | 250mg THC",
-    "size": "1.5oz",
-    "price": "15",
-    "category": "TINCTURES"
-   },
-   {
-    "desc": "Mixed Ratios",
-    "size": "1.5oz",
-    "price": "20",
-    "category": "TINCTURES"
+    "size": "10 Pieces",
+    "price": "10",
+    "category": "EDIBLE"
    }
   ]
  },
@@ -639,36 +643,12 @@
    }
   ]
  },
- "Willamette Valley Alchemy": {
-  "Cannabis Capsules": [
-   {
-    "desc": "10mg THC",
-    "size": "10 Pieces",
-    "price": "20",
-    "category": "EDIBLE"
-   }
-  ],
-  "Rosin": [
-   {
-    "desc": "Various",
-    "size": "2g",
-    "price": "50",
-    "category": "EXTRACT"
-   }
-  ]
- },
  "Magic Number": {
-  "Assorted Flavors": [
+  "Magic Bubbly Solventless Live Rosin Sparkling Cider": [
    {
-    "desc": "Various | 25mg THC",
-    "size": "12oz",
-    "price": "8",
-    "category": "BEVERAGE"
-   },
-   {
-    "desc": "Various | 100mg THC",
-    "size": "12oz",
-    "price": "17",
+    "desc": "",
+    "size": "750ml",
+    "price": "36",
     "category": "BEVERAGE"
    }
   ],
@@ -689,92 +669,6 @@
     "desc": "Various | 100mg THC",
     "size": "12oz",
     "price": "14",
-    "category": "BEVERAGE"
-   }
-  ],
-  "Magic Bubbly": [
-   {
-    "desc": "Solventless Live Rosin Sparkling Cider",
-    "size": "750ml",
-    "price": "36",
-    "category": "BEVERAGE"
-   }
-  ],
-  "0 Sugar Seltzer": [
-   {
-    "desc": "Live Resin | 25mg THC",
-    "size": "12oz",
-    "price": "5",
-    "category": "BEVERAGE"
-   },
-   {
-    "desc": "Live Resin | 100mg THC",
-    "size": "12oz",
-    "price": "14",
-    "category": "BEVERAGE"
-   }
-  ],
-  "Lemonade | Limeade |": [
-   {
-    "desc": "Fruit Punch Live Rosin | 25mg THC",
-    "size": "8oz",
-    "price": "8",
-    "category": "BEVERAGE"
-   },
-   {
-    "desc": "Fruit Punch Live Rosin | 100mg THC",
-    "size": "8oz",
-    "price": "17",
-    "category": "BEVERAGE"
-   }
-  ],
-  "Mandarin Lime 1:1": [
-   {
-    "desc": "25mg THC | CBD",
-    "size": "12oz",
-    "price": "10",
-    "category": "BEVERAGE"
-   }
-  ],
-  "Lemonade": [
-   {
-    "desc": "Live Rosin | 25mg THC",
-    "size": "8oz",
-    "price": "8",
-    "category": "BEVERAGE"
-   },
-   {
-    "desc": "Live Rosin | 100mg THC",
-    "size": "8oz",
-    "price": "17",
-    "category": "BEVERAGE"
-   }
-  ],
-  "Limeade": [
-   {
-    "desc": "Live Rosin | 25mg THC",
-    "size": "8oz",
-    "price": "8",
-    "category": "BEVERAGE"
-   },
-   {
-    "desc": "Live Rosin | 100mg THC",
-    "size": "8oz",
-    "price": "17",
-    "category": "BEVERAGE"
-   }
-  ],
-  "Fruit Punch": [
-   {
-    "desc": "Live Rosin | 25mg THC",
-    "size": "8oz",
-    "price": "8",
-    "category": "BEVERAGE"
-   },
-   {
-    "desc": "Live Rosin | 100mg THC",
-    "size": "8oz",
-    "price": "17",
     "category": "BEVERAGE"
    }
   ],
@@ -880,6 +774,12 @@
   ],
   "Grapefruit Soda 1:1": [
    {
+    "desc": "10mg THC | CBG",
+    "size": "12oz",
+    "price": "5",
+    "category": "BEVERAGE"
+   },
+   {
     "desc": "25mg THC | CBG",
     "size": "12oz",
     "price": "7",
@@ -889,34 +789,6 @@
     "desc": "100mg THC | CBG",
     "size": "12oz",
     "price": "17",
-    "category": "BEVERAGE"
-   },
-   {
-    "desc": "10mg THC | CBG",
-    "size": "12oz",
-    "price": "5",
-    "category": "BEVERAGE"
-   }
-  ],
-  "Cherry Vanilla Soda 1:1": [
-   {
-    "desc": "25mg THC | CBD",
-    "size": "12oz",
-    "price": "10",
-    "category": "BEVERAGE"
-   }
-  ],
-  "Lime Seltzer": [
-   {
-    "desc": "Live Resin | 25mg THC",
-    "size": "12oz",
-    "price": "5",
-    "category": "BEVERAGE"
-   },
-   {
-    "desc": "Live Resin | 100mg THC",
-    "size": "12oz",
-    "price": "14",
     "category": "BEVERAGE"
    }
   ],
@@ -934,43 +806,17 @@
     "category": "BEVERAGE"
    }
   ],
-  "Ginger Beer": [
+  "Lime Seltzer": [
    {
-    "desc": "10mg THC",
+    "desc": "Live Resin | 25mg THC",
     "size": "12oz",
     "price": "5",
     "category": "BEVERAGE"
    },
    {
-    "desc": "25mg THC",
+    "desc": "Live Resin | 100mg THC",
     "size": "12oz",
-    "price": "7",
-    "category": "BEVERAGE"
-   },
-   {
-    "desc": "100mg THC",
-    "size": "12oz",
-    "price": "17",
-    "category": "BEVERAGE"
-   }
-  ],
-  "Sodas 1:1": [
-   {
-    "desc": "25mg THC | CBD",
-    "size": "12oz",
-    "price": "7",
-    "category": "BEVERAGE"
-   },
-   {
-    "desc": "100mg THC | CBD",
-    "size": "12oz",
-    "price": "17",
-    "category": "BEVERAGE"
-   },
-   {
-    "desc": "10mg THC | CBD",
-    "size": "12oz",
-    "price": "5",
+    "price": "14",
     "category": "BEVERAGE"
    }
   ],
@@ -988,17 +834,171 @@
     "category": "BEVERAGE"
    }
   ],
-  "Magic Drops": [
+  "Ginger Beer": [
    {
-    "desc": "Various | 1000mg THC",
-    "size": "4oz",
-    "price": "55",
+    "desc": "10mg THC",
+    "size": "12oz",
+    "price": "5",
+    "category": "BEVERAGE"
+   },
+   {
+    "desc": "25mg THC",
+    "size": "",
+    "price": "7",
+    "category": "BEVERAGE"
+   },
+   {
+    "desc": "100mg THC",
+    "size": "12oz",
+    "price": "17",
+    "category": "BEVERAGE"
+   }
+  ],
+  "Sodas 1:1": [
+   {
+    "desc": "10mg THC | CBD",
+    "size": "12oz",
+    "price": "5",
+    "category": "BEVERAGE"
+   },
+   {
+    "desc": "25mg THC | CBD",
+    "size": "",
+    "price": "7",
+    "category": "BEVERAGE"
+   },
+   {
+    "desc": "100mg THC | CBD",
+    "size": "12oz",
+    "price": "17",
+    "category": "BEVERAGE"
+   }
+  ],
+  "Mandarin Lime 1:1": [
+   {
+    "desc": "25mg THC | CBD",
+    "size": "12oz",
+    "price": "10",
+    "category": "BEVERAGE"
+   }
+  ],
+  "Assorted Flavors": [
+   {
+    "desc": "Various | 25mg THC",
+    "size": "12oz",
+    "price": "8",
+    "category": "BEVERAGE"
+   },
+   {
+    "desc": "Various | 100mg THC",
+    "size": "12oz",
+    "price": "17",
+    "category": "BEVERAGE"
+   }
+  ],
+  "Sugar Seltzer 0": [
+   {
+    "desc": "Resin | 25mg THC Live",
+    "size": "",
+    "price": "5",
+    "category": "BEVERAGE"
+   }
+  ],
+  "Fruit Punch": [
+   {
+    "desc": "Lemonade | Limeade | | Live Rosin | 25mg THC",
+    "size": "8oz",
+    "price": "8",
+    "category": "BEVERAGE"
+   },
+   {
+    "desc": "Live Rosin | 25mg THC",
+    "size": "8oz",
+    "price": "8",
+    "category": "BEVERAGE"
+   },
+   {
+    "desc": "Lemonade | Limeade | | Live Rosin | 100mg THC",
+    "size": "8oz",
+    "price": "17",
+    "category": "BEVERAGE"
+   },
+   {
+    "desc": "Live Rosin | 100mg THC",
+    "size": "8oz",
+    "price": "17",
+    "category": "BEVERAGE"
+   }
+  ],
+  "Lemonade": [
+   {
+    "desc": "Live Rosin | 25mg THC",
+    "size": "8oz",
+    "price": "8",
+    "category": "BEVERAGE"
+   },
+   {
+    "desc": "Live Rosin | 100mg THC",
+    "size": "8oz",
+    "price": "17",
+    "category": "BEVERAGE"
+   }
+  ],
+  "Limeade": [
+   {
+    "desc": "Live Rosin | 25mg THC",
+    "size": "8oz",
+    "price": "8",
+    "category": "BEVERAGE"
+   },
+   {
+    "desc": "Live Rosin | 100mg THC",
+    "size": "8oz",
+    "price": "17",
+    "category": "BEVERAGE"
+   }
+  ],
+  "Sugar Seltzer": [
+   {
+    "desc": "Resin | 100mg THC",
+    "size": "12oz",
+    "price": "14",
+    "category": "BEVERAGE"
+   }
+  ],
+  "Cherry Vanilla Soda 1:1": [
+   {
+    "desc": "25mg THC | CBD",
+    "size": "12oz",
+    "price": "10",
+    "category": "BEVERAGE"
+   }
+  ],
+  "Magic Drops 1:1": [
+   {
+    "desc": "250mg THC | CBD",
+    "size": "1oz",
+    "price": "22",
     "category": "TINCTURES"
    },
+   {
+    "desc": "1000mg THC | CBD",
+    "size": "4oz",
+    "price": "63",
+    "category": "TINCTURES"
+   }
+  ],
+  "Magic Drops": [
    {
     "desc": "Various | 250mg THC",
     "size": "1oz",
     "price": "16",
+    "category": "TINCTURES"
+   },
+   {
+    "desc": "Various | 1000mg THC",
+    "size": "4oz",
+    "price": "55",
     "category": "TINCTURES"
    }
   ],
@@ -1008,172 +1008,6 @@
     "size": "2oz",
     "price": "33",
     "category": "TINCTURES"
-   }
-  ],
-  "Magic Drops 1:1": [
-   {
-    "desc": "1000mg THC | CBD",
-    "size": "4oz",
-    "price": "63",
-    "category": "TINCTURES"
-   },
-   {
-    "desc": "250mg THC | CBD",
-    "size": "1oz",
-    "price": "22",
-    "category": "TINCTURES"
-   }
-  ]
- },
- "Buddies": {
-  "Flavored": [
-   {
-    "desc": "Various",
-    "size": "1g",
-    "price": "22",
-    "category": "VAPE"
-   }
-  ],
-  "Liquid Diamonds": [
-   {
-    "desc": "Live Resin",
-    "size": "1g",
-    "price": "34",
-    "category": "VAPE"
-   }
-  ],
-  "Live Resin": [
-   {
-    "desc": "All-in-One",
-    "size": "2g",
-    "price": "27",
-    "category": "DISPOSABLE"
-   },
-   {
-    "desc": "All-in-One",
-    "size": "2g",
-    "price": "50",
-    "category": "DISPOSABLE"
-   },
-   {
-    "desc": "Various",
-    "size": "1g",
-    "price": "18",
-    "category": "EXTRACT"
-   },
-   {
-    "desc": "Various",
-    "size": "2g",
-    "price": "25",
-    "category": "EXTRACT"
-   }
-  ],
-  "Cured Resin": [
-   {
-    "desc": "Various",
-    "size": "1g",
-    "price": "12",
-    "category": "EXTRACT"
-   }
-  ],
-  "Shatter": [
-   {
-    "desc": "Various",
-    "size": "1g",
-    "price": "12",
-    "category": "EXTRACT"
-   }
-  ]
- },
- "Kaprikorn": {
-  "Cured Resin": [
-   {
-    "desc": "Various",
-    "size": "1g",
-    "price": "25",
-    "category": "VAPE"
-   },
-   {
-    "desc": "Various",
-    "size": "2g",
-    "price": "22",
-    "category": "EXTRACT"
-   }
-  ],
-  "Live Resin": [
-   {
-    "desc": "Various",
-    "size": "1g",
-    "price": "33",
-    "category": "VAPE"
-   },
-   {
-    "desc": "All-in-One",
-    "size": "1g",
-    "price": "40",
-    "category": "DISPOSABLE"
-   }
-  ],
-  "Half Gram Pre-Rolls": [
-   {
-    "desc": "Various",
-    "size": "10 Pack",
-    "price": "29",
-    "category": "PRE ROLLS"
-   }
-  ],
-  "2 Pack": [
-   {
-    "desc": "Indoor Pre-Rolls",
-    "size": ".75g",
-    "price": "10",
-    "category": "PRE ROLLS"
-   }
-  ]
- },
- "Entourage": {
-  "Live Resin": [
-   {
-    "desc": "Various",
-    "size": "1g",
-    "price": "36",
-    "category": "VAPE"
-   },
-   {
-    "desc": "All-in-One",
-    "size": "1g",
-    "price": "43",
-    "category": "DISPOSABLE"
-   }
-  ],
-  "Sugar Wax": [
-   {
-    "desc": "Various",
-    "size": "1g",
-    "price": "20",
-    "category": "EXTRACT"
-   }
-  ],
-  "Infused Pre-Roll": [
-   {
-    "desc": "Various",
-    "size": "1.5g",
-    "price": "17",
-    "category": "PRE ROLLS"
-   },
-   {
-    "desc": "Various",
-    "size": ".75g",
-    "price": "10",
-    "category": "PRE ROLLS"
-   }
-  ],
-  "Infused Joint": [
-   {
-    "desc": "Hash Burger x Mushroom Tourte",
-    "size": ".75g",
-    "price": "10",
-    "category": "PRE ROLLS"
    }
   ]
  },
@@ -1203,6 +1037,164 @@
    }
   ]
  },
+ "Buddies": {
+  "Flavored": [
+   {
+    "desc": "Various",
+    "size": "1g",
+    "price": "22",
+    "category": "VAPE"
+   }
+  ],
+  "Liquid Diamonds Live Resin": [
+   {
+    "desc": "",
+    "size": "1g",
+    "price": "34",
+    "category": "VAPE"
+   }
+  ],
+  "Live Resin All-in-One": [
+   {
+    "desc": "",
+    "size": "2g",
+    "price": "27",
+    "category": "DISPOSABLE"
+   },
+   {
+    "desc": "",
+    "size": "2g",
+    "price": "50",
+    "category": "DISPOSABLE"
+   }
+  ],
+  "Live Resin": [
+   {
+    "desc": "Various",
+    "size": "1g",
+    "price": "18",
+    "category": "EXTRACT"
+   },
+   {
+    "desc": "Various",
+    "size": "2g",
+    "price": "25",
+    "category": "EXTRACT"
+   }
+  ],
+  "Shatter": [
+   {
+    "desc": "Various",
+    "size": "1g",
+    "price": "12",
+    "category": "EXTRACT"
+   }
+  ],
+  "Cured Resin": [
+   {
+    "desc": "Various",
+    "size": "1g",
+    "price": "12",
+    "category": "EXTRACT"
+   }
+  ]
+ },
+ "Entourage": {
+  "Live Resin": [
+   {
+    "desc": "Various",
+    "size": "1g",
+    "price": "36",
+    "category": "VAPE"
+   }
+  ],
+  "Live Resin All-in-One": [
+   {
+    "desc": "",
+    "size": "1g",
+    "price": "43",
+    "category": "DISPOSABLE"
+   }
+  ],
+  "Sugar Wax": [
+   {
+    "desc": "Various",
+    "size": "1g",
+    "price": "20",
+    "category": "EXTRACT"
+   }
+  ],
+  "Infused Pre-Roll": [
+   {
+    "desc": "Various",
+    "size": "1.5g",
+    "price": "17",
+    "category": "PRE ROLLS"
+   },
+   {
+    "desc": "Various",
+    "size": ".75g",
+    "price": "10",
+    "category": "PRE ROLLS"
+   }
+  ],
+  "Infused Joint Hash Burger x Mushroom Tourte": [
+   {
+    "desc": "",
+    "size": ".75g",
+    "price": "10",
+    "category": "PRE ROLLS"
+   }
+  ]
+ },
+ "Kaprikorn": {
+  "Cured Resin": [
+   {
+    "desc": "Various",
+    "size": "1g",
+    "price": "25",
+    "category": "VAPE"
+   },
+   {
+    "desc": "Various",
+    "size": "2g",
+    "price": "22",
+    "category": "EXTRACT"
+   }
+  ],
+  "Live Resin": [
+   {
+    "desc": "Various",
+    "size": "1g",
+    "price": "33",
+    "category": "VAPE"
+   }
+  ],
+  "Live Resin All-in-One": [
+   {
+    "desc": "",
+    "size": "1g",
+    "price": "40",
+    "category": "DISPOSABLE"
+   }
+  ],
+  "Half Gram Pre-Rolls": [
+   {
+    "desc": "Various",
+    "size": "10 Pack",
+    "price": "29",
+    "category": "PRE ROLLS"
+   }
+  ],
+  "2 Pack Indoor Pre-Rolls": [
+   {
+    "desc": "",
+    "size": ".75g",
+    "price": "10",
+    "category": "PRE ROLLS"
+   }
+  ]
+ },
  "Farmer's Friend": {
   "Full Spectrum": [
    {
@@ -1210,12 +1202,6 @@
     "size": "1g",
     "price": "36",
     "category": "VAPE"
-   },
-   {
-    "desc": "All-in-One",
-    "size": "2g",
-    "price": "60",
-    "category": "DISPOSABLE"
    }
   ],
   "CBG Rich Glass Cart": [
@@ -1224,6 +1210,14 @@
     "size": "1g",
     "price": "39",
     "category": "VAPE"
+   }
+  ],
+  "Full Spectrum All-in-One": [
+   {
+    "desc": "",
+    "size": "2g",
+    "price": "60",
+    "category": "DISPOSABLE"
    }
   ],
   "High CBD Tincture": [
@@ -1240,6 +1234,30 @@
     "category": "TINCTURES"
    }
   ],
+  "Tincture 1:1:1:1": [
+   {
+    "desc": "THC|CBD|CBG|CBN",
+    "size": "1oz",
+    "price": "43",
+    "category": "TINCTURES"
+   }
+  ],
+  "ECO": [
+   {
+    "desc": "Various",
+    "size": "1g",
+    "price": "27",
+    "category": "TINCTURES"
+   }
+  ],
+  "RSO": [
+   {
+    "desc": "Various",
+    "size": "1g",
+    "price": "24",
+    "category": "TINCTURES"
+   }
+  ],
   "Tincture": [
    {
     "desc": "1000mg THC",
@@ -1252,37 +1270,11 @@
     "size": "1oz",
     "price": "34",
     "category": "TINCTURES"
-   }
-  ],
-  "Tincture 1:1:1:1": [
+   },
    {
-    "desc": "THC|CBD|CBG|CBN",
-    "size": "1oz",
-    "price": "43",
-    "category": "TINCTURES"
-   }
-  ],
-  "RSO": [
-   {
-    "desc": "Various",
-    "size": "1g",
-    "price": "24",
-    "category": "TINCTURES"
-   }
-  ],
-  "Mixed Ratio": [
-   {
-    "desc": "Various",
+    "desc": "Mixed Ratio | Various",
     "size": "2oz",
     "price": "58",
-    "category": "TINCTURES"
-   }
-  ],
-  "ECO": [
-   {
-    "desc": "Various",
-    "size": "1g",
-    "price": "27",
     "category": "TINCTURES"
    }
   ]
@@ -1306,18 +1298,6 @@
     "category": "VAPE"
    },
    {
-    "desc": "All-in-One",
-    "size": "1g",
-    "price": "26",
-    "category": "DISPOSABLE"
-   },
-   {
-    "desc": "All-in-One",
-    "size": "2g",
-    "price": "43",
-    "category": "DISPOSABLE"
-   },
-   {
     "desc": "Various",
     "size": "1g",
     "price": "12",
@@ -1338,23 +1318,45 @@
     "category": "VAPE"
    },
    {
-    "desc": "All-in-One",
-    "size": "1g",
-    "price": "34",
-    "category": "DISPOSABLE"
-   },
-   {
     "desc": "Various",
     "size": "1g",
     "price": "17",
     "category": "EXTRACT"
    }
   ],
-  "Double Barrel": [
+  "Cured Resin All-in-One": [
    {
-    "desc": "Cured Resin",
+    "desc": "",
+    "size": "1g",
+    "price": "26",
+    "category": "DISPOSABLE"
+   },
+   {
+    "desc": "",
     "size": "2g",
     "price": "43",
+    "category": "DISPOSABLE"
+   }
+  ],
+  "Double Barrel Cured Resin": [
+   {
+    "desc": "",
+    "size": "2g",
+    "price": "43",
+    "category": "DISPOSABLE"
+   },
+   {
+    "desc": "",
+    "size": "2g",
+    "price": "43",
+    "category": "DISPOSABLE"
+   }
+  ],
+  "Live Resin All-in-One": [
+   {
+    "desc": "",
+    "size": "1g",
+    "price": "34",
     "category": "DISPOSABLE"
    }
   ],
@@ -1368,6 +1370,14 @@
   ]
  },
  "Freshy": {
+  "Live Resin": [
+   {
+    "desc": "Various",
+    "size": "1g",
+    "price": "21",
+    "category": "VAPE"
+   }
+  ],
   "Flavored Live Resin": [
    {
     "desc": "Various",
@@ -1376,62 +1386,20 @@
     "category": "VAPE"
    }
   ],
-  "Live Resin": [
+  "Flavored All-in-One": [
    {
-    "desc": "Various",
-    "size": "1g",
-    "price": "21",
-    "category": "VAPE"
-   },
-   {
-    "desc": "All-in-One",
+    "desc": "",
     "size": "1g",
     "price": "27",
     "category": "DISPOSABLE"
    }
   ],
-  "Flavored": [
+  "Live Resin All-in-One": [
    {
-    "desc": "All-in-One",
+    "desc": "",
     "size": "1g",
     "price": "27",
     "category": "DISPOSABLE"
-   }
-  ]
- },
- "NW Kind": {
-  "Live Resin": [
-   {
-    "desc": "Various",
-    "size": "1g",
-    "price": "36",
-    "category": "VAPE"
-   },
-   {
-    "desc": "All-In-One",
-    "size": "1g",
-    "price": "43",
-    "category": "DISPOSABLE"
-   },
-   {
-    "desc": "All-in-One",
-    "size": "1g",
-    "price": "43",
-    "category": "DISPOSABLE"
-   },
-   {
-    "desc": "Diamonds in Sauce",
-    "size": "1g",
-    "price": "22",
-    "category": "EXTRACT"
-   }
-  ],
-  "Cured Resin": [
-   {
-    "desc": "Premium BHO",
-    "size": "1g",
-    "price": "16",
-    "category": "EXTRACT"
    }
   ]
  },
@@ -1444,35 +1412,37 @@
     "category": "VAPE"
    }
   ],
-  "Cloud Bar": [
+  "Cloud Bar All-in-One": [
    {
-    "desc": "All-in-One",
+    "desc": "",
     "size": "1g",
     "price": "24",
     "category": "DISPOSABLE"
    },
    {
-    "desc": "All-in-One",
+    "desc": "",
     "size": "2g",
     "price": "40",
     "category": "DISPOSABLE"
    }
   ],
-  "Infused Pre-Roll": [
+  "Infused Pre-Roll Flavored": [
    {
-    "desc": "Flavored",
-    "size": ".75g",
-    "price": "5",
-    "category": "PRE ROLLS"
-   },
-   {
-    "desc": "Strain Specific",
+    "desc": "",
     "size": ".75g",
     "price": "5",
     "category": "PRE ROLLS"
    }
   ],
-  "Infused .75  Pre-Roll": [
+  "Infused Pre-Roll Strain Specific": [
+   {
+    "desc": "",
+    "size": ".75g",
+    "price": "5",
+    "category": "PRE ROLLS"
+   }
+  ],
+  "Infused .75 Pre-Roll": [
    {
     "desc": "Various",
     "size": "5 Pack",
@@ -1481,26 +1451,156 @@
    }
   ]
  },
- "Lunar": {
-  "Flavored": [
+ "NW Kind": {
+  "Live Resin": [
    {
-    "desc": "All-in-One",
+    "desc": "Various",
+    "size": "1g",
+    "price": "36",
+    "category": "VAPE"
+   }
+  ],
+  "Live Resin All-in-One": [
+   {
+    "desc": "",
+    "size": "1g",
+    "price": "43",
+    "category": "DISPOSABLE"
+   }
+  ],
+  "Live Resin All-In-One": [
+   {
+    "desc": "",
+    "size": "1g",
+    "price": "43",
+    "category": "DISPOSABLE"
+   }
+  ],
+  "Cured Resin Premium BHO": [
+   {
+    "desc": "",
+    "size": "1g",
+    "price": "16",
+    "category": "EXTRACT"
+   }
+  ],
+  "Live Resin Diamonds in Sauce": [
+   {
+    "desc": "",
+    "size": "1g",
+    "price": "22",
+    "category": "EXTRACT"
+   }
+  ]
+ },
+ "Lunar": {
+  "Flavored All-in-One": [
+   {
+    "desc": "",
     "size": "1g",
     "price": "25",
     "category": "DISPOSABLE"
    },
    {
-    "desc": "All-in-One",
+    "desc": "",
     "size": "2g",
     "price": "40",
     "category": "DISPOSABLE"
    }
   ]
  },
- "Vibes": {
-  "Live Resin": [
+ "Portland Heights": {
+  "HiBar Flavored": [
    {
-    "desc": "All-In-One",
+    "desc": "",
+    "size": "1.5g",
+    "price": "40",
+    "category": "DISPOSABLE"
+   }
+  ],
+  "HiBar Live Resin": [
+   {
+    "desc": "",
+    "size": "1.5g",
+    "price": "45",
+    "category": "DISPOSABLE"
+   }
+  ],
+  "Moonrock Blunt Infused": [
+   {
+    "desc": "",
+    "size": "2g",
+    "price": "23",
+    "category": "PRE ROLLS"
+   }
+  ],
+  "Moonrock Slims 1g Liquid Diamonds Infused Pre-Rolls": [
+   {
+    "desc": "",
+    "size": "3 Pack",
+    "price": "38",
+    "category": "PRE ROLLS"
+   }
+  ],
+  "Starlight Blunt": [
+   {
+    "desc": "Various Strains",
+    "size": "2g 1g",
+    "price": "27",
+    "category": "PRE ROLLS"
+   },
+   {
+    "desc": "Various Strains",
+    "size": "",
+    "price": "19",
+    "category": "PRE ROLLS"
+   }
+  ],
+  "Flavored Joint Infused": [
+   {
+    "desc": "",
+    "size": "1g",
+    "price": "13",
+    "category": "PRE ROLLS"
+   }
+  ],
+  "Mini Blunt Infused": [
+   {
+    "desc": "",
+    "size": "1.25g",
+    "price": "16",
+    "category": "PRE ROLLS"
+   }
+  ],
+  "Moonrock Mini Blunt Infused": [
+   {
+    "desc": "",
+    "size": "1.25g",
+    "price": "18",
+    "category": "PRE ROLLS"
+   }
+  ],
+  "Classic Blunt": [
+   {
+    "desc": "Various Strains",
+    "size": "2g",
+    "price": "14",
+    "category": "PRE ROLLS"
+   }
+  ],
+  "Slim Moonrock Mini Blunt Infused": [
+   {
+    "desc": "",
+    "size": "1g",
+    "price": "15",
+    "category": "PRE ROLLS"
+   }
+  ]
+ },
+ "Vibes": {
+  "Live Resin All-In-One": [
+   {
+    "desc": "",
     "size": "2g",
     "price": "45",
     "category": "DISPOSABLE"
@@ -1523,92 +1623,6 @@
    }
   ]
  },
- "Portland Heights": {
-  "HiBar": [
-   {
-    "desc": "Flavored",
-    "size": "1.5g",
-    "price": "40",
-    "category": "DISPOSABLE"
-   },
-   {
-    "desc": "Live Resin",
-    "size": "1.5g",
-    "price": "45",
-    "category": "DISPOSABLE"
-   }
-  ],
-  "Flavored Joint": [
-   {
-    "desc": "Infused",
-    "size": "1g",
-    "price": "13",
-    "category": "PRE ROLLS"
-   }
-  ],
-  "Mini Blunt": [
-   {
-    "desc": "Infused",
-    "size": "1.25g",
-    "price": "16",
-    "category": "PRE ROLLS"
-   }
-  ],
-  "Classic Blunt": [
-   {
-    "desc": "Various Strains",
-    "size": "2g",
-    "price": "14",
-    "category": "PRE ROLLS"
-   }
-  ],
-  "Starlight Blunt": [
-   {
-    "desc": "Various Strains",
-    "size": "2g",
-    "price": "27",
-    "category": "PRE ROLLS"
-   },
-   {
-    "desc": "Various Strains",
-    "size": "1g",
-    "price": "19",
-    "category": "PRE ROLLS"
-   }
-  ],
-  "Moonrock Slims": [
-   {
-    "desc": "1g Liquid Diamonds Infused Pre-Rolls",
-    "size": "3 Pack",
-    "price": "38",
-    "category": "PRE ROLLS"
-   }
-  ],
-  "Moonrock Mini Blunt": [
-   {
-    "desc": "Infused",
-    "size": "1.25g",
-    "price": "18",
-    "category": "PRE ROLLS"
-   }
-  ],
-  "Moonrock Blunt": [
-   {
-    "desc": "Infused",
-    "size": "2g",
-    "price": "23",
-    "category": "PRE ROLLS"
-   }
-  ],
-  "Slim Moonrock": [
-   {
-    "desc": "Mini Blunt Infused",
-    "size": "1g",
-    "price": "15",
-    "category": "PRE ROLLS"
-   }
-  ]
- },
  "Killa Beez": {
   "Shatter": [
    {
@@ -1618,19 +1632,19 @@
     "category": "EXTRACT"
    }
   ],
-  "12 Pack .5g Joints": [
-   {
-    "desc": "3 Strain",
-    "size": ".12 Pack",
-    "price": "24",
-    "category": "PRE ROLLS"
-   }
-  ],
   "6 Pack .5g Joints": [
    {
     "desc": "Various",
     "size": "6 Pack",
     "price": "15",
+    "category": "PRE ROLLS"
+   }
+  ],
+  "12 Pack .5g Joints 3 Strain": [
+   {
+    "desc": "",
+    "size": ".12 Pack",
+    "price": "24",
     "category": "PRE ROLLS"
    }
   ]
@@ -1653,7 +1667,7 @@
    }
   ]
  },
- "Decibel Farms": {
+ "Decibel": {
   "Rosin": [
    {
     "desc": "Various",
@@ -1667,31 +1681,23 @@
     "price": "60",
     "category": "EXTRACT"
    }
-  ],
-  "Infused .5g Pre-Rolls": [
-   {
-    "desc": "Hash Infused w/Lighter",
-    "size": "6 Pack",
-    "price": "20",
-    "category": "PRE ROLLS"
-   },
-   {
-    "desc": "Various",
-    "size": "2 Pack",
-    "price": "8",
-    "category": "PRE ROLLS"
-   }
-  ],
-  "Hash Infused Pre-Roll": [
-   {
-    "desc": "Various",
-    "size": "1g",
-    "price": "10",
-    "category": "PRE ROLLS"
-   }
   ]
  },
  "Bobsled": {
+  "Cured Resin": [
+   {
+    "desc": "Various",
+    "size": "1g",
+    "price": "12",
+    "category": "EXTRACT"
+   },
+   {
+    "desc": "Various",
+    "size": "2g",
+    "price": "23",
+    "category": "EXTRACT"
+   }
+  ],
   "Live Resin": [
    {
     "desc": "Various",
@@ -1703,20 +1709,6 @@
     "desc": "Various",
     "size": "2g",
     "price": "36",
-    "category": "EXTRACT"
-   }
-  ],
-  "Cured Resin": [
-   {
-    "desc": "Various",
-    "size": "2g",
-    "price": "23",
-    "category": "EXTRACT"
-   },
-   {
-    "desc": "Various",
-    "size": "1g",
-    "price": "12",
     "category": "EXTRACT"
    }
   ],
@@ -1752,13 +1744,13 @@
  "Wacky Pack": {
   "Live Resin": [
    {
-    "desc": "Samoas Headband | Sativa 69.22% THC | 18% Terps",
+    "desc": "Samoas Headband | Sativa | 69.22% THC | 18% Terps",
     "size": "2g",
     "price": "24",
     "category": "EXTRACT"
    },
    {
-    "desc": "Jet Fuel | Sativa 75.22% THC | 15% Terps",
+    "desc": "Jet Fuel | Sativa | 75.22% THC | 15% Terps",
     "size": "2g",
     "price": "32",
     "category": "EXTRACT"
@@ -1792,9 +1784,9 @@
     "category": "PRE ROLLS"
    }
   ],
-  "Bloint": [
+  "Bloint Infused Joint with Hemp Wrap": [
    {
-    "desc": "Infused Joint with Hemp Wrap",
+    "desc": "",
     "size": "2.5g",
     "price": "14",
     "category": "PRE ROLLS"
@@ -1833,23 +1825,33 @@
    }
   ]
  },
- "Meraki": {
-  "Infused .75 Pre-Rolls": [
+ "Decibel Farms": {
+  "Infused .5g Pre-Rolls": [
    {
     "desc": "Various",
     "size": "2 Pack",
-    "price": "14",
+    "price": "8",
     "category": "PRE ROLLS"
    }
   ],
-  "Live Resin Infused": [
+  "Hash Infused Pre-Roll": [
    {
-    "desc": "Blunt",
-    "size": "2g",
-    "price": "17",
+    "desc": "Various",
+    "size": "1g",
+    "price": "10",
     "category": "PRE ROLLS"
    }
   ],
+  "Infused .5g Pre-Rolls Hash Infused w/Lighter": [
+   {
+    "desc": "",
+    "size": "6 Pack",
+    "price": "20",
+    "category": "PRE ROLLS"
+   }
+  ]
+ },
+ "Meraki": {
   "Half Gram Pre-Rolls": [
    {
     "desc": "Various",
@@ -1872,21 +1874,27 @@
     "category": "PRE ROLLS"
    }
   ],
+  "Infused .75 Pre-Rolls": [
+   {
+    "desc": "Various",
+    "size": "2 Pack",
+    "price": "14",
+    "category": "PRE ROLLS"
+   }
+  ],
+  "Live Resin Infused Blunt": [
+   {
+    "desc": "",
+    "size": "2g",
+    "price": "17",
+    "category": "PRE ROLLS"
+   }
+  ],
   "Infused Pre-Roll": [
    {
     "desc": "Various",
     "size": "1.5g",
     "price": "16",
-    "category": "PRE ROLLS"
-   }
-  ]
- },
- "Iconic": {
-  "Glass Tip Blunt": [
-   {
-    "desc": "",
-    "size": "1.75g",
-    "price": "10",
     "category": "PRE ROLLS"
    }
   ]
@@ -1900,27 +1908,27 @@
     "category": "PRE ROLLS"
    }
   ],
-  "Ice Hash Infused": [
+  "Ice Hash Infused 1g Pre-Roll": [
    {
-    "desc": "1g Pre-Roll",
+    "desc": "",
     "size": "2 Pack",
     "price": "10",
     "category": "PRE ROLLS"
    }
   ],
-  "Diamond Infused": [
+  "Half Gram Pre-Rolls 2 Strains per Pack": [
    {
-    "desc": "1g Pre-Roll",
-    "size": "2 Pack",
-    "price": "14",
+    "desc": "",
+    "size": "10 Pack",
+    "price": "20",
     "category": "PRE ROLLS"
    }
   ],
-  "Half Gram Pre-Rolls": [
+  "Diamond Infused 1g Pre-Roll": [
    {
-    "desc": "2 Strains per Pack",
-    "size": "10 Pack",
-    "price": "20",
+    "desc": "",
+    "size": "2 Pack",
+    "price": "14",
     "category": "PRE ROLLS"
    }
   ]
@@ -1931,6 +1939,16 @@
     "desc": "",
     "size": "10 Pack",
     "price": "18",
+    "category": "PRE ROLLS"
+   }
+  ]
+ },
+ "Iconic": {
+  "Glass Tip Blunt": [
+   {
+    "desc": "",
+    "size": "1.75g",
+    "price": "10",
     "category": "PRE ROLLS"
    }
   ]
@@ -1960,11 +1978,51 @@
     "category": "TOPICALS"
    }
   ],
+  "6:1 CBD + CBG Lotion": [
+   {
+    "desc": "3120 mg CBD | 580 mg CBG",
+    "size": "3.5oz",
+    "price": "60",
+    "category": "TOPICALS"
+   }
+  ],
+  "Lip Balm": [
+   {
+    "desc": "",
+    "size": "Each",
+    "price": "6",
+    "category": "TOPICALS"
+   }
+  ],
+  "CBD Recovery Tincture": [
+   {
+    "desc": "2000mg CBD",
+    "size": "Each",
+    "price": "27",
+    "category": "TOPICALS"
+   }
+  ],
   "Aloe Gel": [
    {
     "desc": "300mg THC | CBD | CBG",
     "size": "3.5oz",
     "price": "40",
+    "category": "TOPICALS"
+   }
+  ],
+  "Lotion": [
+   {
+    "desc": "200mg THC | CBD | CBG",
+    "size": "3.5oz",
+    "price": "24",
+    "category": "TOPICALS"
+   }
+  ],
+  "Relief Stick Cocoa Honey Spice": [
+   {
+    "desc": "",
+    "size": "Each",
+    "price": "20",
     "category": "TOPICALS"
    }
   ],
@@ -1984,38 +2042,6 @@
     "category": "TOPICALS"
    }
   ],
-  "Lotion": [
-   {
-    "desc": "200mg THC | CBD | CBG",
-    "size": "3.5oz",
-    "price": "24",
-    "category": "TOPICALS"
-   }
-  ],
-  "6:1 CBD + CBG Lotion": [
-   {
-    "desc": "3120mg CBD | 580mg CBG",
-    "size": "3.5oz",
-    "price": "60",
-    "category": "TOPICALS"
-   }
-  ],
-  "Lip Balm": [
-   {
-    "desc": "",
-    "size": "Each",
-    "price": "6",
-    "category": "TOPICALS"
-   }
-  ],
-  "Soak & Fizz | 1:1:1": [
-   {
-    "desc": "THC | CBD | CBG",
-    "size": "Each",
-    "price": "40",
-    "category": "TOPICALS"
-   }
-  ],
   "Eucalyptus Balm": [
    {
     "desc": "300mg THC | CBD | CBG",
@@ -2023,42 +2049,340 @@
     "price": "48",
     "category": "TOPICALS"
    }
-  ],
-  "CBD Recovery Tincture": [
+  ]
+ },
+ "Glass Pipe": {
+  "Small": [
    {
-    "desc": "2000mg CBD",
+    "desc": "",
     "size": "Each",
-    "price": "27",
-    "category": "TOPICALS"
+    "price": "5",
+    "category": "ACCESSORIES"
    }
   ],
-  "Relief Stick": [
+  "Medium": [
    {
-    "desc": "Cocoa Honey Spice",
+    "desc": "",
+    "size": "Each",
+    "price": "8",
+    "category": "ACCESSORIES"
+   }
+  ],
+  "Large": [
+   {
+    "desc": "",
     "size": "Each",
     "price": "20",
-    "category": "TOPICALS"
+    "category": "ACCESSORIES"
    }
   ]
  },
- "Precision": {
-  "Grinder": [
+ "Metal Pipe": {
+  "Small": [
    {
-    "desc": "40mm",
+    "desc": "",
     "size": "Each",
-    "price": "18",
+    "price": "5",
+    "category": "ACCESSORIES"
+   }
+  ],
+  "Diamond": [
+   {
+    "desc": "",
+    "size": "Each",
+    "price": "6",
+    "category": "ACCESSORIES"
+   }
+  ]
+ },
+ "Silicone Pipe": {
+  "Small": [
+   {
+    "desc": "",
+    "size": "Each",
+    "price": "5",
+    "category": "ACCESSORIES"
+   }
+  ]
+ },
+ "Silicone": {
+  "Nectar Collector": [
+   {
+    "desc": "",
+    "size": "Each",
+    "price": "12",
+    "category": "ACCESSORIES"
+   }
+  ]
+ },
+ "Glass Beaker": {
+  "Crystal": [
+   {
+    "desc": "12 Inch",
+    "size": "Each",
+    "price": "50",
     "category": "ACCESSORIES"
    },
    {
-    "desc": "63mm 4 Parts",
+    "desc": "6 Inch",
+    "size": "Each",
+    "price": "32",
+    "category": "ACCESSORIES"
+   }
+  ],
+  "Classic": [
+   {
+    "desc": "8 Inch",
+    "size": "Each",
+    "price": "24",
+    "category": "ACCESSORIES"
+   },
+   {
+    "desc": "10 Inch",
+    "size": "Each",
+    "price": "30",
+    "category": "ACCESSORIES"
+   }
+  ]
+ },
+ "Diffuser": {
+  "Dab Straw": [
+   {
+    "desc": "",
+    "size": "Each",
+    "price": "20",
+    "category": "ACCESSORIES"
+   }
+  ]
+ },
+ "Bubbling": {
+  "Honey Straw": [
+   {
+    "desc": "",
+    "size": "Each",
+    "price": "10",
+    "category": "ACCESSORIES"
+   }
+  ]
+ },
+ "Glass Bong": {
+  "Mini Beaker": [
+   {
+    "desc": "8 Inch",
+    "size": "Each",
+    "price": "30",
+    "category": "ACCESSORIES"
+   }
+  ],
+  "Mini Bong": [
+   {
+    "desc": "8 Inch",
+    "size": "Each",
+    "price": "20",
+    "category": "ACCESSORIES"
+   }
+  ]
+ },
+ "Lazy Bong": {
+  "Chakra": [
+   {
+    "desc": "9 Inch",
+    "size": "Each",
+    "price": "50",
+    "category": "ACCESSORIES"
+   }
+  ]
+ },
+ "Soft Glass Bong": {
+  "Bong": [
+   {
+    "desc": "",
+    "size": "Each",
+    "price": "20",
+    "category": "ACCESSORIES"
+   }
+  ]
+ },
+ "Acrylic Bong": {
+  "Large": [
+   {
+    "desc": "",
+    "size": "Each",
+    "price": "20",
+    "category": "ACCESSORIES"
+   }
+  ]
+ },
+ "Randy's": {
+  "Classic Beaker": [
+   {
+    "desc": "14 Inch",
+    "size": "Each",
+    "price": "90",
+    "category": "ACCESSORIES"
+   }
+  ],
+  "Inspo Dual Battery": [
+   {
+    "desc": "2 Gram Capacity",
+    "size": "Each",
+    "price": "30",
+    "category": "ACCESSORIES"
+   }
+  ],
+  "Inspo Battery": [
+   {
+    "desc": "",
     "size": "Each",
     "price": "26",
     "category": "ACCESSORIES"
    }
+  ],
+  "Inspo Plus Battery": [
+   {
+    "desc": "",
+    "size": "Each",
+    "price": "32",
+    "category": "ACCESSORIES"
+   }
+  ],
+  "Silicon Cleaning Caps": [
+   {
+    "desc": "",
+    "size": "Each",
+    "price": "10",
+    "category": "ACCESSORIES"
+   }
+  ],
+  "Snaps": [
+   {
+    "desc": "Cleaning Swabs",
+    "size": "Each",
+    "price": "5",
+    "category": "ACCESSORIES"
+   }
+  ],
+  "Roller": [
+   {
+    "desc": "79mm / 110mm",
+    "size": "Each",
+    "price": "5",
+    "category": "ACCESSORIES"
+   }
+  ],
+  "Resin Guard": [
+   {
+    "desc": "",
+    "size": "Each",
+    "price": "9",
+    "category": "ACCESSORIES"
+   }
+  ],
+  "Black Label Cleaner": [
+   {
+    "desc": "",
+    "size": "Each",
+    "price": "8",
+    "category": "ACCESSORIES"
+   }
+  ],
+  "Farenheit Torch": [
+   {
+    "desc": "Butane",
+    "size": "Each",
+    "price": "30",
+    "category": "ACCESSORIES"
+   }
   ]
  },
- "Riddles": {
-  "Facade Pipe": [
+ "Silicone Bong": {
+  "Large": [
+   {
+    "desc": "",
+    "size": "Each",
+    "price": "20",
+    "category": "ACCESSORIES"
+   }
+  ]
+ },
+ "Dab Rig": {
+  "Oil Can": [
+   {
+    "desc": "Disc Percolator",
+    "size": "Each",
+    "price": "60",
+    "category": "ACCESSORIES"
+   }
+  ],
+  "Quartz Banger": [
+   {
+    "desc": "",
+    "size": "Each",
+    "price": "32",
+    "category": "ACCESSORIES"
+   }
+  ]
+ },
+ "Slide Bowl": {
+  "Slide Bowl": [
+   {
+    "desc": "",
+    "size": "Each",
+    "price": "3",
+    "category": "ACCESSORIES"
+   }
+  ]
+ },
+ "Glass Bowl": {
+  "Glass Bowl": [
+   {
+    "desc": "",
+    "size": "Each",
+    "price": "5",
+    "category": "ACCESSORIES"
+   },
+   {
+    "desc": "",
+    "size": "Each",
+    "price": "10",
+    "category": "ACCESSORIES"
+   },
+   {
+    "desc": "",
+    "size": "Each",
+    "price": "20",
+    "category": "ACCESSORIES"
+   }
+  ]
+ },
+ "Glass Downstem": {
+  "Glass Downstem": [
+   {
+    "desc": "",
+    "size": "Each",
+    "price": "5",
+    "category": "ACCESSORIES"
+   },
+   {
+    "desc": "",
+    "size": "Each",
+    "price": "10",
+    "category": "ACCESSORIES"
+   }
+  ]
+ },
+ "Colorful Glass Bowl": {
+  "Glass Bowl": [
+   {
+    "desc": "",
+    "size": "Each",
+    "price": "12",
+    "category": "ACCESSORIES"
+   }
+  ]
+ },
+ "Ash Catcher": {
+  "90 Degrees": [
    {
     "desc": "",
     "size": "Each",
@@ -2087,6 +2411,26 @@
    }
   ]
  },
+ "Riddles": {
+  "Facade Pipe": [
+   {
+    "desc": "",
+    "size": "Each",
+    "price": "30",
+    "category": "ACCESSORIES"
+   }
+  ]
+ },
+ "Drippin' Bong": {
+  "Bong": [
+   {
+    "desc": "",
+    "size": "Each",
+    "price": "60",
+    "category": "ACCESSORIES"
+   }
+  ]
+ },
  "Davie's Glass": {
   "Space Pipe": [
    {
@@ -2097,24 +2441,24 @@
    }
   ]
  },
- "Randy's": {
-  "Classic Beaker": [
+ "Pulsar": {
+  "Chillum": [
    {
-    "desc": "14 Inch",
+    "desc": "Glass",
     "size": "Each",
-    "price": "90",
+    "price": "3",
     "category": "ACCESSORIES"
    }
   ],
-  "Inspo Dual Battery": [
+  "Vape Bar": [
    {
     "desc": "2 Gram Capacity",
     "size": "Each",
-    "price": "30",
+    "price": "25",
     "category": "ACCESSORIES"
    }
   ],
-  "Inspo Plus Battery": [
+  "Thermo Pipe Battery": [
    {
     "desc": "",
     "size": "Each",
@@ -2122,15 +2466,185 @@
     "category": "ACCESSORIES"
    }
   ],
-  "Inspo Battery": [
+  "Hall Pass Battery": [
    {
     "desc": "",
     "size": "Each",
-    "price": "26",
+    "price": "20",
+    "category": "ACCESSORIES"
+   }
+  ]
+ },
+ "Chillum": {
+  "Silicone": [
+   {
+    "desc": "",
+    "size": "Each",
+    "price": "5",
     "category": "ACCESSORIES"
    }
   ],
-  "Silicon Cleaning Caps": [
+  "Glass": [
+   {
+    "desc": "",
+    "size": "Each",
+    "price": "10",
+    "category": "ACCESSORIES"
+   }
+  ]
+ },
+ "Nectar Collector": {
+  "Silicone": [
+   {
+    "desc": "",
+    "size": "Each",
+    "price": "12",
+    "category": "ACCESSORIES"
+   }
+  ]
+ },
+ "Top Puff": {
+  "Water Bottle Adapter": [
+   {
+    "desc": "",
+    "size": "Each",
+    "price": "8",
+    "category": "ACCESSORIES"
+   }
+  ]
+ },
+ "Dugout": {
+  "Wood": [
+   {
+    "desc": "",
+    "size": "Each",
+    "price": "5",
+    "category": "ACCESSORIES"
+   }
+  ]
+ },
+ "Dab Accessory": {
+  "Various": [
+   {
+    "desc": "",
+    "size": "Each",
+    "price": "5",
+    "category": "ACCESSORIES"
+   }
+  ]
+ },
+ "Ash Tray": {
+  "Silicone": [
+   {
+    "desc": "",
+    "size": "Each",
+    "price": "18",
+    "category": "ACCESSORIES"
+   }
+  ]
+ },
+ "Wood Holder": {
+  "Large": [
+   {
+    "desc": "",
+    "size": "Each",
+    "price": "25",
+    "category": "ACCESSORIES"
+   }
+  ]
+ },
+ "Wood Nug Jug": {
+  "Small": [
+   {
+    "desc": "",
+    "size": "Each",
+    "price": "18",
+    "category": "ACCESSORIES"
+   }
+  ]
+ },
+ "Bug Rug": {
+  "Bag": [
+   {
+    "desc": "",
+    "size": "Each",
+    "price": "5",
+    "category": "ACCESSORIES"
+   }
+  ]
+ },
+ "Assorted Accessories": {
+  "Assorted Selection": [
+   {
+    "desc": "",
+    "size": "Each",
+    "price": "5",
+    "category": "ACCESSORIES"
+   },
+   {
+    "desc": "",
+    "size": "Each",
+    "price": "8",
+    "category": "ACCESSORIES"
+   },
+   {
+    "desc": "",
+    "size": "Each",
+    "price": "10",
+    "category": "ACCESSORIES"
+   },
+   {
+    "desc": "",
+    "size": "Each",
+    "price": "12",
+    "category": "ACCESSORIES"
+   },
+   {
+    "desc": "",
+    "size": "Each",
+    "price": "15",
+    "category": "ACCESSORIES"
+   },
+   {
+    "desc": "",
+    "size": "Each",
+    "price": "20",
+    "category": "ACCESSORIES"
+   }
+  ]
+ },
+ "Grinder Eeze": {
+  "40mm Grinder": [
+   {
+    "desc": "",
+    "size": "Each",
+    "price": "15",
+    "category": "ACCESSORIES"
+   }
+  ]
+ },
+ "Marley": {
+  "Grinder": [
+   {
+    "desc": "",
+    "size": "Each",
+    "price": "20",
+    "category": "ACCESSORIES"
+   }
+  ]
+ },
+ "Mushroom Grinder": {
+  "63mm 4 Parts": [
+   {
+    "desc": "",
+    "size": "Each",
+    "price": "30",
+    "category": "ACCESSORIES"
+   }
+  ]
+ },
+ "Grinder": {
+  "40mm 4 Parts": [
    {
     "desc": "",
     "size": "Each",
@@ -2138,51 +2652,43 @@
     "category": "ACCESSORIES"
    }
   ],
-  "Roller": [
-   {
-    "desc": "79mm / 110mm",
-    "size": "Each",
-    "price": "5",
-    "category": "ACCESSORIES"
-   }
-  ],
-  "Farenheit Torch": [
-   {
-    "desc": "Butane",
-    "size": "Each",
-    "price": "30",
-    "category": "ACCESSORIES"
-   }
-  ],
-  "Resin Guard": [
+  "50mm 4 Parts": [
    {
     "desc": "",
     "size": "Each",
-    "price": "9",
+    "price": "12",
     "category": "ACCESSORIES"
    }
   ],
-  "Black Label Cleaner": [
+  "63mm 4 Parts": [
    {
     "desc": "",
     "size": "Each",
-    "price": "8",
+    "price": "16",
     "category": "ACCESSORIES"
    }
-  ],
-  "Snaps": [
+  ]
+ },
+ "Precision": {
+  "Grinder": [
    {
-    "desc": "Cleaning Swabs",
+    "desc": "40mm",
     "size": "Each",
-    "price": "5",
+    "price": "18",
+    "category": "ACCESSORIES"
+   },
+   {
+    "desc": "63mm 4 Parts",
+    "size": "Each",
+    "price": "26",
     "category": "ACCESSORIES"
    }
   ]
  },
  "Wulf": {
-  "Dab Tool": [
+  "Dab Tool And Torch": [
    {
-    "desc": "And Torch",
+    "desc": "",
     "size": "Each",
     "price": "20",
     "category": "ACCESSORIES"
@@ -2212,6 +2718,22 @@
     "category": "ACCESSORIES"
    }
   ],
+  "Pro Battery": [
+   {
+    "desc": "",
+    "size": "Each",
+    "price": "12",
+    "category": "ACCESSORIES"
+   }
+  ],
+  "Pro Digital Battery": [
+   {
+    "desc": "",
+    "size": "Each",
+    "price": "15",
+    "category": "ACCESSORIES"
+   }
+  ],
   "Recon Pro Battery": [
    {
     "desc": "2 Gram Capacity",
@@ -2228,27 +2750,11 @@
     "category": "ACCESSORIES"
    }
   ],
-  "Pro Digital Battery": [
-   {
-    "desc": "",
-    "size": "Each",
-    "price": "15",
-    "category": "ACCESSORIES"
-   }
-  ],
   "Knife Tip": [
    {
     "desc": "510 Thread",
     "size": "Each",
     "price": "8",
-    "category": "ACCESSORIES"
-   }
-  ],
-  "Pro Battery": [
-   {
-    "desc": "",
-    "size": "Each",
-    "price": "12",
     "category": "ACCESSORIES"
    }
   ],
@@ -2267,15 +2773,35 @@
    }
   ]
  },
- "Rokin": {
-  "Thunder XL Battery": [
+ "Dab Bat": {
+  "Ghost": [
    {
     "desc": "",
     "size": "Each",
-    "price": "18",
+    "price": "24",
+    "category": "ACCESSORIES"
+   }
+  ]
+ },
+ "Lookah": {
+  "Snail Battery": [
+   {
+    "desc": "",
+    "size": "Each",
+    "price": "24",
     "category": "ACCESSORIES"
    }
   ],
+  "Mini Unicorn Dab Rig": [
+   {
+    "desc": "",
+    "size": "Each",
+    "price": "90",
+    "category": "ACCESSORIES"
+   }
+  ]
+ },
+ "Rokin": {
   "Thunder Battery": [
    {
     "desc": "",
@@ -2289,6 +2815,14 @@
     "desc": "",
     "size": "Each",
     "price": "10",
+    "category": "ACCESSORIES"
+   }
+  ],
+  "Thunder XL Battery": [
+   {
+    "desc": "",
+    "size": "Each",
+    "price": "18",
     "category": "ACCESSORIES"
    }
   ],
@@ -2309,6 +2843,16 @@
    }
   ]
  },
+ "Ooze": {
+  "Hot Knife": [
+   {
+    "desc": "510 Thread",
+    "size": "Each",
+    "price": "13",
+    "category": "ACCESSORIES"
+   }
+  ]
+ },
  "Penjamin": {
   "Cart Battery": [
    {
@@ -2319,20 +2863,76 @@
    }
   ]
  },
- "Lookah": {
-  "Snail Battery": [
+ "Sesh Gear": {
+  "Mushroom Battery": [
    {
     "desc": "",
     "size": "Each",
-    "price": "24",
+    "price": "20",
+    "category": "ACCESSORIES"
+   }
+  ]
+ },
+ "USB Charger": {
+  "Quick Charger": [
+   {
+    "desc": "",
+    "size": "Each",
+    "price": "5",
+    "category": "ACCESSORIES"
+   },
+   {
+    "desc": "",
+    "size": "Each",
+    "price": "2.5",
+    "category": "ACCESSORIES"
+   }
+  ]
+ },
+ "Max": {
+  "Battery": [
+   {
+    "desc": "",
+    "size": "Each",
+    "price": "10",
+    "category": "ACCESSORIES"
+   }
+  ]
+ },
+ "Metrix": {
+  "Dab Tempmeter": [
+   {
+    "desc": "Digital Thermometer",
+    "size": "Each",
+    "price": "85",
     "category": "ACCESSORIES"
    }
   ],
-  "Mini Unicorn": [
+  "Switch Nail": [
    {
-    "desc": "Dab Rig",
+    "desc": "",
     "size": "Each",
-    "price": "90",
+    "price": "25",
+    "category": "ACCESSORIES"
+   }
+  ]
+ },
+ "Stratus": {
+  "E-Nail System": [
+   {
+    "desc": "",
+    "size": "Each",
+    "price": "125",
+    "category": "ACCESSORIES"
+   }
+  ]
+ },
+ "Sutra": {
+  "Auto Draw Battery": [
+   {
+    "desc": "",
+    "size": "Each",
+    "price": "20",
     "category": "ACCESSORIES"
    }
   ]
@@ -2363,96 +2963,10 @@
    }
   ]
  },
- "Ooze": {
-  "Hot Knife": [
-   {
-    "desc": "510 Thread",
-    "size": "Each",
-    "price": "13",
-    "category": "ACCESSORIES"
-   }
-  ]
- },
- "Sesh Gear": {
-  "Mushroom Battery": [
-   {
-    "desc": "",
-    "size": "Each",
-    "price": "20",
-    "category": "ACCESSORIES"
-   }
-  ]
- },
- "Yocan": {
-  "Evolve Plus XL": [
-   {
-    "desc": "Concentrate Vaporizer",
-    "size": "Each",
-    "price": "40",
-    "category": "ACCESSORIES"
-   }
-  ],
-  "Evolve D Plus": [
-   {
-    "desc": "Dry Herb Vape",
-    "size": "Each",
-    "price": "40",
-    "category": "ACCESSORIES"
-   }
-  ],
-  "Evolve D": [
-   {
-    "desc": "Dry Herb Vape",
-    "size": "Each",
-    "price": "25",
-    "category": "ACCESSORIES"
-   }
-  ],
-  "Evolve Atomizer": [
-   {
-    "desc": "Dual Coil",
-    "size": "Each",
-    "price": "10",
-    "category": "ACCESSORIES"
-   }
-  ],
-  "Evolve Plus": [
-   {
-    "desc": "Dry Herb Vape",
-    "size": "Each",
-    "price": "30",
-    "category": "ACCESSORIES"
-   }
-  ],
-  "Orbit Vaporizer Coil": [
-   {
-    "desc": "",
-    "size": "Each",
-    "price": "10",
-    "category": "ACCESSORIES"
-   }
-  ],
-  "Evolve Coil": [
-   {
-    "desc": "",
-    "size": "Each",
-    "price": "5",
-    "category": "ACCESSORIES"
-   }
-  ],
-  "Uni Pro": [
-   {
-    "desc": "",
-    "size": "Each",
-    "price": "36",
-    "category": "ACCESSORIES"
-   }
-  ]
- },
  "CartI9": {
-  "510 Cart Bong": [
+  "510 Cart Bong Water Vaporizor": [
    {
-    "desc": "Water Vaporizor",
+    "desc": "",
     "size": "Each",
     "price": "95",
     "category": "ACCESSORIES"
@@ -2467,20 +2981,78 @@
    }
   ]
  },
- "Metrix": {
-  "Switch Nail": [
+ "Pax": {
+  "Pax Plus": [
    {
     "desc": "",
     "size": "Each",
-    "price": "25",
+    "price": "150",
+    "category": "ACCESSORIES"
+   }
+  ]
+ },
+ "Yocan": {
+  "Uni Pro": [
+   {
+    "desc": "",
+    "size": "Each",
+    "price": "36",
     "category": "ACCESSORIES"
    }
   ],
-  "Dab Tempmeter": [
+  "Evolve Plus XL": [
    {
-    "desc": "Digital Thermometer",
+    "desc": "Concentrate Vaporizer",
     "size": "Each",
-    "price": "85",
+    "price": "40",
+    "category": "ACCESSORIES"
+   }
+  ],
+  "Evolve Coil": [
+   {
+    "desc": "",
+    "size": "Each",
+    "price": "5",
+    "category": "ACCESSORIES"
+   }
+  ],
+  "Evolve Plus": [
+   {
+    "desc": "Dry Herb Vape",
+    "size": "Each",
+    "price": "30",
+    "category": "ACCESSORIES"
+   }
+  ],
+  "Evolve D Plus": [
+   {
+    "desc": "Dry Herb Vape",
+    "size": "Each",
+    "price": "40",
+    "category": "ACCESSORIES"
+   }
+  ],
+  "Evolve Atomizer": [
+   {
+    "desc": "Dual Coil",
+    "size": "Each",
+    "price": "10",
+    "category": "ACCESSORIES"
+   }
+  ],
+  "Orbit Vaporizer Coil": [
+   {
+    "desc": "",
+    "size": "Each",
+    "price": "10",
+    "category": "ACCESSORIES"
+   }
+  ],
+  "Evolve D": [
+   {
+    "desc": "Dry Herb Vape",
+    "size": "Each",
+    "price": "25",
     "category": "ACCESSORIES"
    }
   ]
@@ -2495,76 +3067,10 @@
    }
   ]
  },
- "Stratus": {
-  "E-Nail System": [
-   {
-    "desc": "",
-    "size": "Each",
-    "price": "125",
-    "category": "ACCESSORIES"
-   }
-  ]
- },
- "Sutra": {
-  "Auto Draw": [
-   {
-    "desc": "Battery",
-    "size": "Each",
-    "price": "20",
-    "category": "ACCESSORIES"
-   }
-  ]
- },
- "Pulsar": {
-  "Thermo Pipe Battery": [
-   {
-    "desc": "",
-    "size": "Each",
-    "price": "32",
-    "category": "ACCESSORIES"
-   }
-  ],
-  "Hall Pass Battery": [
-   {
-    "desc": "",
-    "size": "Each",
-    "price": "20",
-    "category": "ACCESSORIES"
-   }
-  ],
-  "Vape Bar": [
-   {
-    "desc": "2 Gram Capacity",
-    "size": "Each",
-    "price": "25",
-    "category": "ACCESSORIES"
-   }
-  ]
- },
- "Max": {
-  "Battery": [
-   {
-    "desc": "",
-    "size": "Each",
-    "price": "10",
-    "category": "ACCESSORIES"
-   }
-  ]
- },
- "Pax": {
-  "Pax Plus": [
-   {
-    "desc": "",
-    "size": "Each",
-    "price": "150",
-    "category": "ACCESSORIES"
-   }
-  ]
- },
  "Zenblaze": {
-  "Hot Knife": [
+  "Hot Knife with Flashlight": [
    {
-    "desc": "with Flashlight",
+    "desc": "",
     "size": "Each",
     "price": "20",
     "category": "ACCESSORIES"
@@ -2577,22 +3083,6 @@
     "desc": "79mm",
     "size": "Each",
     "price": "4",
-    "category": "ACCESSORIES"
-   }
-  ],
-  "Supernatural Cone": [
-   {
-    "desc": "12” Cone",
-    "size": "Each",
-    "price": "4",
-    "category": "ACCESSORIES"
-   }
-  ],
-  "Lighter": [
-   {
-    "desc": "",
-    "size": "Each",
-    "price": "3",
     "category": "ACCESSORIES"
    }
   ],
@@ -2612,30 +3102,78 @@
     "category": "ACCESSORIES"
    }
   ],
-  "Rolling Tray": [
+  "Supernatural Cone": [
    {
-    "desc": "Large",
+    "desc": "12\" Cone",
     "size": "Each",
-    "price": "14",
+    "price": "4",
     "category": "ACCESSORIES"
-   },
+   }
+  ],
+  "Rolling Tray": [
    {
     "desc": "Small",
     "size": "Each",
     "price": "8",
     "category": "ACCESSORIES"
+   },
+   {
+    "desc": "Large",
+    "size": "Each",
+    "price": "14",
+    "category": "ACCESSORIES"
+   }
+  ],
+  "Lighter": [
+   {
+    "desc": "",
+    "size": "Each",
+    "price": "3",
+    "category": "ACCESSORIES"
+   }
+  ]
+ },
+ "Afghan Hemp": {
+  "Hemp Roller": [
+   {
+    "desc": "110mm",
+    "size": "Each",
+    "price": "5",
+    "category": "ACCESSORIES"
+   }
+  ]
+ },
+ "710/420": {
+  "Glass Cleaner": [
+   {
+    "desc": "",
+    "size": "Each",
+    "price": "10",
+    "category": "ACCESSORIES"
+   }
+  ]
+ },
+ "420": {
+  "Original Cleaner": [
+   {
+    "desc": "",
+    "size": "Each",
+    "price": "10",
+    "category": "ACCESSORIES"
+   }
+  ]
+ },
+ "Toke Tray": {
+  "Rolling Tray": [
+   {
+    "desc": "Small",
+    "size": "Each",
+    "price": "6",
+    "category": "ACCESSORIES"
    }
   ]
  },
  "Maven": {
-  "Model K2 Torch": [
-   {
-    "desc": "",
-    "size": "Each",
-    "price": "35",
-    "category": "ACCESSORIES"
-   }
-  ],
   "ONE Torch": [
    {
     "desc": "",
@@ -2643,9 +3181,47 @@
     "price": "22",
     "category": "ACCESSORIES"
    }
+  ],
+  "Model K2 Torch": [
+   {
+    "desc": "",
+    "size": "Each",
+    "price": "35",
+    "category": "ACCESSORIES"
+   }
   ]
  },
- "BIC": {
+ "Temporai": {
+  "Torch": [
+   {
+    "desc": "",
+    "size": "Each",
+    "price": "34",
+    "category": "ACCESSORIES"
+   }
+  ]
+ },
+ "Scorch": {
+  "Torch": [
+   {
+    "desc": "",
+    "size": "Each",
+    "price": "24",
+    "category": "ACCESSORIES"
+   }
+  ]
+ },
+ "Toker Poker": {
+  "Lighter w/ Poker": [
+   {
+    "desc": "",
+    "size": "Each",
+    "price": "8",
+    "category": "ACCESSORIES"
+   }
+  ]
+ },
+ "Clipper": {
   "Lighter": [
    {
     "desc": "",
@@ -2655,7 +3231,7 @@
    }
   ]
  },
- "Clipper": {
+ "BIC": {
   "Lighter": [
    {
     "desc": "",
@@ -2682,7 +3258,7 @@
     "category": "ACCESSORIES"
    }
   ],
-  "Outdoor Tourch": [
+  "Outdoor Torch": [
    {
     "desc": "",
     "size": "Each",
@@ -2703,26 +3279,6 @@
     "desc": "Wind Resistant",
     "size": "Each",
     "price": "4",
-    "category": "ACCESSORIES"
-   }
-  ]
- },
- "Toker Poker": {
-  "Lighter w/ Poker": [
-   {
-    "desc": "",
-    "size": "Each",
-    "price": "8",
-    "category": "ACCESSORIES"
-   }
-  ]
- },
- "Afghan Hemp": {
-  "Hemp Roller": [
-   {
-    "desc": "110mm",
-    "size": "Each",
-    "price": "5",
     "category": "ACCESSORIES"
    }
   ]
@@ -2755,26 +3311,6 @@
    }
   ]
  },
- "Temporai": {
-  "Torch": [
-   {
-    "desc": "",
-    "size": "Each",
-    "price": "34",
-    "category": "ACCESSORIES"
-   }
-  ]
- },
- "Scorch": {
-  "Torch": [
-   {
-    "desc": "",
-    "size": "Each",
-    "price": "24",
-    "category": "ACCESSORIES"
-   }
-  ]
- },
  "BeGoat": {
   "Energy Drink": [
    {
@@ -2785,28 +3321,114 @@
    }
   ]
  },
+ "Snacks": {
+  "Assorted": [
+   {
+    "desc": "",
+    "size": "Each",
+    "price": "3",
+    "category": "BRANDS"
+   }
+  ]
+ },
  "Hemper": {
+  "Ramen Bowl": [
+   {
+    "desc": "",
+    "size": "Pipe",
+    "price": "30",
+    "category": "BRANDS"
+   },
+   {
+    "desc": "",
+    "size": "Bong",
+    "price": "60",
+    "category": "BRANDS"
+   },
+   {
+    "desc": "",
+    "size": "XL Bong",
+    "price": "150",
+    "category": "BRANDS"
+   }
+  ],
+  "Arcade": [
+   {
+    "desc": "",
+    "size": "Pipe",
+    "price": "30",
+    "category": "BRANDS"
+   },
+   {
+    "desc": "",
+    "size": "Bong",
+    "price": "60",
+    "category": "BRANDS"
+   },
+   {
+    "desc": "",
+    "size": "XL Bong",
+    "price": "150",
+    "category": "BRANDS"
+   }
+  ],
   "Alley Cat": [
    {
     "desc": "",
-    "size": "Pipe | Bong | XL Bong",
-    "price": "30|$60|$150",
+    "size": "Pipe",
+    "price": "30",
+    "category": "BRANDS"
+   },
+   {
+    "desc": "",
+    "size": "Bong",
+    "price": "60",
+    "category": "BRANDS"
+   },
+   {
+    "desc": "",
+    "size": "XL Bong",
+    "price": "150",
     "category": "BRANDS"
    }
   ],
   "Bloom": [
    {
     "desc": "",
-    "size": "Pipe | Bong | XL Bong",
-    "price": "30|$60|$150",
+    "size": "Pipe",
+    "price": "30",
+    "category": "BRANDS"
+   },
+   {
+    "desc": "",
+    "size": "Bong",
+    "price": "60",
+    "category": "BRANDS"
+   },
+   {
+    "desc": "",
+    "size": "XL Bong",
+    "price": "150",
     "category": "BRANDS"
    }
   ],
   "Happy Camper": [
    {
     "desc": "",
-    "size": "Pipe | Bong | XL Bong",
-    "price": "30|$60|$150",
+    "size": "Pipe",
+    "price": "30",
+    "category": "BRANDS"
+   },
+   {
+    "desc": "",
+    "size": "Bong",
+    "price": "60",
+    "category": "BRANDS"
+   },
+   {
+    "desc": "",
+    "size": "XL Bong",
+    "price": "150",
     "category": "BRANDS"
    },
    {
@@ -2816,19 +3438,11 @@
     "category": "BRANDS"
    }
   ],
-  "Arcade": [
+  "Bowlman Lighter": [
    {
-    "desc": "",
-    "size": "Pipe | Bong | XL Bong",
-    "price": "30|$60|$150",
-    "category": "BRANDS"
-   }
-  ],
-  "Ramen Bowl": [
-   {
-    "desc": "",
-    "size": "Pipe | Bong | XL Bong",
-    "price": "30|$60|$150",
+    "desc": "Hand Pipe",
+    "size": "Each",
+    "price": "30",
     "category": "BRANDS"
    }
   ],
@@ -2855,40 +3469,6 @@
     "price": "80",
     "category": "BRANDS"
    }
-  ],
-  "Bowlman Lighter": [
-   {
-    "desc": "Hand Pipe",
-    "size": "Each",
-    "price": "30",
-    "category": "BRANDS"
-   }
-  ]
- },
- "Smoke Fiends": {
-  "Cactus": [
-   {
-    "desc": "Air Filter",
-    "size": "Each",
-    "price": "20",
-    "category": "BRANDS"
-   }
-  ],
-  "Pineapple": [
-   {
-    "desc": "Air Filter",
-    "size": "Each",
-    "price": "20",
-    "category": "BRANDS"
-   }
-  ],
-  "Replacement": [
-   {
-    "desc": "Air Filter",
-    "size": "Each",
-    "price": "10",
-    "category": "BRANDS"
-   }
   ]
  },
  "Goody Glass": {
@@ -2909,6 +3489,50 @@
    }
   ]
  },
+ "Don Coolio": {
+  "Taco Case": [
+   {
+    "desc": "Stash Bag",
+    "size": "Each",
+    "price": "20",
+    "category": "BRANDS"
+   }
+  ],
+  "6'er": [
+   {
+    "desc": "Cooler / Bong Bag",
+    "size": "Each",
+    "price": "55",
+    "category": "BRANDS"
+   }
+  ]
+ },
+ "Smoke Fiends": {
+  "Cactus": [
+   {
+    "desc": "Air Filter",
+    "size": "Each",
+    "price": "20",
+    "category": "BRANDS"
+   }
+  ],
+  "Replacement": [
+   {
+    "desc": "Air Filter",
+    "size": "Each",
+    "price": "10",
+    "category": "BRANDS"
+   }
+  ],
+  "Pineapple": [
+   {
+    "desc": "Air Filter",
+    "size": "Each",
+    "price": "20",
+    "category": "BRANDS"
+   }
+  ]
+ },
  "Thump": {
   "Instant Coffee": [
    {
@@ -2921,24 +3545,6 @@
     "desc": "",
     "size": "7 Pack",
     "price": "14",
-    "category": "BRANDS"
-   }
-  ]
- },
- "Don Coolio": {
-  "6’er": [
-   {
-    "desc": "Cooler / Bong Bag",
-    "size": "Each",
-    "price": "55",
-    "category": "BRANDS"
-   }
-  ],
-  "Taco Case": [
-   {
-    "desc": "Stash Bag",
-    "size": "Each",
-    "price": "20",
     "category": "BRANDS"
    }
   ]
