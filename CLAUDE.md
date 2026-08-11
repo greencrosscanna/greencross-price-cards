@@ -17,5 +17,11 @@ notes addressed to **`to_app=pricecards`**, resolve done ones (`resolve_note`), 
 app (`add_note`). As an Inventory sub-app, its **bug reports** bucket to **Inventory** (`app=inventory`,
 `tab=pricecards`), not to a separate `pricecards` bug stream — don't conflate the notes key with the bug tab.
 
-Integration status (2026-08-09): notes channel just scaffolded. Not yet bound to `GXCore` for
-login/changelog/auto-record — those are optional follow-ups (see the inbox for queued tasks).
+Integration status (2026-08-11): notes channel live. **Auto-record on deploy** wired — `deploy.sh`
+POSTs `deploy_version` (app=pricecards) to GX Core; `APP_VERSION` (vNN) is single-sourced from the
+`?v=` cache-buster in `index.html`. Run `deploy.sh` after each ship (releases show in `version_history`).
+**gx-theme** linked (`gx-theme.css` — `--gx-*` tokens available; kept light, no restyle of the bespoke
+generator/doodle canvas). **Bug forwarding: deferred** — app not in standalone use yet + embedded in
+Inventory (its reporter covers it); when warranted, forward via `GXCore.gxIngestBug('inventory', reporter,
+{tab:'pricecards', …})` — needs the `GXCore` library script id + engine redeploy. Still not bound to
+`GXCore` for shared login (separate future follow-up).
