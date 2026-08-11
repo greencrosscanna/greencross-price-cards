@@ -1164,16 +1164,26 @@
   // ----- live inventory: store picker + fetch through the engine -----
   var cbStore = document.getElementById("cbStore");
   var cbSource = document.getElementById("cbSource");
-  var STORES_FALLBACK = ["Center","Portland Rd","Hillsboro","Bend","River Rd","Commercial"];
+  // Authoritative store list (GX Core canonical): engine key -> display name shown in the
+  // dropdown AND printed on the tag. Order matters; Bend is intentionally excluded.
+  // Mirrored here until GX Core exposes a shared stores endpoint to pull from.
+  var STORE_MAP = [
+    { key:"Center",      label:"Center" },
+    { key:"Commercial",  label:"Commercial" },
+    { key:"Hillsboro",   label:"Baseline" },
+    { key:"Portland Rd", label:"Portland" },
+    { key:"River Rd",    label:"River" }
+  ];
   // Remember this computer's store so e.g. the River machine always defaults to River.
   var STORE_KEY = "pricecards.store.v1";
   function savedStore(){ try{ return localStorage.getItem(STORE_KEY) || ""; }catch(e){ return ""; } }
   function rememberStore(s){ try{ localStorage.setItem(STORE_KEY, s||""); }catch(e){} }
   function selectedStore(){ return (cbStore && cbStore.value) ? cbStore.value : savedStore(); }
-  // Engine store key -> canonical GX Core display name printed on the tag. Unlisted stores print as-is.
-  // (GX Core is the source of truth for these; mirrored here until it exposes a shared stores endpoint.)
-  var STORE_TAG_LABELS = { "River Rd":"River", "Portland Rd":"Portland", "Hillsboro":"Baseline" };
-  function tagStore(s){ return (s && STORE_TAG_LABELS.hasOwnProperty(s)) ? STORE_TAG_LABELS[s] : (s||""); }
+  // Engine store key -> canonical display name (via STORE_MAP). Unlisted stores print as-is.
+  function tagStore(s){
+    for(var i=0;i<STORE_MAP.length;i++){ if(STORE_MAP[i].key===s) return STORE_MAP[i].label; }
+    return s||"";
+  }
   function stampStoreOnCard(){   // employee: keep the live card's store in sync with the picker
     if(document.body.classList.contains("mode-employee") && rows[0]){ rows[0].store = tagStore(selectedStore()); save(); renderEmpCard(); }
   }
@@ -1182,31 +1192,34 @@
   function fetchLive(store){
     var url = engineUrl();
     if(!url){ STYLE.liveReady=false; setSource("Template prices — set an engine URL in ⚙ Sheet settings for live inventory", "tpl"); return; }
-    STYLE.liveReady = false; setSource("Loading "+store+" inventory…", "load");
+    STYLE.liveReady = false; setSource("Loading "+tagStore(store)+" inventory…", "load");
     var sep = url.indexOf("?")<0 ? "?" : "&";
     fetch(url+sep+"action=liveCatalog&store="+encodeURIComponent(store), {cache:"no-store"})
       .then(function(r){ return r.json(); })
       .then(function(d){ if(!d || !d.ok) throw 0; STYLE.liveRaw = d.items || []; buildLiveIndex(STYLE.liveRaw); STYLE.liveReady = true;
         buildCatMapUI();
-        setSource("● Live · "+store+" · "+(d.count||0)+" in-stock products"+(OTD_ON?" · OTD":""), "live");
+        setSource("● Live · "+tagStore(store)+" · "+(d.count||0)+" in-stock products"+(OTD_ON?" · OTD":""), "live");
         if(cbSearch && cbSearch.value){ cbMatches = cbRun(cbSearch.value); cbRender(); } })
       .catch(function(){ STYLE.liveReady = false; setSource("Couldn't load live inventory — using template prices", "tpl"); });
   }
   function populateStores(){
     if(!cbStore) return;
-    var fill = function(list){
-      cbStore.innerHTML = list.map(function(s){ return '<option>'+esc(s)+'</option>'; }).join("");
-      var want = savedStore();                       // restore this computer's store if it's in the list
-      if(want && list.indexOf(want) >= 0) cbStore.value = want;
+    var fill = function(avail){                       // avail = engine store keys, or null = use whole map
+      var opts = STORE_MAP.filter(function(s){ return !avail || avail.indexOf(s.key) >= 0; });
+      if(!opts.length) opts = STORE_MAP.slice();
+      // option value = engine key (drives live lookup); option text = GX Core display name
+      cbStore.innerHTML = opts.map(function(s){ return '<option value="'+esc(s.key)+'">'+esc(s.label)+'</option>'; }).join("");
+      var want = savedStore();                        // restore this computer's store if it's in the list
+      if(want && opts.some(function(s){ return s.key===want; })) cbStore.value = want;
       stampStoreOnCard();
       fetchLive(cbStore.value);
     };
     var url = engineUrl();
-    if(!url){ fill(STORES_FALLBACK); return; }
+    if(!url){ fill(null); return; }
     var sep = url.indexOf("?")<0 ? "?" : "&";
     fetch(url+sep+"action=stores", {cache:"no-store"}).then(function(r){ return r.json(); })
-      .then(function(d){ fill(d && d.ok && d.stores && d.stores.length ? d.stores : STORES_FALLBACK); })
-      .catch(function(){ fill(STORES_FALLBACK); });
+      .then(function(d){ fill(d && d.ok && d.stores && d.stores.length ? d.stores : null); })
+      .catch(function(){ fill(null); });
   }
   if(cbStore) cbStore.addEventListener("change", function(){ rememberStore(cbStore.value); stampStoreOnCard(); fetchLive(cbStore.value); });
 
