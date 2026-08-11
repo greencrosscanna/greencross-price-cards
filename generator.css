@@ -284,6 +284,12 @@ body{
 .np-empty{padding:11px;color:#9a8c6e;font-size:12.5px;}
 
 /* ===== Card builder (search → conformed card) ===== */
+/* Per-store kiosk links (Settings) */
+.storelinks{display:flex;flex-direction:column;gap:7px;}
+.storelink-row{display:flex;align-items:center;gap:8px;}
+.storelink-name{flex:none;width:92px;font-weight:700;font-size:13px;color:var(--gc-ink,#2a2d31);}
+.storelink-url{flex:1 1 auto;font:inherit;font-size:12.5px;color:#5a626b;padding:6px 9px;border:1px solid var(--gc-line,#d7dbe0);border-radius:8px;background:#f7f8fa;}
+.storelink-copy{flex:none;}
 .card-builder{position:relative;margin:10px 0 14px;}
 .cb-bar{display:flex;gap:8px;align-items:stretch;}
 .cb-store{flex:none;font:inherit;font-size:14px;padding:0 30px 0 12px;border:1.5px solid var(--gc-line,#d7dbe0);border-radius:10px;background:#fff;color:var(--gc-ink,#2a2d31);cursor:pointer;max-width:140px;}

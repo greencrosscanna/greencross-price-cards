@@ -920,7 +920,32 @@
     return '<option value="">— none —</option>' + SECTIONS.map(function(h){
       return '<option value="'+esc(h)+'"'+(h===cur?' selected':'')+'>'+esc(h)+'</option>'; }).join("");
   }
-  function buildSettingsUI(){ buildSectionsUI(); buildRulesUI(); buildCatMapUI(); }
+  function buildSettingsUI(){ buildStoreLinksUI(); buildSectionsUI(); buildRulesUI(); buildCatMapUI(); }
+
+  // Per-store kiosk links for Tawny to copy/paste — one locked employee URL per store.
+  function buildStoreLinksUI(){
+    var wrap = document.getElementById("storeLinks");
+    if(!wrap) return;
+    var base = location.origin + location.pathname;
+    wrap.innerHTML = STORE_MAP.map(function(s){
+      var url = base + "?store=" + encodeURIComponent(String(s.label).toLowerCase());
+      return '<div class="storelink-row">'+
+        '<span class="storelink-name">'+esc(s.label)+'</span>'+
+        '<input class="storelink-url" readonly value="'+esc(url)+'" spellcheck="false"/>'+
+        '<button type="button" class="btn btn-soft storelink-copy" data-url="'+esc(url)+'">Copy</button>'+
+      '</div>';
+    }).join("");
+    wrap.querySelectorAll(".storelink-copy").forEach(function(b){
+      b.addEventListener("click", function(){
+        var done = function(){ var t=b.textContent; b.textContent="Copied!"; setTimeout(function(){ b.textContent=t; }, 1200); };
+        if(navigator.clipboard && navigator.clipboard.writeText){
+          navigator.clipboard.writeText(b.dataset.url).then(done).catch(function(){ selectCopy(b); });
+        } else { selectCopy(b); }
+        function selectCopy(btn){ var inp=btn.parentNode.querySelector(".storelink-url");
+          if(inp){ inp.focus(); inp.select(); try{ document.execCommand("copy"); done(); }catch(e){} } }
+      });
+    });
+  }
 
   // Editable list of label sections (core 10 + custom).
   function buildSectionsUI(){
@@ -1392,7 +1417,9 @@
   // ================= INIT =================
   // Role mode: ?role=employee = submit-only employee app. Default = full Tawny app.
   var ROLE = (new URLSearchParams(location.search).get("role") || "").toLowerCase();
-  if(ROLE === "employee"){
+  // A per-store link (?store=…) is by definition an employee kiosk, so it implies employee mode
+  // on its own — no &role=employee needed. (?role=employee still works for the unlocked full kiosk.)
+  if(ROLE === "employee" || URL_STORE){
     document.body.classList.add("mode-employee");
     var h2 = document.querySelector(".editor-head h2");
     if(h2) h2.textContent = "Super-Fancy Price Card Maker ✨";
