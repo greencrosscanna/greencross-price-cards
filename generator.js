@@ -1165,9 +1165,10 @@
   var cbStore = document.getElementById("cbStore");
   var cbSource = document.getElementById("cbSource");
   // Authoritative store list (GX Core canonical): engine key -> display name shown in the
-  // dropdown AND printed on the tag. Order matters; Bend is intentionally excluded.
+  // dropdown AND printed on the tag. Order matters.
   // Mirrored here until GX Core exposes a shared stores endpoint to pull from.
   var STORE_MAP = [
+    { key:"Bend",        label:"Century" },
     { key:"Center",      label:"Center" },
     { key:"Commercial",  label:"Commercial" },
     { key:"Hillsboro",   label:"Baseline" },
