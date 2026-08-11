@@ -1181,6 +1181,19 @@
   var STORE_KEY = "pricecards.store.v1";
   function savedStore(){ try{ return localStorage.getItem(STORE_KEY) || ""; }catch(e){ return ""; } }
   function rememberStore(s){ try{ localStorage.setItem(STORE_KEY, s||""); }catch(e){} }
+  // Per-store deep link: ?store=<engine key | display name | slug> opens the app pre-selected to that store,
+  // so each store gets its own shareable/bookmarkable URL (e.g. ?store=bend, ?store=century, ?store=portland-rd).
+  var URL_STORE = (function(){ try{ return (new URLSearchParams(location.search).get("store")||"").trim(); }catch(e){ return ""; } })();
+  function resolveStoreParam(v){                       // → engine key, or "" if no match
+    if(!v) return "";
+    var norm = function(x){ return String(x||"").toLowerCase().replace(/[^a-z0-9]/g,""); }, n = norm(v);
+    for(var i=0;i<STORE_MAP.length;i++){ if(norm(STORE_MAP[i].key)===n || norm(STORE_MAP[i].label)===n) return STORE_MAP[i].key; }
+    return "";
+  }
+  function syncStoreUrl(key){                           // keep the address bar as this store's shareable link
+    try{ var u = new URL(location.href); if(key) u.searchParams.set("store", key); else u.searchParams.delete("store");
+      history.replaceState(null, "", u.toString()); }catch(e){}
+  }
   function selectedStore(){ return (cbStore && cbStore.value) ? cbStore.value : savedStore(); }
   // Engine store key -> canonical display name (via STORE_MAP). Unlisted stores print as-is.
   function tagStore(s){
@@ -1229,7 +1242,10 @@
       // option value = engine key (drives live lookup); option text = GX Core display name
       cbStore.innerHTML = opts.map(function(s){ return '<option value="'+esc(s.key)+'">'+esc(s.label)+'</option>'; }).join("");
       var want = savedStore();                        // restore this computer's store if it's in the list
+      var urlWant = resolveStoreParam(URL_STORE);     // ...but a ?store= deep link wins (and sticks)
+      if(urlWant){ want = urlWant; rememberStore(urlWant); }
       if(want && opts.some(function(s){ return s.key===want; })) cbStore.value = want;
+      syncStoreUrl(cbStore.value);                    // reflect the resolved store in the address bar
       stampStoreOnCard();
       fetchLive(cbStore.value);
     };
@@ -1240,7 +1256,7 @@
       .then(function(d){ fill(d && d.ok && d.stores && d.stores.length ? d.stores : null); })
       .catch(function(){ fill(null); });
   }
-  if(cbStore) cbStore.addEventListener("change", function(){ rememberStore(cbStore.value); stampStoreOnCard(); fetchLive(cbStore.value); });
+  if(cbStore) cbStore.addEventListener("change", function(){ rememberStore(cbStore.value); syncStoreUrl(cbStore.value); stampStoreOnCard(); fetchLive(cbStore.value); });
 
   // ----- Settings modal -----
   var settingsModal = document.getElementById("settingsModal");
