@@ -1170,8 +1170,9 @@
   function savedStore(){ try{ return localStorage.getItem(STORE_KEY) || ""; }catch(e){ return ""; } }
   function rememberStore(s){ try{ localStorage.setItem(STORE_KEY, s||""); }catch(e){} }
   function selectedStore(){ return (cbStore && cbStore.value) ? cbStore.value : savedStore(); }
-  // Engine store key -> short label printed on the tag (River Rd -> River). Unlisted stores print as-is.
-  var STORE_TAG_LABELS = { "River Rd":"River", "Portland Rd":"Portland" };
+  // Engine store key -> canonical GX Core display name printed on the tag. Unlisted stores print as-is.
+  // (GX Core is the source of truth for these; mirrored here until it exposes a shared stores endpoint.)
+  var STORE_TAG_LABELS = { "River Rd":"River", "Portland Rd":"Portland", "Hillsboro":"Baseline" };
   function tagStore(s){ return (s && STORE_TAG_LABELS.hasOwnProperty(s)) ? STORE_TAG_LABELS[s] : (s||""); }
   function stampStoreOnCard(){   // employee: keep the live card's store in sync with the picker
     if(document.body.classList.contains("mode-employee") && rows[0]){ rows[0].store = tagStore(selectedStore()); save(); renderEmpCard(); }
