@@ -592,6 +592,8 @@
   // (private) Sheet through this engine and writes Done back. Override per-machine
   // in ⚙ Sheet settings if needed.
   var DEFAULT_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbwKRfDEz5Rugw-NfFZpEMDawoX-nBCB0rocMdt-KBfcyOf13ZO8D2INQGvHqIzKjVFb/exec";
+  // GX Core (shared brain) — public read endpoints (e.g. ?action=stores for the canonical store registry).
+  var GXCORE_URL = "https://script.google.com/macros/s/AKfycbx9mjeCBbDpxNYaqBv2hyZaO1hpbGG6PZM9AebFdwl0UwkdtRCGSWrH-8ohEtdF1K_6/exec";
   var markUrlInput = document.getElementById("markDoneUrl");
   var markToggle   = document.getElementById("markDoneToggle");
   function loadWebapp(){ try{ return localStorage.getItem(WEBAPP_KEY) || DEFAULT_WEBAPP_URL; }catch(e){ return DEFAULT_WEBAPP_URL; } }
@@ -1164,9 +1166,9 @@
   // ----- live inventory: store picker + fetch through the engine -----
   var cbStore = document.getElementById("cbStore");
   var cbSource = document.getElementById("cbSource");
-  // Authoritative store list (GX Core canonical): engine key -> display name shown in the
-  // dropdown AND printed on the tag. Order matters.
-  // Mirrored here until GX Core exposes a shared stores endpoint to pull from.
+  // Store list: engine key -> display name shown in the dropdown AND printed on the tag.
+  // Loaded live from GX Core (?action=stores) via loadStores(); this hardcode is only the
+  // offline fallback if GX Core is unreachable. A CC store-name edit flows here on next load.
   var STORE_MAP = [
     { key:"Bend",        label:"Century" },
     { key:"Center",      label:"Center" },
@@ -1202,6 +1204,22 @@
         setSource("● Live · "+tagStore(store)+" · "+(d.count||0)+" in-stock products"+(OTD_ON?" · OTD":""), "live");
         if(cbSearch && cbSearch.value){ cbMatches = cbRun(cbSearch.value); cbRender(); } })
       .catch(function(){ STYLE.liveReady = false; setSource("Couldn't load live inventory — using template prices", "tpl"); });
+  }
+  // Pull the canonical store registry from GX Core, then build the dropdown. Falls back to the
+  // hardcoded STORE_MAP if GX Core is unreachable, so the picker always works.
+  function loadStores(){
+    var sep = GXCORE_URL.indexOf("?")<0 ? "?" : "&";
+    fetch(GXCORE_URL+sep+"action=stores", {cache:"no-store"})
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        if(!d || !d.ok || !d.stores || !d.stores.length) throw 0;
+        STORE_MAP = d.stores
+          .slice().sort(function(a,b){ return (a.sort_order||0)-(b.sort_order||0); })
+          .filter(function(s){ return s.dutchie_name && s.display_name; })
+          .map(function(s){ return { key:s.dutchie_name, label:s.display_name }; });
+      })
+      .catch(function(){ /* keep the hardcoded fallback STORE_MAP */ })
+      .then(function(){ populateStores(); });
   }
   function populateStores(){
     if(!cbStore) return;
@@ -1375,7 +1393,7 @@
 
   loadStyle();
   fetchConfigGlobal();   // adopt the shared (global) settings
-  populateStores();
+  loadStores();          // pull canonical store names from GX Core, then build the picker
   refreshQueueCount();
   refreshNewProducts();
   setInterval(refreshQueueCount, 30000);   // keep the shared-queue count fresh
