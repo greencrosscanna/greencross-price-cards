@@ -29,3 +29,5 @@ Inventory (its reporter covers it); when warranted, forward via `GXCore.gxIngest
 `GXCore` for shared login (separate future follow-up). **Stores** are pulled live from GX Core
 `?action=stores` (`loadStores()` builds `STORE_MAP` from `dutchie_name→display_name` by `sort_order`;
 local hardcode is offline fallback only) — don't re-hardcode store names; CC edits flow on next load.
+
+**What to build next — `/whatsnext`:** run `/whatsnext` in this chat to pull this app's next prioritized work — the Command Center's dependency-ordered build sequence, filtered to this app — so you can build here without switching to the CC. It reads the app key above automatically.
