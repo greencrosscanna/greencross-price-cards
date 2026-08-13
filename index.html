@@ -10,7 +10,7 @@
 <link rel="stylesheet" href="fonts.css"/>
 <!-- Shared GX suite theme (tokens + .gx-* primitives; opt-in, no global overrides) -->
 <link rel="stylesheet" href="https://greencrosscanna.github.io/greencross-gx-theme/gx-theme.css"/>
-<link rel="stylesheet" href="generator.css?v=28"/>
+<link rel="stylesheet" href="generator.css?v=32"/>
 </head>
 <body>
 <div id="app">
@@ -61,6 +61,12 @@
           <button class="btn btn-soft" id="btnReviewNew">Review</button>
         </div>
         <div class="newprod-list" id="newprodList" hidden></div>
+        <div class="queue-strip printed-strip" id="printedStrip" hidden>
+          <span class="queue-ico">&#128424;&#65039;</span>
+          <span id="printedInfo"></span>
+          <button class="btn btn-soft" id="btnViewPrinted">View</button>
+        </div>
+        <div class="newprod-list printed-list" id="printedList" hidden></div>
       </div>
       <!-- Employee mode: edit the card directly (no table) -->
       <div class="card-editor" id="cardEditor" hidden>
@@ -195,6 +201,6 @@
   <div id="printRoot" aria-hidden="true"></div>
 </div>
 
-<script src="generator.js?v=28"></script>
+<script src="generator.js?v=32"></script>
 </body>
 </html>

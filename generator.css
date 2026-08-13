@@ -208,6 +208,8 @@ body{
 .mode-employee #queueStrip,
 .mode-employee .newprod-strip,
 .mode-employee .newprod-list,
+.mode-employee .printed-strip,
+.mode-employee .printed-list,
 .mode-employee .table-wrap,
 .mode-employee .editor-foot,
 .mode-employee #previewPane{ display:none !important; }
@@ -282,6 +284,29 @@ body{
 .np-dismiss{flex:none;border:0;background:transparent;color:#b0a487;font-size:17px;line-height:1;cursor:pointer;padding:0 3px;}
 .np-dismiss:hover{color:#c2261d;}
 .np-empty{padding:11px;color:#9a8c6e;font-size:12.5px;}
+
+/* Printed archive strip + list */
+.queue-strip[hidden], .newprod-strip[hidden]{display:none !important;}   /* [hidden] must beat display:flex */
+.printed-strip{background:#f3f4f6 !important;border-color:#e3e6eb !important;}
+.printed-strip #printedInfo{flex:1 1 auto;color:#4b5563;}
+.printed-strip .btn{padding:5px 11px;font-size:12px;}
+.printed-list{border-color:#e3e6eb !important;background:#fafbfc !important;}
+.printed-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 11px;border-bottom:1px solid #eef0f3;font-size:10.5px;text-transform:uppercase;letter-spacing:.3px;color:#8a9099;}
+.printed-head .btn{padding:3px 9px;font-size:11px;}
+.psheet{border-bottom:1px solid #eef0f3;}
+.psheet:last-child{border-bottom:0;}
+.psheet-head{display:flex;align-items:center;gap:8px;padding:8px 11px;cursor:pointer;font-size:12.5px;color:#2a2d31;}
+.psheet-head:hover{background:#f3f5f8;}
+.psheet-caret{flex:none;color:#9aa0a6;font-size:11px;transition:transform .12s;}
+.psheet.open .psheet-caret{transform:rotate(90deg);}
+.psheet-title{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.psheet-x{flex:none;border:0;background:transparent;color:#b0b6bd;font-size:17px;line-height:1;cursor:pointer;padding:0 4px;}
+.psheet-x:hover{color:#c2261d;}
+.psheet-cards{background:#fff;border-top:1px solid #f1f3f6;}
+.printed-row{display:flex;align-items:center;gap:10px;padding:6px 11px 6px 26px;border-bottom:1px solid #f4f6f8;font-size:12px;}
+.printed-row:last-child{border-bottom:0;}
+.pr-main{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600;color:#3a3d42;}
+.pr-meta{flex:none;color:#6b7280;font-size:11px;}
 
 /* ===== Card builder (search → conformed card) ===== */
 /* Per-store kiosk links (Settings) */

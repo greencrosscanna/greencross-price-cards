@@ -71,6 +71,7 @@ function doGet(e) {
       case 'liveCatalog':  return json(liveCatalog_(p));
       case 'getConfig':    return json(getConfig_());
       case 'getQueue':     return json(getQueue_());
+      case 'getPrinted':   return json(getPrinted_());
       case 'newProducts':  return json(newProducts_());
       case 'scanNow':      return json(scanNewProducts());
     }
@@ -94,6 +95,9 @@ function doPost(e) {
     if (body.action === 'submitCards') return json(submitCards_(body));
     if (body.action === 'queueRemove') return json(queueRemove_(body));
     if (body.action === 'clearQueue')  return json(clearQueue_());
+    if (body.action === 'markPrinted') return json(markPrinted_(body));
+    if (body.action === 'removePrintedSheet') return json(removePrintedSheet_(body));
+    if (body.action === 'clearPrinted')return json(clearPrinted_());
     if (body.action === 'ackProducts') return json(ackProducts_(body));
     if (body.action !== 'markDone') return json({ ok: false, error: 'unknown-action' });
 
@@ -212,6 +216,55 @@ function queueRemove_(body) {
   } finally { lock.releaseLock(); }
 }
 function clearQueue_() { writeQueue_([]); return { ok: true, count: 0 }; }
+
+// ---- Printed archive: each print job is a "sheet" of cards, moved out of the active queue ----
+var GC_PRINTED_PROP = 'GC_PRINTED_JSON';
+var PRINTED_CAP = 200;                     // retention cap: keep the newest 200 sheets
+function readPrinted_() {
+  var raw = PropertiesService.getScriptProperties().getProperty(GC_PRINTED_PROP);
+  return raw ? JSON.parse(raw) : [];
+}
+function writePrinted_(sheets) {
+  if (sheets.length > PRINTED_CAP) sheets = sheets.slice(sheets.length - PRINTED_CAP);  // keep newest
+  PropertiesService.getScriptProperties().setProperty(GC_PRINTED_PROP, JSON.stringify(sheets));
+}
+function getPrinted_() { return { ok: true, printed: readPrinted_() }; }
+// Move the given queue ids out of the queue and record them as ONE printed sheet (batch).
+function markPrinted_(body) {
+  var ids = (body && body.ids) || [];
+  if (!ids.length) return { ok: false, error: 'no-ids' };
+  var lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    var set = {}; ids.forEach(function (id) { set[id] = true; });
+    var q = readQueue_(), keep = [], cards = [];
+    q.forEach(function (e) { if (set[e.id]) cards.push(e.card || e); else keep.push(e); });
+    writeQueue_(keep);
+    if (cards.length) {
+      var sheets = readPrinted_();
+      sheets.push({ id: Utilities.getUuid(), printedAt: new Date().toISOString(),
+                    printedBy: String((body && body.by) || ''), cards: cards });
+      writePrinted_(sheets);
+    }
+    return { ok: true, moved: cards.length, count: keep.length, sheets: readPrinted_().length };
+  } finally { lock.releaseLock(); }
+}
+// Remove one printed sheet (by its id); Clear history is clearPrinted_.
+function removePrintedSheet_(body) {
+  var id = body && body.id;
+  if (!id) return { ok: false, error: 'no-id' };
+  var lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    var sheets = readPrinted_().filter(function (b) { return b.id !== id; });
+    writePrinted_(sheets);
+    return { ok: true, sheets: sheets.length };
+  } finally { lock.releaseLock(); }
+}
+function clearPrinted_() {
+  PropertiesService.getScriptProperties().deleteProperty(GC_PRINTED_PROP);
+  return { ok: true, sheets: 0 };
+}
 
 /* ----- EOD digest email — "N card requests waiting" ----- *
  * GUARDRAIL: emails ONLY sky@ unless GC_DIGEST_TO_TAWNY === '1' (off by

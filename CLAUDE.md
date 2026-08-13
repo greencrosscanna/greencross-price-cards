@@ -29,3 +29,7 @@ Inventory (its reporter covers it); when warranted, forward via `GXCore.gxIngest
 `GXCore` for shared login (separate future follow-up). **Stores** are pulled live from GX Core
 `?action=stores` (`loadStores()` builds `STORE_MAP` from `dutchie_name→display_name` by `sort_order`;
 local hardcode is offline fallback only) — don't re-hardcode store names; CC edits flow on next load.
+
+**What to build next — `/whatsnext`:** run `/whatsnext` in this chat to pull this app's next prioritized work — the Command Center's dependency-ordered build sequence, filtered to this app — so you can build here without switching to the CC. It reads the app key above automatically.
+
+**Close the loop when you're done:** When a dispatched or `/whatsnext`-started task's goals look met — the moment you'd naturally say "that should do it" — proactively tell Sky and **offer to ship/close it out; don't wait to be asked.** Shipping (spoke apps: open/return the PR → `dev_update … status=in_review`; on merge → `dev_ship`; `core-admin` deploys directly → `dev_ship`) auto-completes the Asana to-do and clears it from the Command Center. Find the job via `dev_queue` (filtered to this app) if you need its id.

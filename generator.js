@@ -344,18 +344,19 @@
     if(!printed || !printed.length) return;
     valEl.hidden=false; valEl.className="validation info";
     valEl.innerHTML = '<b>Sent '+printed.length+' card'+(printed.length>1?'s':'')+' to print.</b> '+
-      '<span class="val-q">Clear them from the queue?</span> '+
-      '<button class="btn btn-soft" id="btnClearPrinted">Clear printed</button> '+
-      '<button class="btn btn-ghost" id="btnKeepPrinted">Keep</button>';
+      '<span class="val-q">Move them to Printed?</span> '+
+      '<button class="btn btn-soft" id="btnClearPrinted">Move to Printed</button> '+
+      '<button class="btn btn-ghost" id="btnKeepPrinted">Keep in queue</button>';
     document.getElementById("btnClearPrinted").onclick=function(){
       var qids = printed.map(function(r){ return r.qid; }).filter(Boolean);
       rows = rows.filter(function(r){ return printed.indexOf(r)<0; });
       if(!rows.length) rows.push(blankRow());
       save(); renderTable(); refreshPreview(); valEl.hidden=true;
-      if(qids.length){                                  // also clear them from the shared queue
+      if(qids.length){                                  // move them out of the queue into the Printed archive
         var url = engineUrl();
         if(url) fetch(url, { method:"POST", headers:{ "Content-Type":"text/plain;charset=utf-8" },
-          body:JSON.stringify({ action:"queueRemove", ids:qids }) }).then(function(){ refreshQueueCount(); }).catch(function(){});
+          body:JSON.stringify({ action:"markPrinted", by:"", ids:qids }) })
+          .then(function(){ refreshQueueCount(); refreshPrinted(); }).catch(function(){});
       }
     };
     document.getElementById("btnKeepPrinted").onclick=function(){ valEl.hidden=true; };
@@ -1216,6 +1217,9 @@
     return "";
   }
   function syncStoreUrl(key){                           // keep the address bar as this store's shareable link
+    // Only a LOCKED kiosk link carries ?store=. The full app must never add it — otherwise a
+    // reload would read ?store= and flip the full app into the locked employee kiosk.
+    if(!document.body.classList.contains("store-locked")) return;
     try{ var u = new URL(location.href); if(key) u.searchParams.set("store", key); else u.searchParams.delete("store");
       history.replaceState(null, "", u.toString()); }catch(e){}
   }
@@ -1368,6 +1372,83 @@
   var btnSubmitQueue = document.getElementById("btnSubmitQueue"); if(btnSubmitQueue) btnSubmitQueue.onclick = submitToQueue;
   if(btnLoadQueue) btnLoadQueue.onclick = loadQueue;
 
+  // ----- Printed archive: cards that have been printed move here (out of the active queue) -----
+  var PRINTED = [];
+  var printedStrip = document.getElementById("printedStrip");
+  var printedInfo  = document.getElementById("printedInfo");
+  var printedList  = document.getElementById("printedList");
+  var btnViewPrinted = document.getElementById("btnViewPrinted");
+  function fmtWhen(iso){ if(!iso) return ""; try{ var d=new Date(iso);
+    return d.toLocaleDateString(undefined,{month:"short",day:"numeric"})+" "+d.toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit"}); }catch(e){ return ""; } }
+  function showPrintedStrip(){                          // reflect PRINTED.length in the strip + list
+    if(!printedStrip) return;
+    var n = PRINTED.length;
+    if(n){ printedInfo.innerHTML = "<b>"+n+"</b> printed sheet"+(n>1?"s":"")+" archived"; printedStrip.hidden = false;
+      if(printedList && !printedList.hidden) renderPrinted(); }
+    else { printedStrip.hidden = true; if(printedList) printedList.hidden = true; }
+  }
+  function refreshPrinted(){
+    var url = engineUrl(); if(!url){ if(printedStrip) printedStrip.hidden = true; return; }
+    var sep = url.indexOf("?")<0 ? "?" : "&";
+    fetch(url+sep+"action=getPrinted", {cache:"no-store"}).then(function(r){ return r.json(); })
+      .then(function(d){ if(!d || !d.ok) return; PRINTED = d.printed || []; showPrintedStrip(); }).catch(function(){});
+  }
+  function postEngine(payload, then){                // small POST helper for the printed actions
+    var url = engineUrl(); if(!url) return;
+    fetch(url, { method:"POST", headers:{ "Content-Type":"text/plain;charset=utf-8" }, body:JSON.stringify(payload) })
+      .then(function(){ if(then) then(); }).catch(function(){});
+  }
+  function renderPrinted(){
+    if(!printedList) return;
+    var sheets = PRINTED.slice().reverse();   // newest first
+    printedList.innerHTML =
+      '<div class="printed-head"><span>Printed history</span>'+
+        '<button type="button" class="btn btn-ghost" id="btnClearPrintedHist">Clear history</button></div>'+
+      sheets.map(function(b){ var cards=b.cards||[], n=cards.length;
+        return '<div class="psheet" data-id="'+esc(b.id)+'">'+
+          '<div class="psheet-head" role="button" tabindex="0">'+
+            '<span class="psheet-caret">▸</span>'+
+            '<span class="psheet-title">'+esc(fmtWhen(b.printedAt))+' · <b>'+n+'-card sheet</b>'+(b.printedBy?' · '+esc(b.printedBy):"")+'</span>'+
+            '<button type="button" class="psheet-x" title="Remove this sheet">&times;</button>'+
+          '</div>'+
+          '<div class="psheet-cards" hidden>'+
+            cards.map(function(c){
+              return '<div class="printed-row"><span class="pr-main">'+esc(c.brand||"")+(c.item?' · '+esc(c.item):"")+'</span>'+
+                '<span class="pr-meta">'+[c.size,c.store,(c.price?"$"+c.price:"")].filter(Boolean).map(esc).join(" · ")+'</span></div>';
+            }).join("")+
+          '</div>'+
+        '</div>';
+      }).join("");
+    printedList.querySelectorAll(".psheet-head").forEach(function(h){    // expand/collapse a sheet
+      h.addEventListener("click", function(ev){
+        if(ev.target.classList.contains("psheet-x")) return;
+        var sh=h.parentNode, cards=sh.querySelector(".psheet-cards");
+        cards.hidden=!cards.hidden; sh.classList.toggle("open", !cards.hidden);
+      });
+    });
+    printedList.querySelectorAll(".psheet-x").forEach(function(x){       // remove one sheet
+      x.addEventListener("click", function(ev){ ev.stopPropagation();
+        var id = x.closest(".psheet").getAttribute("data-id");
+        PRINTED = PRINTED.filter(function(b){ return b.id !== id; });    // update UI now, reconcile after
+        showPrintedStrip();
+        postEngine({ action:"removePrintedSheet", id:id }, refreshPrinted);
+      });
+    });
+    var cb = document.getElementById("btnClearPrintedHist");
+    if(cb) cb.onclick = function(){
+      if(!confirm("Clear ALL printed history? This can't be undone.")) return;
+      PRINTED = [];                                                     // update UI now, reconcile after
+      showPrintedStrip();
+      postEngine({ action:"clearPrinted" }, refreshPrinted);
+    };
+  }
+  if(btnViewPrinted) btnViewPrinted.onclick = function(){
+    if(!printedList) return;
+    printedList.hidden = !printedList.hidden;
+    btnViewPrinted.textContent = printedList.hidden ? "View" : "Hide";
+    if(!printedList.hidden) renderPrinted();
+  };
+
   // ----- New-in-Dutchie products that need a tag -----
   var NEW_PRODUCTS = [];
   var newprodStrip = document.getElementById("newprodStrip");
@@ -1444,8 +1525,10 @@
   loadStores();          // pull canonical store names from GX Core, then build the picker
   refreshQueueCount();
   refreshNewProducts();
+  refreshPrinted();
   setInterval(refreshQueueCount, 30000);   // keep the shared-queue count fresh
   setInterval(refreshNewProducts, 120000);
+  setInterval(refreshPrinted, 60000);
   renderTable();
   refreshPreview();
   // re-fit once fonts + layout settle (first paint can mis-measure)
