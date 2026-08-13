@@ -1217,6 +1217,9 @@
     return "";
   }
   function syncStoreUrl(key){                           // keep the address bar as this store's shareable link
+    // Only a LOCKED kiosk link carries ?store=. The full app must never add it — otherwise a
+    // reload would read ?store= and flip the full app into the locked employee kiosk.
+    if(!document.body.classList.contains("store-locked")) return;
     try{ var u = new URL(location.href); if(key) u.searchParams.set("store", key); else u.searchParams.delete("store");
       history.replaceState(null, "", u.toString()); }catch(e){}
   }
@@ -1377,15 +1380,18 @@
   var btnViewPrinted = document.getElementById("btnViewPrinted");
   function fmtWhen(iso){ if(!iso) return ""; try{ var d=new Date(iso);
     return d.toLocaleDateString(undefined,{month:"short",day:"numeric"})+" "+d.toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit"}); }catch(e){ return ""; } }
+  function showPrintedStrip(){                          // reflect PRINTED.length in the strip + list
+    if(!printedStrip) return;
+    var n = PRINTED.length;
+    if(n){ printedInfo.innerHTML = "<b>"+n+"</b> printed sheet"+(n>1?"s":"")+" archived"; printedStrip.hidden = false;
+      if(printedList && !printedList.hidden) renderPrinted(); }
+    else { printedStrip.hidden = true; if(printedList) printedList.hidden = true; }
+  }
   function refreshPrinted(){
     var url = engineUrl(); if(!url){ if(printedStrip) printedStrip.hidden = true; return; }
     var sep = url.indexOf("?")<0 ? "?" : "&";
     fetch(url+sep+"action=getPrinted", {cache:"no-store"}).then(function(r){ return r.json(); })
-      .then(function(d){ if(!d || !d.ok) return; PRINTED = d.printed || [];
-        var n = PRINTED.length;
-        if(n && printedStrip){ printedInfo.innerHTML = "<b>"+n+"</b> printed sheet"+(n>1?"s":"")+" archived"; printedStrip.hidden = false; if(printedList && !printedList.hidden) renderPrinted(); }
-        else if(printedStrip){ printedStrip.hidden = true; if(printedList) printedList.hidden = true; }
-      }).catch(function(){});
+      .then(function(d){ if(!d || !d.ok) return; PRINTED = d.printed || []; showPrintedStrip(); }).catch(function(){});
   }
   function postEngine(payload, then){                // small POST helper for the printed actions
     var url = engineUrl(); if(!url) return;
@@ -1422,12 +1428,17 @@
     });
     printedList.querySelectorAll(".psheet-x").forEach(function(x){       // remove one sheet
       x.addEventListener("click", function(ev){ ev.stopPropagation();
-        postEngine({ action:"removePrintedSheet", id:x.closest(".psheet").getAttribute("data-id") }, refreshPrinted);
+        var id = x.closest(".psheet").getAttribute("data-id");
+        PRINTED = PRINTED.filter(function(b){ return b.id !== id; });    // update UI now, reconcile after
+        showPrintedStrip();
+        postEngine({ action:"removePrintedSheet", id:id }, refreshPrinted);
       });
     });
     var cb = document.getElementById("btnClearPrintedHist");
     if(cb) cb.onclick = function(){
       if(!confirm("Clear ALL printed history? This can't be undone.")) return;
+      PRINTED = [];                                                     // update UI now, reconcile after
+      showPrintedStrip();
       postEngine({ action:"clearPrinted" }, refreshPrinted);
     };
   }

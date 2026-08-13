@@ -286,6 +286,7 @@ body{
 .np-empty{padding:11px;color:#9a8c6e;font-size:12.5px;}
 
 /* Printed archive strip + list */
+.queue-strip[hidden], .newprod-strip[hidden]{display:none !important;}   /* [hidden] must beat display:flex */
 .printed-strip{background:#f3f4f6 !important;border-color:#e3e6eb !important;}
 .printed-strip #printedInfo{flex:1 1 auto;color:#4b5563;}
 .printed-strip .btn{padding:5px 11px;font-size:12px;}
