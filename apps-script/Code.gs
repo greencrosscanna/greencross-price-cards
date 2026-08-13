@@ -96,6 +96,7 @@ function doPost(e) {
     if (body.action === 'queueRemove') return json(queueRemove_(body));
     if (body.action === 'clearQueue')  return json(clearQueue_());
     if (body.action === 'markPrinted') return json(markPrinted_(body));
+    if (body.action === 'removePrintedSheet') return json(removePrintedSheet_(body));
     if (body.action === 'clearPrinted')return json(clearPrinted_());
     if (body.action === 'ackProducts') return json(ackProducts_(body));
     if (body.action !== 'markDone') return json({ ok: false, error: 'unknown-action' });
@@ -216,19 +217,19 @@ function queueRemove_(body) {
 }
 function clearQueue_() { writeQueue_([]); return { ok: true, count: 0 }; }
 
-// ---- Printed archive: printed cards move here (out of the active queue) so there's a record ----
+// ---- Printed archive: each print job is a "sheet" of cards, moved out of the active queue ----
 var GC_PRINTED_PROP = 'GC_PRINTED_JSON';
-var PRINTED_CAP = 300;                     // retention cap on this append-only history
+var PRINTED_CAP = 200;                     // retention cap: keep the newest 200 sheets
 function readPrinted_() {
   var raw = PropertiesService.getScriptProperties().getProperty(GC_PRINTED_PROP);
   return raw ? JSON.parse(raw) : [];
 }
-function writePrinted_(list) {
-  if (list.length > PRINTED_CAP) list = list.slice(list.length - PRINTED_CAP);  // keep newest
-  PropertiesService.getScriptProperties().setProperty(GC_PRINTED_PROP, JSON.stringify(list));
+function writePrinted_(sheets) {
+  if (sheets.length > PRINTED_CAP) sheets = sheets.slice(sheets.length - PRINTED_CAP);  // keep newest
+  PropertiesService.getScriptProperties().setProperty(GC_PRINTED_PROP, JSON.stringify(sheets));
 }
 function getPrinted_() { return { ok: true, printed: readPrinted_() }; }
-// Move the given queue ids into the printed archive (stamped printedAt). Missing ids are ignored.
+// Move the given queue ids out of the queue and record them as ONE printed sheet (batch).
 function markPrinted_(body) {
   var ids = (body && body.ids) || [];
   if (!ids.length) return { ok: false, error: 'no-ids' };
@@ -236,18 +237,33 @@ function markPrinted_(body) {
   lock.waitLock(10000);
   try {
     var set = {}; ids.forEach(function (id) { set[id] = true; });
-    var q = readQueue_(), keep = [], moved = [], now = new Date().toISOString(), by = String((body && body.by) || '');
-    q.forEach(function (e) {
-      if (set[e.id]) { e.printedAt = now; if (by) e.printedBy = by; moved.push(e); } else keep.push(e);
-    });
+    var q = readQueue_(), keep = [], cards = [];
+    q.forEach(function (e) { if (set[e.id]) cards.push(e.card || e); else keep.push(e); });
     writeQueue_(keep);
-    if (moved.length) writePrinted_(readPrinted_().concat(moved));
-    return { ok: true, moved: moved.length, count: keep.length, printedCount: readPrinted_().length };
+    if (cards.length) {
+      var sheets = readPrinted_();
+      sheets.push({ id: Utilities.getUuid(), printedAt: new Date().toISOString(),
+                    printedBy: String((body && body.by) || ''), cards: cards });
+      writePrinted_(sheets);
+    }
+    return { ok: true, moved: cards.length, count: keep.length, sheets: readPrinted_().length };
+  } finally { lock.releaseLock(); }
+}
+// Remove one printed sheet (by its id); Clear history is clearPrinted_.
+function removePrintedSheet_(body) {
+  var id = body && body.id;
+  if (!id) return { ok: false, error: 'no-id' };
+  var lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    var sheets = readPrinted_().filter(function (b) { return b.id !== id; });
+    writePrinted_(sheets);
+    return { ok: true, sheets: sheets.length };
   } finally { lock.releaseLock(); }
 }
 function clearPrinted_() {
   PropertiesService.getScriptProperties().deleteProperty(GC_PRINTED_PROP);
-  return { ok: true, printedCount: 0 };
+  return { ok: true, sheets: 0 };
 }
 
 /* ----- EOD digest email — "N card requests waiting" ----- *

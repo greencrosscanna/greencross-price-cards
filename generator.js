@@ -1383,29 +1383,52 @@
     fetch(url+sep+"action=getPrinted", {cache:"no-store"}).then(function(r){ return r.json(); })
       .then(function(d){ if(!d || !d.ok) return; PRINTED = d.printed || [];
         var n = PRINTED.length;
-        if(n && printedStrip){ printedInfo.innerHTML = "<b>"+n+"</b> printed card"+(n>1?"s":"")+" archived"; printedStrip.hidden = false; if(printedList && !printedList.hidden) renderPrinted(); }
+        if(n && printedStrip){ printedInfo.innerHTML = "<b>"+n+"</b> printed sheet"+(n>1?"s":"")+" archived"; printedStrip.hidden = false; if(printedList && !printedList.hidden) renderPrinted(); }
         else if(printedStrip){ printedStrip.hidden = true; if(printedList) printedList.hidden = true; }
       }).catch(function(){});
   }
+  function postEngine(payload, then){                // small POST helper for the printed actions
+    var url = engineUrl(); if(!url) return;
+    fetch(url, { method:"POST", headers:{ "Content-Type":"text/plain;charset=utf-8" }, body:JSON.stringify(payload) })
+      .then(function(){ if(then) then(); }).catch(function(){});
+  }
   function renderPrinted(){
     if(!printedList) return;
-    var items = PRINTED.slice().reverse();   // newest first
+    var sheets = PRINTED.slice().reverse();   // newest first
     printedList.innerHTML =
       '<div class="printed-head"><span>Printed history</span>'+
         '<button type="button" class="btn btn-ghost" id="btnClearPrintedHist">Clear history</button></div>'+
-      items.map(function(e){ var c=e.card||{};
-        return '<div class="printed-row">'+
-          '<span class="pr-main">'+esc(c.brand||"")+(c.item?' · '+esc(c.item):"")+'</span>'+
-          '<span class="pr-meta">'+[c.size,c.store,(c.price?"$"+c.price:"")].filter(Boolean).map(esc).join(" · ")+'</span>'+
-          '<span class="pr-when">'+esc(fmtWhen(e.printedAt))+'</span>'+
+      sheets.map(function(b){ var cards=b.cards||[], n=cards.length;
+        return '<div class="psheet" data-id="'+esc(b.id)+'">'+
+          '<div class="psheet-head" role="button" tabindex="0">'+
+            '<span class="psheet-caret">▸</span>'+
+            '<span class="psheet-title">'+esc(fmtWhen(b.printedAt))+' · <b>'+n+'-card sheet</b>'+(b.printedBy?' · '+esc(b.printedBy):"")+'</span>'+
+            '<button type="button" class="psheet-x" title="Remove this sheet">&times;</button>'+
+          '</div>'+
+          '<div class="psheet-cards" hidden>'+
+            cards.map(function(c){
+              return '<div class="printed-row"><span class="pr-main">'+esc(c.brand||"")+(c.item?' · '+esc(c.item):"")+'</span>'+
+                '<span class="pr-meta">'+[c.size,c.store,(c.price?"$"+c.price:"")].filter(Boolean).map(esc).join(" · ")+'</span></div>';
+            }).join("")+
+          '</div>'+
         '</div>';
       }).join("");
+    printedList.querySelectorAll(".psheet-head").forEach(function(h){    // expand/collapse a sheet
+      h.addEventListener("click", function(ev){
+        if(ev.target.classList.contains("psheet-x")) return;
+        var sh=h.parentNode, cards=sh.querySelector(".psheet-cards");
+        cards.hidden=!cards.hidden; sh.classList.toggle("open", !cards.hidden);
+      });
+    });
+    printedList.querySelectorAll(".psheet-x").forEach(function(x){       // remove one sheet
+      x.addEventListener("click", function(ev){ ev.stopPropagation();
+        postEngine({ action:"removePrintedSheet", id:x.closest(".psheet").getAttribute("data-id") }, refreshPrinted);
+      });
+    });
     var cb = document.getElementById("btnClearPrintedHist");
     if(cb) cb.onclick = function(){
-      if(!confirm("Clear the printed-cards history? This can't be undone.")) return;
-      var url = engineUrl(); if(!url) return;
-      fetch(url, { method:"POST", headers:{ "Content-Type":"text/plain;charset=utf-8" },
-        body:JSON.stringify({ action:"clearPrinted" }) }).then(function(){ refreshPrinted(); }).catch(function(){});
+      if(!confirm("Clear ALL printed history? This can't be undone.")) return;
+      postEngine({ action:"clearPrinted" }, refreshPrinted);
     };
   }
   if(btnViewPrinted) btnViewPrinted.onclick = function(){
