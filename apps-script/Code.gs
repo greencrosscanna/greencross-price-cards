@@ -71,6 +71,7 @@ function doGet(e) {
       case 'liveCatalog':  return json(liveCatalog_(p));
       case 'getConfig':    return json(getConfig_());
       case 'getQueue':     return json(getQueue_());
+      case 'getPrinted':   return json(getPrinted_());
       case 'newProducts':  return json(newProducts_());
       case 'scanNow':      return json(scanNewProducts());
     }
@@ -94,6 +95,8 @@ function doPost(e) {
     if (body.action === 'submitCards') return json(submitCards_(body));
     if (body.action === 'queueRemove') return json(queueRemove_(body));
     if (body.action === 'clearQueue')  return json(clearQueue_());
+    if (body.action === 'markPrinted') return json(markPrinted_(body));
+    if (body.action === 'clearPrinted')return json(clearPrinted_());
     if (body.action === 'ackProducts') return json(ackProducts_(body));
     if (body.action !== 'markDone') return json({ ok: false, error: 'unknown-action' });
 
@@ -212,6 +215,40 @@ function queueRemove_(body) {
   } finally { lock.releaseLock(); }
 }
 function clearQueue_() { writeQueue_([]); return { ok: true, count: 0 }; }
+
+// ---- Printed archive: printed cards move here (out of the active queue) so there's a record ----
+var GC_PRINTED_PROP = 'GC_PRINTED_JSON';
+var PRINTED_CAP = 300;                     // retention cap on this append-only history
+function readPrinted_() {
+  var raw = PropertiesService.getScriptProperties().getProperty(GC_PRINTED_PROP);
+  return raw ? JSON.parse(raw) : [];
+}
+function writePrinted_(list) {
+  if (list.length > PRINTED_CAP) list = list.slice(list.length - PRINTED_CAP);  // keep newest
+  PropertiesService.getScriptProperties().setProperty(GC_PRINTED_PROP, JSON.stringify(list));
+}
+function getPrinted_() { return { ok: true, printed: readPrinted_() }; }
+// Move the given queue ids into the printed archive (stamped printedAt). Missing ids are ignored.
+function markPrinted_(body) {
+  var ids = (body && body.ids) || [];
+  if (!ids.length) return { ok: false, error: 'no-ids' };
+  var lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    var set = {}; ids.forEach(function (id) { set[id] = true; });
+    var q = readQueue_(), keep = [], moved = [], now = new Date().toISOString(), by = String((body && body.by) || '');
+    q.forEach(function (e) {
+      if (set[e.id]) { e.printedAt = now; if (by) e.printedBy = by; moved.push(e); } else keep.push(e);
+    });
+    writeQueue_(keep);
+    if (moved.length) writePrinted_(readPrinted_().concat(moved));
+    return { ok: true, moved: moved.length, count: keep.length, printedCount: readPrinted_().length };
+  } finally { lock.releaseLock(); }
+}
+function clearPrinted_() {
+  PropertiesService.getScriptProperties().deleteProperty(GC_PRINTED_PROP);
+  return { ok: true, printedCount: 0 };
+}
 
 /* ----- EOD digest email — "N card requests waiting" ----- *
  * GUARDRAIL: emails ONLY sky@ unless GC_DIGEST_TO_TAWNY === '1' (off by
