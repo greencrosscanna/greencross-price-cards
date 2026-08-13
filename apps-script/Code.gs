@@ -271,17 +271,14 @@ function clearPrinted_() {
  * default). Do not enable Tawny until approved. Skips sending if nothing
  * new since the last digest.
  * ------------------------------------------------------------------- */
-var DIGEST_OWNER = 'sky@greencrosscanna.com';
+var DIGEST_OWNER = 'sky@greencrosscanna.com';   // sendDigestTest always targets this (sky) only
 var DIGEST_LAST_PROP = 'GC_DIGEST_LAST';
-var DIGEST_TAWNY_PROP = 'GC_DIGEST_TO_TAWNY';
 
-function digestRecipients_() {
-  var to = [DIGEST_OWNER];
-  if (PropertiesService.getScriptProperties().getProperty(DIGEST_TAWNY_PROP) === '1') {
-    to.push('tawny@greencrosscanna.com');
-  }
-  return to;
-}
+// EOD digest recipients. Sky approved adding Tawny on 2026-08-13.
+// TODO (Sky's request): Sky plans to DROP OFF this list later — remove 'sky@…' then,
+// leaving Tawny as the sole recipient.
+var DIGEST_RECIPIENTS = ['sky@greencrosscanna.com', 'tawny@greencrosscanna.com'];
+function digestRecipients_() { return DIGEST_RECIPIENTS.slice(); }
 function esc_(s) {
   return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
     return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c];
