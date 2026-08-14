@@ -757,16 +757,14 @@
   function lsSet(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
   // Load from local cache, migrating any older per-key storage.
   var _c = lsGet(CONFIG_KEY, null) || {
-    otd: localStorage.getItem("pricecards.otd.v1")==="1",
     sections: lsGet("pricecards.sections.v1", null),
     catMap: lsGet("pricecards.catMap.v1", null),
     rules: lsGet("pricecards.catRules.v1", null)
   };
-  var OTD_ON      = !!_c.otd;
   var SECTIONS    = (Array.isArray(_c.sections) && _c.sections.length) ? _c.sections : DEFAULT_SECTIONS.slice();
   var USER_CATMAP = (_c.catMap && typeof _c.catMap === "object") ? _c.catMap : {};
   var CAT_RULES   = Array.isArray(_c.rules) ? _c.rules : DEFAULT_CATRULES.slice();
-  function currentConfig(){ return { otd:OTD_ON, sections:SECTIONS, catMap:USER_CATMAP, rules:CAT_RULES }; }
+  function currentConfig(){ return { sections:SECTIONS, catMap:USER_CATMAP, rules:CAT_RULES }; }
   var _cfgTimer = null;
   function pushConfig(){                 // persist locally + to the shared engine store (debounced)
     lsSet(CONFIG_KEY, currentConfig());
@@ -779,13 +777,11 @@
     }, 500);
   }
   // all the Settings save hooks funnel to one global push
-  function saveOtd(){ pushConfig(); }
   function saveSections(){ pushConfig(); }
   function saveRules(){ pushConfig(); }
   function saveCatMap(){ pushConfig(); }
   function applyConfig(c){
     if(!c) return false;
-    if(typeof c.otd === "boolean") OTD_ON = c.otd;
     if(Array.isArray(c.sections) && c.sections.length) SECTIONS = c.sections;
     if(c.catMap && typeof c.catMap === "object") USER_CATMAP = c.catMap;
     if(Array.isArray(c.rules)) CAT_RULES = c.rules;
@@ -799,7 +795,6 @@
       .then(function(d){
         if(d && d.ok && d.config && applyConfig(d.config)){
           lsSet(CONFIG_KEY, currentConfig());
-          var ot = document.getElementById("otdToggle"); if(ot) ot.checked = OTD_ON;
           buildSettingsUI(); rebuildLive();
         } else if(d && d.ok && !d.config){
           pushConfig();   // no shared config yet — seed it from this device's settings
@@ -882,8 +877,9 @@
     var ratio = (hay.match(/\b\d+:\d+(?::\d+)*\b/)||[""])[0];
     var item  = main.replace(/\b\d+\s*(pk|pack|pc|pcs|ct|pieces?)\b/ig,"").replace(/\b\d*\.?\d+\s*(g|oz|ml)\b/ig,"").replace(/\s{2,}/g," ").trim();
     var bits=[]; if(it.strainType) bits.push(it.strainType); if(ratio && item.indexOf(ratio)<0) bits.push(ratio); if(pot) bits.push(pot);
-    var price = it.price, n = parseFloat(price);
-    if(OTD_ON && !isNaN(n)) price = Math.round(n * 1.2);          // OTD: +20%, round to nearest $
+    var n = parseFloat(it.price), rec = parseFloat(it.recUnitPrice);
+    // Shelf card = the real recreational OTD (tax-incl) price from Dutchie; estimate (+20%, rounded) only if it's missing.
+    var price = (!isNaN(rec) && rec > 0) ? rec : (!isNaN(n) ? Math.round(n * 1.2) : it.price);
     var house = houseCategoryFor(it);                             // keyword rules → category map
     var out = { brand:brand, item:item||main, desc:bits.join(" | "), size:size, price:String(price||""), category:house||(it.category||""), store:it.store||"" };
     applyLexicon(out, ratio);                                     // house-style desc/size for known products
@@ -1243,7 +1239,7 @@
       .then(function(r){ return r.json(); })
       .then(function(d){ if(!d || !d.ok) throw 0; STYLE.liveRaw = d.items || []; buildLiveIndex(STYLE.liveRaw); STYLE.liveReady = true;
         buildCatMapUI();
-        setSource("● Live · "+tagStore(store)+" · "+(d.count||0)+" in-stock products"+(OTD_ON?" · OTD":""), "live");
+        setSource("● Live · "+tagStore(store)+" · "+(d.count||0)+" in-stock products · OTD", "live");
         if(cbSearch && cbSearch.value){ cbMatches = cbRun(cbSearch.value); cbRender(); } })
       .catch(function(){ STYLE.liveReady = false; setSource("Couldn't load live inventory — using template prices", "tpl"); });
   }
@@ -1317,14 +1313,6 @@
   // add a keyword rule
   var addRule = document.getElementById("addRule");
   if(addRule) addRule.onclick = function(){ CAT_RULES.push({ kw:"", section:"" }); saveRules(); buildRulesUI(); };
-  var otdToggle = document.getElementById("otdToggle");
-  if(otdToggle){
-    otdToggle.checked = OTD_ON;
-    otdToggle.addEventListener("change", function(){
-      OTD_ON = otdToggle.checked; saveOtd(OTD_ON); rebuildLive();
-      if(STYLE.liveReady && cbStore) setSource("● Live · "+cbStore.value+" · "+((STYLE.liveRaw||[]).length)+" in-stock products"+(OTD_ON?" · OTD":""), "live");
-    });
-  }
 
   // ----- Shared print queue: submit · load · clear -----
   var queueStrip = document.getElementById("queueStrip");

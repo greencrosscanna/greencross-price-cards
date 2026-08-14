@@ -494,6 +494,7 @@ function liveCatalog_(p) {
           unitWeightUnit: it.unitWeightUnit || '',
           size:       String(it.size || '').trim(),
           price:      String(price),
+          recUnitPrice: Number(it.recUnitPrice) || 0,   // exact recreational OTD (tax-incl) shelf price
           sku:        it.sku || '',
           qty:        Number(it.quantityAvailable || 0)
         };
