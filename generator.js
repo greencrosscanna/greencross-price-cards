@@ -349,15 +349,13 @@
       '<button class="btn btn-ghost" id="btnKeepPrinted">Keep in queue</button>';
     document.getElementById("btnClearPrinted").onclick=function(){
       var qids = printed.map(function(r){ return r.qid; }).filter(Boolean);
+      var cards = printed.map(function(r){ return { brand:r.name, item:r.product, desc:r.description, desc2:r.description2, size:r.size, price:r.price, store:r.store, status:r.status }; });
       rows = rows.filter(function(r){ return printed.indexOf(r)<0; });
       if(!rows.length) rows.push(blankRow());
       save(); renderTable(); refreshPreview(); valEl.hidden=true;
-      if(qids.length){                                  // move them out of the queue into the Printed archive
-        var url = engineUrl();
-        if(url) fetch(url, { method:"POST", headers:{ "Content-Type":"text/plain;charset=utf-8" },
-          body:JSON.stringify({ action:"markPrinted", by:"", ids:qids }) })
-          .then(function(){ refreshQueueCount(); refreshPrinted(); }).catch(function(){});
-      }
+      // Archive this sheet. Imported cards were already claimed out of the queue, so we send the
+      // card payloads directly; qids clean up anything not yet claimed (older client / manual reload).
+      postEngine({ action:"markPrinted", by:"", ids:qids, cards:cards }, function(){ refreshQueueCount(); refreshPrinted(); });
     };
     document.getElementById("btnKeepPrinted").onclick=function(){ valEl.hidden=true; };
   }
@@ -1323,12 +1321,21 @@
     if(queueStrip) queueStrip.hidden = false;
     if(btnLoadQueue) btnLoadQueue.style.display = hasItems ? "" : "none";
   }
+  // Push the live queue count to the host dashboard (Inventory embeds this app in an
+  // iframe and shows a count badge on its Price Cards tab). Same-origin org Pages;
+  // no-op when opened standalone. Lets the badge update instantly instead of on its poll.
+  var HOST_ORIGIN = "https://greencrosscanna.github.io";
+  function postQueueCountToHost(n){
+    try{ if(window.parent && window.parent !== window)
+      window.parent.postMessage({ type:"pricecards:queue", count:n }, HOST_ORIGIN); }catch(e){}
+  }
   function refreshQueueCount(){
     var url = engineUrl(); if(!url){ if(queueStrip) queueStrip.hidden = true; return; }
     var sep = url.indexOf("?")<0 ? "?" : "&";
     fetch(url+sep+"action=getQueue", {cache:"no-store"}).then(function(r){ return r.json(); })
       .then(function(d){ if(!d || !d.ok) return; var n=(d.queue||[]).length;
         showQueue(n ? ("<b>"+n+"</b> card"+(n>1?"s":"")+" waiting in the shared queue") : "Shared queue is empty", n>0);
+        postQueueCountToHost(n);
       }).catch(function(){});
   }
   function submitToQueue(){
@@ -1343,6 +1350,7 @@
         if(d && d.ok){
           rows = rows.filter(function(r){ return cards.indexOf(r)<0; }); if(!rows.length) rows.push(blankRow());
           save(); renderTable(); refreshPreview();
+          postQueueCountToHost(d.count);
           emp ? celebrate() : showQueue("<b>Submitted "+d.added+"</b> · "+d.count+" now waiting", d.count>0);
         } else { emp ? showToast("Hmm, that didn't send — try again") : flashError("Submit failed."); }
       }).catch(function(){ emp ? showToast("Couldn't send — check your connection") : flashError("Submit failed — check your connection."); });
@@ -1353,11 +1361,16 @@
     fetch(url+sep+"action=getQueue", {cache:"no-store"}).then(function(r){ return r.json(); })
       .then(function(d){ if(!d || !d.ok) return;
         var have={}; rows.forEach(function(r){ if(r.qid) have[r.qid]=true; });
-        var added=0;
+        var added=0, claimed=[];
         (d.queue||[]).forEach(function(e){ if(have[e.id]) return; var c=e.card||{};
-          rows.push(blankRow({ print:true, name:c.brand||"", product:c.item||"", description:c.desc||"", description2:c.desc2||"", size:c.size||"", price:c.price||"", store:c.store||"", status:c.status||"", qid:e.id })); added++; });
+          rows.push(blankRow({ print:true, name:c.brand||"", product:c.item||"", description:c.desc||"", description2:c.desc2||"", size:c.size||"", price:c.price||"", store:c.store||"", status:c.status||"", qid:e.id })); added++; claimed.push(e.id); });
         save(); renderTable(); refreshPreview();
-        showQueue(added ? ("Loaded <b>"+added+"</b> from the queue") : "Already loaded — nothing new", (d.queue||[]).length>0);
+        if(claimed.length){    // claim the imported cards: pull them out of the shared queue so the tab badge clears
+          postEngine({ action:"queueRemove", ids:claimed }, refreshQueueCount);
+          showQueue("Loaded <b>"+added+"</b> from the queue", false);
+        } else {
+          showQueue("Already loaded — nothing new", (d.queue||[]).length>0);
+        }
       }).catch(function(){});
   }
   var btnSubmitQueue = document.getElementById("btnSubmitQueue"); if(btnSubmitQueue) btnSubmitQueue.onclick = submitToQueue;

@@ -229,24 +229,30 @@ function writePrinted_(sheets) {
   PropertiesService.getScriptProperties().setProperty(GC_PRINTED_PROP, JSON.stringify(sheets));
 }
 function getPrinted_() { return { ok: true, printed: readPrinted_() }; }
-// Move the given queue ids out of the queue and record them as ONE printed sheet (batch).
+// Record a batch of printed cards as ONE printed sheet, and make sure they're
+// out of the active queue. Cards are usually claimed (dequeued) at import time,
+// so callers pass the card payloads directly in body.cards; body.ids is still
+// honored to dequeue anything not yet claimed (and as the card source if no
+// explicit cards were given), keeping older clients working.
 function markPrinted_(body) {
   var ids = (body && body.ids) || [];
-  if (!ids.length) return { ok: false, error: 'no-ids' };
+  var cards = (body && body.cards) || [];
   var lock = LockService.getScriptLock();
   lock.waitLock(10000);
   try {
-    var set = {}; ids.forEach(function (id) { set[id] = true; });
-    var q = readQueue_(), keep = [], cards = [];
-    q.forEach(function (e) { if (set[e.id]) cards.push(e.card || e); else keep.push(e); });
-    writeQueue_(keep);
-    if (cards.length) {
-      var sheets = readPrinted_();
-      sheets.push({ id: Utilities.getUuid(), printedAt: new Date().toISOString(),
-                    printedBy: String((body && body.by) || ''), cards: cards });
-      writePrinted_(sheets);
+    if (ids.length) {                                   // dequeue any still-queued ids (safety net)
+      var set = {}; ids.forEach(function (id) { set[id] = true; });
+      var q = readQueue_(), keep = [], pulled = [];
+      q.forEach(function (e) { if (set[e.id]) pulled.push(e.card || e); else keep.push(e); });
+      if (keep.length !== q.length) writeQueue_(keep);
+      if (!cards.length) cards = pulled;                // fall back to the queue payloads
     }
-    return { ok: true, moved: cards.length, count: keep.length, sheets: readPrinted_().length };
+    if (!cards.length) return { ok: false, error: 'no-cards' };
+    var sheets = readPrinted_();
+    sheets.push({ id: Utilities.getUuid(), printedAt: new Date().toISOString(),
+                  printedBy: String((body && body.by) || ''), cards: cards });
+    writePrinted_(sheets);
+    return { ok: true, moved: cards.length, count: readQueue_().length, sheets: sheets.length };
   } finally { lock.releaseLock(); }
 }
 // Remove one printed sheet (by its id); Clear history is clearPrinted_.
