@@ -1250,9 +1250,12 @@
   // Pull the canonical store registry from GX Core, then build the dropdown. Falls back to the
   // hardcoded STORE_MAP if GX Core is unreachable, so the picker always works.
   function loadStores(){
-    var sep = GXCORE_URL.indexOf("?")<0 ? "?" : "&";
-    fetch(GXCORE_URL+sep+"action=stores", {cache:"no-store"})
-      .then(function(r){ return r.json(); })
+    // Route through the shared retry-aware client — GX Core's /exec two-hop intermittently serves a Drive
+    // HTML page instead of JSON (~6%); a single raw fetch would silently fall back to the hardcoded STORE_MAP.
+    var req = (typeof GXClient !== "undefined")
+      ? GXClient(GXCORE_URL).getJSON("stores")
+      : (function(){ var sep = GXCORE_URL.indexOf("?")<0 ? "?" : "&"; return fetch(GXCORE_URL+sep+"action=stores", {cache:"no-store"}).then(function(r){ return r.json(); }); })();
+    req
       .then(function(d){
         if(!d || !d.ok || !d.stores || !d.stores.length) throw 0;
         STORE_MAP = d.stores
