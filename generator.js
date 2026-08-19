@@ -606,6 +606,7 @@
     var endpoint = ((markUrlInput && markUrlInput.value) || loadWebapp()).trim();
     var on = markToggle ? markToggle.checked : loadWebappOn();
     if(!on || !endpoint) return;                       // no engine configured — read-only mode
+    if (window.GXDev) window.GXDev.check("markDone");
     var payload = JSON.stringify({ action:"markDone", gid:gidFromUrl(sheetUrl), doneHeader:(doneHeader||"Done") });
     // text/plain avoids a CORS preflight; the /exec redirect serves CORS-open JSON we can read
     fetch(endpoint, { method:"POST", headers:{ "Content-Type":"text/plain;charset=utf-8" }, body:payload })
@@ -770,7 +771,8 @@
     if(!url) return;
     clearTimeout(_cfgTimer);
     _cfgTimer = setTimeout(function(){
-      fetch(url, { method:"POST", headers:{ "Content-Type":"text/plain;charset=utf-8" },
+      if (window.GXDev) window.GXDev.check("saveConfig");
+    fetch(url, { method:"POST", headers:{ "Content-Type":"text/plain;charset=utf-8" },
         body: JSON.stringify({ action:"saveConfig", config: currentConfig() }) }).catch(function(){});
     }, 500);
   }
@@ -1345,6 +1347,7 @@
     var emp = document.body.classList.contains("mode-employee");
     if(!cards.length){ emp ? showToast("Pop in a brand and a price first 🙂") : flashError("Check <b>Print</b> on at least one complete card (Brand + Price) to submit."); return; }
     var payload = cards.map(function(r){ return { brand:r.name, item:r.product, desc:r.description, desc2:r.description2, size:r.size, price:r.price, store:r.store, status:r.status }; });
+    if (window.GXDev) window.GXDev.check("submitCards");
     fetch(url, { method:"POST", headers:{ "Content-Type":"text/plain;charset=utf-8" }, body:JSON.stringify({ action:"submitCards", by:"", cards:payload }) })
       .then(function(r){ return r.json(); }).then(function(d){
         if(d && d.ok){
@@ -1398,6 +1401,8 @@
       .then(function(d){ if(!d || !d.ok) return; PRINTED = d.printed || []; showPrintedStrip(); }).catch(function(){});
   }
   function postEngine(payload, then){                // small POST helper for the printed actions
+    // Dev guard: these are writes. Blocked on localhost until armed; inert in production.
+    if (window.GXDev) window.GXDev.check(payload && payload.action);
     var url = engineUrl(); if(!url) return;
     fetch(url, { method:"POST", headers:{ "Content-Type":"text/plain;charset=utf-8" }, body:JSON.stringify(payload) })
       .then(function(){ if(then) then(); }).catch(function(){});
@@ -1482,6 +1487,7 @@
     newprodList.hidden = false;
   }
   function ackNewProduct(p){
+    if (window.GXDev) window.GXDev.check("ackProducts");
     var url = engineUrl();
     if(url) fetch(url, { method:"POST", headers:{ "Content-Type":"text/plain;charset=utf-8" },
       body:JSON.stringify({ action:"ackProducts", ids:[p.id] }) }).catch(function(){});

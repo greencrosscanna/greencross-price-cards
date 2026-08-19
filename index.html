@@ -195,7 +195,17 @@
 </div>
 
 <!-- Resilient GX Core client (retries the Drive-HTML two-hop failure). Same-origin (org Pages). -->
+<script src="gx-dev.js"></script>
 <script src="https://greencrosscanna.github.io/greencross-gx-theme/gx-client.js"></script>
+<script>
+  // Dev guard: non-mutating actions. Anything NOT listed is blocked when this page is served
+  // from localhost, until writes are armed (banner button / ?arm=1 / GXDev.arm()). Inert in
+  // production. Add new READS here; leave writes off the list.
+  // Guarded writes: ackProducts, clearPrinted, markDone, markPrinted, queueRemove, removePrintedSheet, saveConfig, submitCards
+  if (window.GXDev) window.GXDev.declareReads([
+    'getConfig', 'getPrinted', 'getQueue', 'liveCatalog', 'newProducts', 'stores'
+  ]);
+</script>
 <script src="generator.js?v=35"></script>
 </body>
 </html>
