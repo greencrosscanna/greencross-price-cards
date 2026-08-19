@@ -593,16 +593,6 @@
   var DEFAULT_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbwKRfDEz5Rugw-NfFZpEMDawoX-nBCB0rocMdt-KBfcyOf13ZO8D2INQGvHqIzKjVFb/exec";
   // GX Core (shared brain) — public read endpoints (e.g. ?action=stores for the canonical store registry).
   var GXCORE_URL = "https://script.google.com/macros/s/AKfycbx9mjeCBbDpxNYaqBv2hyZaO1hpbGG6PZM9AebFdwl0UwkdtRCGSWrH-8ohEtdF1K_6/exec";
-
-  /* Shared header chrome. Price Cards has no session, so there is no user chip -- just the clock and
-     the store colours, both started at load rather than behind any app state. */
-  (function startChrome(){
-    function go(){
-      if (window.GXTopNav) GXTopNav.startClock();
-      if (window.GXStores) GXStores.load(GXCORE_URL).catch(function(){ /* colours are a nicety */ });
-    }
-    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", go); else go();
-  })();
   var markUrlInput = document.getElementById("markDoneUrl");
   var markToggle   = document.getElementById("markDoneToggle");
   function loadWebapp(){ try{ return localStorage.getItem(WEBAPP_KEY) || DEFAULT_WEBAPP_URL; }catch(e){ return DEFAULT_WEBAPP_URL; } }
