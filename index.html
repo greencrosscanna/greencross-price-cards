@@ -15,15 +15,19 @@
 <body>
 <div id="app">
   <!-- ============ TOP BAR ============ -->
-  <header class="topbar">
-    <div class="brand">
-      <span class="brand-mark">+</span>
-      <span class="brand-name">Green Cross <strong>Price Cards</strong></span>
+  <!-- Shared chrome from gx-theme.css. Price Cards has no tabs and no session: it is a tool, not a
+       dashboard, so its header carries ACTIONS where an app would carry navigation. Adopting the bar
+       gives it the shared logo, typography and border without inventing chrome it does not need. -->
+  <header class="gx-topnav">
+    <div class="gx-topnav-brand">
+      <img class="gx-topnav-logo" src="https://greencrosscanna.github.io/greencross-gx-theme/gx-logo.png" alt="Green Cross">
+      <span class="gx-topnav-sub">Price Cards</span>
     </div>
     <div class="topbar-meta">
       <span class="sheet-spec">Avery&nbsp;95271 &middot; 9-up &middot; US&nbsp;Letter</span>
     </div>
-    <div class="topbar-actions">
+    <div class="gx-topnav-right">
+      <div class="gx-clock"><div class="gx-clock-time">&mdash;</div><div class="gx-clock-date">&mdash;</div></div>
       <button class="btn btn-ghost" id="btnSettings" title="Settings">&#9881; Settings</button>
       <button class="btn btn-ghost" id="btnAddRow">+ Add product</button>
       <button class="btn btn-ghost" id="btnClearQueue" title="Uncheck every Print box">Clear print queue</button>
@@ -197,6 +201,8 @@
 <!-- Resilient GX Core client (retries the Drive-HTML two-hop failure). Same-origin (org Pages). -->
 <script src="gx-dev.js"></script>
 <script src="https://greencrosscanna.github.io/greencross-gx-theme/gx-client.js"></script>
+<script src="https://greencrosscanna.github.io/greencross-gx-theme/gx-topnav.js"></script>
+<script src="https://greencrosscanna.github.io/greencross-gx-theme/gx-stores.js"></script>
 <script>
   // Dev guard: non-mutating actions. Anything NOT listed is blocked when this page is served
   // from localhost, until writes are armed (banner button / ?arm=1 / GXDev.arm()). Inert in
