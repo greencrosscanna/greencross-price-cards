@@ -74,6 +74,7 @@ function doGet(e) {
       case 'getPrinted':   return json(getPrinted_());
       case 'newProducts':  return json(newProducts_());
       case 'scanNow':      return json(scanNewProducts());
+      case 'authStats':    return json(authStats_());   // readiness check before flipping enforcement
     }
     // default: read the bound Sheet
     var sheet  = pickSheet(p.gid);
@@ -87,10 +88,130 @@ function doGet(e) {
   }
 }
 
+/* ═══════════════════ WRITE AUTH — GX Core session tokens ═══════════════════ *
+ * Every mutating action requires a valid GX Core session with a `pricecards`
+ * grant. Before this, doPost dispatched nine writes with no auth of any kind:
+ * anyone holding the /exec URL could clear the shared print queue or overwrite
+ * config. The client gate (generator.js) stops a passerby at a shop iPad; it
+ * does NOT protect this endpoint, because a gate in the browser is advice.
+ *
+ * PATTERN: copied from SPIFF (greencross-spiff/apps-script/Code.gs gxAuth_),
+ * not from Crew. Crew binds the GXCore LIBRARY; we deliberately do not — a
+ * pinned library snapshot goes stale silently (see the v153 re-pin note), and
+ * this app has no other reason to bind one. An HTTP call to Core's `validate`
+ * route always hits current Core and needs no pin. Scope for the outbound call
+ * (script.external_request) was already declared for Dutchie.
+ *
+ * ROLLOUT — this ships DARK. authEnforced_() reads a Script Property that
+ * starts unset, so writes are validated and COUNTED but never rejected. That
+ * closes the window where an iPad running cached JS would have its writes
+ * refused. Check readiness with ?action=authStats, then run enableWriteAuth()
+ * from the Apps Script editor to enforce. disableWriteAuth() is the rollback,
+ * and neither needs a code deploy.
+ * ══════════════════════════════════════════════════════════════════════════ */
+var APP        = 'pricecards';   // matches .gx_app AND the app_access grants in GX Core
+var GXCORE_URL = 'https://script.google.com/macros/s/AKfycbx9mjeCBbDpxNYaqBv2hyZaO1hpbGG6PZM9AebFdwl0UwkdtRCGSWrH-8ohEtdF1K_6/exec';
+
+var AUTH_ENFORCE_PROP = 'PRICECARDS_REQUIRE_AUTH';    // '1' = reject unauthenticated writes
+var AUTH_STATS_PROP   = 'PRICECARDS_AUTH_STATS';      // readiness telemetry for the flip
+var AUTH_CACHE_TTL_S  = 300;                          // « GX_SESSION_TTL; a revoke takes effect within 5 min
+
+/* The nine mutating actions. markDone writes to the bound Sheet; the other
+   eight mutate shared Script-Property state (queue, printed history, config). */
+var WRITE_ACTIONS = {
+  saveConfig: 1, submitCards: 1, queueRemove: 1, clearQueue: 1, markPrinted: 1,
+  removePrintedSheet: 1, clearPrinted: 1, ackProducts: 1, markDone: 1
+};
+
+function authEnforced_() {
+  return PropertiesService.getScriptProperties().getProperty(AUTH_ENFORCE_PROP) === '1';
+}
+
+/* Flip enforcement from the Apps Script editor (owner-only) rather than over
+   HTTP — an endpoint that can disable the endpoint's own auth is a back door. */
+function enableWriteAuth()  { PropertiesService.getScriptProperties().setProperty(AUTH_ENFORCE_PROP, '1'); return authStats_(); }
+function disableWriteAuth() { PropertiesService.getScriptProperties().deleteProperty(AUTH_ENFORCE_PROP);   return authStats_(); }
+function resetAuthStats()   { PropertiesService.getScriptProperties().deleteProperty(AUTH_STATS_PROP);     return authStats_(); }
+
+/* Validate a GX Core session token and resolve this user's role on `pricecards`.
+   Core's `validate` route runs requireAuth(): HMAC signature + expiry + an active
+   grant. A forged or expired token fails here, not in the browser. */
+function gxAuth_(token) {
+  if (!token) return { ok: false, error: 'Not signed in' };
+  var cache = CacheService.getScriptCache();
+  // Key on a DIGEST, never the raw token — the cache is not a place to park credentials.
+  var ckey = 'pcauth:' + Utilities.base64EncodeWebSafe(
+    Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, String(token)));
+  var hit = cache.get(ckey);
+  if (hit) return JSON.parse(hit);
+  try {
+    var url = GXCORE_URL + '?action=validate&app=' + encodeURIComponent(APP) +
+              '&token=' + encodeURIComponent(token);
+    var res = UrlFetchApp.fetch(url, { muteHttpExceptions: true, followRedirects: true });
+    var out = JSON.parse(res.getContentText());
+    // Cache ONLY successes. Caching a failure would turn a blip in Core into five
+    // minutes of locked-out managers.
+    if (out && out.ok) cache.put(ckey, JSON.stringify(out), AUTH_CACHE_TTL_S);
+    return out;
+  } catch (e) {
+    return { ok: false, error: 'Could not reach GX Core to verify your session' };
+  }
+}
+
+/* Best-effort counters answering one question: are real clients sending tokens
+   yet? Undercounts under concurrency (Properties writes are not transactional)
+   and that is fine — it is a readiness signal, not an audit log. */
+function authStatBump_(action, ok) {
+  try {
+    var props = PropertiesService.getScriptProperties();
+    var s = JSON.parse(props.getProperty(AUTH_STATS_PROP) || '{}');
+    s['with'] = s['with'] || {}; s['without'] = s['without'] || {};
+    var bucket = ok ? s['with'] : s['without'];
+    var key = String(action || '?');
+    bucket[key] = (bucket[key] || 0) + 1;
+    if (ok) s.last_ok_at = new Date().toISOString();
+    else    s.last_missing_at = new Date().toISOString();
+    props.setProperty(AUTH_STATS_PROP, JSON.stringify(s));
+  } catch (e) { /* telemetry must never break a write */ }
+}
+
+function authStats_() {
+  var props = PropertiesService.getScriptProperties();
+  var s = {};
+  try { s = JSON.parse(props.getProperty(AUTH_STATS_PROP) || '{}'); } catch (e) {}
+  s.enforcing = authEnforced_();
+  return { ok: true, auth: s };
+}
+
+/* The gate. Returns {ok:true, user, role} to proceed, or {ok:false, needsAuth}
+   to refuse. While dark it always proceeds, but still validates and counts, so
+   the stats reflect what enforcement WOULD have done. */
+function requireWrite_(body) {
+  var token = (body && body.token) || '';
+  var auth  = gxAuth_(token);
+  authStatBump_(body && body.action, !!auth.ok);
+  if (auth.ok) return { ok: true, user: auth.user || '', role: auth.role || '' };
+  if (!authEnforced_()) return { ok: true, user: '', role: '', unauthenticated: true };
+  return { ok: false, error: auth.error || 'Not signed in', needsAuth: true };
+}
+
 /* --------------------------- WRITE ---------------------------- */
 function doPost(e) {
   try {
     var body = JSON.parse((e && e.postData && e.postData.contents) || '{}');
+
+    /* AUTH GATE — every mutating action, before any of them touch state.
+       One check here rather than nine bespoke ones: a new write added to the
+       dispatch below is covered the moment its name lands in WRITE_ACTIONS. */
+    if (WRITE_ACTIONS[body.action]) {
+      var gate = requireWrite_(body);
+      if (!gate.ok) return json(gate);
+      // Attribution from the VERIFIED session, not from a client-supplied field.
+      // `by` arrived as "" from every caller anyway, so the queue never recorded
+      // who submitted a card; now it does, and it cannot be spoofed.
+      if (gate.user) body.by = gate.user;
+    }
+
     if (body.action === 'saveConfig')  return json(saveConfig_(body));
     if (body.action === 'submitCards') return json(submitCards_(body));
     if (body.action === 'queueRemove') return json(queueRemove_(body));

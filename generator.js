@@ -355,7 +355,7 @@
       save(); renderTable(); refreshPreview(); valEl.hidden=true;
       // Archive this sheet. Imported cards were already claimed out of the queue, so we send the
       // card payloads directly; qids clean up anything not yet claimed (older client / manual reload).
-      postEngine({ action:"markPrinted", by:"", ids:qids, cards:cards }, function(){ refreshQueueCount(); refreshPrinted(); });
+      postEngine({ action:"markPrinted", ids:qids, cards:cards }, function(){ refreshQueueCount(); refreshPrinted(); });
     };
     document.getElementById("btnKeepPrinted").onclick=function(){ valEl.hidden=true; };
   }
@@ -624,6 +624,24 @@
     } catch (e) {}
   }
 
+  /* Stamp the caller's GX Core session token onto a write payload. The SERVER
+     validates it (Code.gs requireWrite_); this is only how the credential
+     travels. Reads are deliberately left alone -- they are not gated yet. */
+  function pcSign(payload) {
+    var s = pcSession();
+    if (s && s.token) payload.token = s.token;
+    return payload;
+  }
+
+  /* A write came back needsAuth: the session is expired or the grant was pulled.
+     Drop the dead session and re-gate. Leaving it would show a working-looking
+     tool whose every write silently bounces -- the exact failure this whole
+     change exists to remove. */
+  function pcAuthFailed(msg) {
+    pcSetSession(null);
+    pcRenderGate(msg || "Your session expired \u2014 please sign in again.");
+  }
+
   function pcRenderGate(errMsg, reason) {
     document.documentElement.classList.add("pc-gated");
     var wrap = document.getElementById("pcGate");
@@ -681,12 +699,13 @@
     var on = markToggle ? markToggle.checked : loadWebappOn();
     if(!on || !endpoint) return;                       // no engine configured — read-only mode
     if (window.GXDev) window.GXDev.check("markDone");
-    var payload = JSON.stringify({ action:"markDone", gid:gidFromUrl(sheetUrl), doneHeader:(doneHeader||"Done") });
+    var payload = JSON.stringify(pcSign({ action:"markDone", gid:gidFromUrl(sheetUrl), doneHeader:(doneHeader||"Done") }));
     // text/plain avoids a CORS preflight; the /exec redirect serves CORS-open JSON we can read
     fetch(endpoint, { method:"POST", headers:{ "Content-Type":"text/plain;charset=utf-8" }, body:payload })
       .then(function(res){ return res.json().catch(function(){ return null; }); })
       .then(function(data){
         var cur = importStatus ? importStatus.textContent : "";
+        if(data && data.needsAuth){ pcAuthFailed(data.error); return; }
         if(data && data.ok) setStatus(cur + " · marked "+(data.marked!=null?data.marked+" ":"")+"Done in sheet ✓", "ok");
         else if(data && data.error) setStatus(cur + " · write-back issue: "+data.error, "err");
         else setStatus(cur + " · marked Done in sheet ✓", "ok");
@@ -847,7 +866,13 @@
     _cfgTimer = setTimeout(function(){
       if (window.GXDev) window.GXDev.check("saveConfig");
     fetch(url, { method:"POST", headers:{ "Content-Type":"text/plain;charset=utf-8" },
-        body: JSON.stringify({ action:"saveConfig", config: currentConfig() }) }).catch(function(){});
+        body: JSON.stringify(pcSign({ action:"saveConfig", config: currentConfig() })) })
+      .then(function(r){ return r.json().catch(function(){ return null; }); })
+      .then(function(d){
+        if(d && d.needsAuth){ pcAuthFailed(d.error); return; }
+        if(d && d.ok === false) setStatus("Settings didn't save: " + (d.error || "unknown error"), "err");
+      })
+      .catch(function(){ setStatus("Settings didn't save \u2014 check your connection.", "err"); });
     }, 500);
   }
   // all the Settings save hooks funnel to one global push
@@ -1422,8 +1447,9 @@
     if(!cards.length){ emp ? showToast("Pop in a brand and a price first 🙂") : flashError("Check <b>Print</b> on at least one complete card (Brand + Price) to submit."); return; }
     var payload = cards.map(function(r){ return { brand:r.name, item:r.product, desc:r.description, desc2:r.description2, size:r.size, price:r.price, store:r.store, status:r.status }; });
     if (window.GXDev) window.GXDev.check("submitCards");
-    fetch(url, { method:"POST", headers:{ "Content-Type":"text/plain;charset=utf-8" }, body:JSON.stringify({ action:"submitCards", by:"", cards:payload }) })
+    fetch(url, { method:"POST", headers:{ "Content-Type":"text/plain;charset=utf-8" }, body:JSON.stringify(pcSign({ action:"submitCards", cards:payload })) })
       .then(function(r){ return r.json(); }).then(function(d){
+        if(d && d.needsAuth){ pcAuthFailed(d.error); return; }
         if(d && d.ok){
           rows = rows.filter(function(r){ return cards.indexOf(r)<0; }); if(!rows.length) rows.push(blankRow());
           save(); renderTable(); refreshPreview();
@@ -1478,8 +1504,14 @@
     // Dev guard: these are writes. Blocked on localhost until armed; inert in production.
     if (window.GXDev) window.GXDev.check(payload && payload.action);
     var url = engineUrl(); if(!url) return;
-    fetch(url, { method:"POST", headers:{ "Content-Type":"text/plain;charset=utf-8" }, body:JSON.stringify(payload) })
-      .then(function(){ if(then) then(); }).catch(function(){});
+    fetch(url, { method:"POST", headers:{ "Content-Type":"text/plain;charset=utf-8" }, body:JSON.stringify(pcSign(payload)) })
+      .then(function(r){ return r.json().catch(function(){ return null; }); })
+      .then(function(d){
+        if(d && d.needsAuth){ pcAuthFailed(d.error); return; }
+        if(d && d.ok === false){ setStatus("Couldn't save: " + (d.error || "unknown error"), "err"); return; }
+        if(then) then();
+      })
+      .catch(function(){ setStatus("Couldn't reach the engine \u2014 that change was NOT saved.", "err"); });
   }
   function renderPrinted(){
     if(!printedList) return;
@@ -1564,7 +1596,10 @@
     if (window.GXDev) window.GXDev.check("ackProducts");
     var url = engineUrl();
     if(url) fetch(url, { method:"POST", headers:{ "Content-Type":"text/plain;charset=utf-8" },
-      body:JSON.stringify({ action:"ackProducts", ids:[p.id] }) }).catch(function(){});
+      body:JSON.stringify(pcSign({ action:"ackProducts", ids:[p.id] })) })
+      .then(function(r){ return r.json().catch(function(){ return null; }); })
+      .then(function(d){ if(d && d.needsAuth) pcAuthFailed(d.error); })
+      .catch(function(){});
     NEW_PRODUCTS = NEW_PRODUCTS.filter(function(x){ return x.id !== p.id; });
     renderNewProductsList(); refreshNewProducts();
   }
