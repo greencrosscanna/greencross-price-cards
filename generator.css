@@ -492,4 +492,6 @@ body.store-locked .cb-store{opacity:1;cursor:default;-webkit-appearance:none;app
    would break again the moment anything new is added outside those three containers. A fixed overlay
    does not care what else is on the page. */
 #pcGate { position: fixed; inset: 0; z-index: 9999; overflow: auto; }
-html.pc-gated body { overflow: hidden; }
+html.pc-gated body { overflow: hidden; background: var(--gx-bg); }
+html.pc-gated { background: var(--gx-bg); }   /* this tool's own theme is LIGHT — without this, any gap
+                                                 around the overlay flashes white on a dark login */
