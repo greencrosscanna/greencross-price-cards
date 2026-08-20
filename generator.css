@@ -485,3 +485,13 @@ body.store-locked .cb-store{opacity:1;cursor:default;-webkit-appearance:none;app
   *{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
 }
 #printRoot{display:none;}
+
+/* Price Cards' action row. Sits under the shared header because these are the tool's PRIMARY controls,
+   not chrome -- and because five buttons inside .gx-topnav-right (flex-shrink:0) forced the header to
+   1309px and made the page scroll sideways on any screen narrower than that. Wraps instead. */
+.pc-toolbar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 9px;
+  padding: 10px 20px; background: var(--gx-surface);
+  border-bottom: 1px solid var(--gx-border);
+}
+@media (max-width: 720px) { .pc-toolbar { padding: 10px 12px; } }
