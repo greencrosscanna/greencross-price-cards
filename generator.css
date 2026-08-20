@@ -486,3 +486,10 @@ body.store-locked .cb-store{opacity:1;cursor:default;-webkit-appearance:none;app
 }
 #printRoot{display:none;}
 
+
+/* Gated: the sign-in is an OVERLAY rather than a block in the flow. Hiding the header/toolbar/workspace
+   individually still left ~400px of other content above it and pushed the card below the fold -- and it
+   would break again the moment anything new is added outside those three containers. A fixed overlay
+   does not care what else is on the page. */
+#pcGate { position: fixed; inset: 0; z-index: 9999; overflow: auto; }
+html.pc-gated body { overflow: hidden; }

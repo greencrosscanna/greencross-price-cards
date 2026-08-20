@@ -593,6 +593,80 @@
   var DEFAULT_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbwKRfDEz5Rugw-NfFZpEMDawoX-nBCB0rocMdt-KBfcyOf13ZO8D2INQGvHqIzKjVFb/exec";
   // GX Core (shared brain) — public read endpoints (e.g. ?action=stores for the canonical store registry).
   var GXCORE_URL = "https://script.google.com/macros/s/AKfycbx9mjeCBbDpxNYaqBv2hyZaO1hpbGG6PZM9AebFdwl0UwkdtRCGSWrH-8ohEtdF1K_6/exec";
+
+  /* ── Sign-in gate ────────────────────────────────────────────────────────────────────────────────
+   * Price Cards was PUBLIC and could write: ackProducts, clearPrinted, markDone, markPrinted,
+   * queueRemove, removePrintedSheet, saveConfig, submitCards. Anyone with the URL could submit to the
+   * shared print queue or overwrite config.
+   *
+   * PERSISTS IN localStorage, deliberately -- unlike Crew and SPIFF, which use sessionStorage and die
+   * with the tab. This runs on a shared shop iPad and a manager signs in ONCE per device, with the same
+   * credential as the Kiosk. A per-tab session would mean signing in every time the iPad is picked up.
+   *
+   * NESTED in Inventory it never gates: it inherits the host's session over the bridge, so the tab
+   * inside Inventory is not a second login.
+   */
+  var PC_AUTH_KEY = "gx_pricecards_auth";
+  var APP_KEY     = "pricecards";   // matches .gx_app AND the app_access grants written in GX Core
+
+  function pcSession() {
+    try {
+      var s = JSON.parse(localStorage.getItem(PC_AUTH_KEY) || "null");
+      if (!s || !s.token) return null;
+      // Do NOT self-expire on a stored expiresAt: the backend decides whether a token is still good.
+      return s;
+    } catch (e) { return null; }
+  }
+  function pcSetSession(s) {
+    try {
+      if (s) localStorage.setItem(PC_AUTH_KEY, JSON.stringify(s));
+      else   localStorage.removeItem(PC_AUTH_KEY);
+    } catch (e) {}
+  }
+
+  function pcRenderGate(errMsg, reason) {
+    document.documentElement.classList.add("pc-gated");
+    var wrap = document.getElementById("pcGate");
+    if (!wrap) { wrap = document.createElement("div"); wrap.id = "pcGate"; document.body.appendChild(wrap); }
+    wrap.className = "gx-login";
+    wrap.innerHTML =
+      '<div class="gx-login-card">' +
+        '<div class="gx-login-head">' +
+          '<img class="gx-login-mark" src="https://greencrosscanna.github.io/greencross-gx-theme/gx-logo.png" alt="Green Cross">' +
+          '<div class="gx-login-sub">Price Cards</div>' +
+        '</div>' +
+        '<form class="gx-login-form" id="pcGateForm">' +
+          '<label class="gx-login-field"><span>Username</span>' +
+            '<input class="gx-input" id="pcUser" autocomplete="username" required></label>' +
+          '<label class="gx-login-field"><span>Password</span>' +
+            '<input class="gx-input" id="pcPass" type="password" autocomplete="current-password" required></label>' +
+          '<button type="submit" class="gx-btn gx-btn-green gx-login-submit">Sign in</button>' +
+          '<div class="gx-login-err">' + (errMsg || "") + '</div>' +
+          (reason ? '<div style="margin-top:10px;font-size:11px;color:var(--gx-text-mute)">nested sign-in: ' + reason + '</div>' : '') +
+        '</form>' +
+      '</div>';
+    document.getElementById("pcGateForm").addEventListener("submit", function (ev) {
+      ev.preventDefault();
+      var btn = wrap.querySelector("button"), err = wrap.querySelector(".gx-login-err");
+      var u = document.getElementById("pcUser").value.trim();
+      var pw = document.getElementById("pcPass").value;
+      btn.disabled = true; btn.textContent = "Signing in\u2026"; err.textContent = "";
+      GXClient(GXCORE_URL).jsonp("login", { user: u, pass: pw, app: APP_KEY }).then(function (r) {
+        if (!r || !r.ok) throw new Error((r && r.error) || "Sign-in failed");
+        pcSetSession({ user: r.user, name: r.displayName || r.user, role: r.role,
+                       avatar: r.avatarConfig || null, token: r.token });
+        wrap.remove();
+        document.documentElement.classList.remove("pc-gated");
+        pcStart();
+      }).catch(function (e) {
+        err.textContent = (e && e.message) || "Sign-in failed";
+        btn.disabled = false; btn.textContent = "Sign in";
+        document.getElementById("pcPass").value = "";
+      });
+    });
+    document.getElementById("pcUser").focus();
+  }
+
   var markUrlInput = document.getElementById("markDoneUrl");
   var markToggle   = document.getElementById("markDoneToggle");
   function loadWebapp(){ try{ return localStorage.getItem(WEBAPP_KEY) || DEFAULT_WEBAPP_URL; }catch(e){ return DEFAULT_WEBAPP_URL; } }
@@ -1530,17 +1604,69 @@
     rows = [blankRow({print:true})];   // start with one clean card
   }
 
-  loadStyle();
-  fetchConfigGlobal();   // adopt the shared (global) settings
-  loadStores();          // pull canonical store names from GX Core, then build the picker
-  refreshQueueCount();
-  refreshNewProducts();
-  refreshPrinted();
-  setInterval(refreshQueueCount, 30000);   // keep the shared-queue count fresh
-  setInterval(refreshNewProducts, 120000);
-  setInterval(refreshPrinted, 60000);
-  renderTable();
-  refreshPreview();
+  /* Everything that TALKS TO THE BACKEND or paints the tool lives here, so nothing runs until there is
+     a session. Gating only the UI would still leave an unauthenticated page pulling live inventory. */
+  var _pcStarted = false;
+  function pcStart(){
+    if (_pcStarted) return;            // never re-enter: a second pass would double every interval
+    _pcStarted = true;
+    if (window.GXTopNav) GXTopNav.startClock();
+    if (window.GXStores) GXStores.load(GXCORE_URL).catch(function(){ /* colours are a nicety */ });
+    pcRenderUser();
+    loadStyle();
+    fetchConfigGlobal();   // adopt the shared (global) settings
+    loadStores();          // pull canonical store names from GX Core, then build the picker
+    refreshQueueCount();
+    refreshNewProducts();
+    refreshPrinted();
+    setInterval(refreshQueueCount, 30000);   // keep the shared-queue count fresh
+    setInterval(refreshNewProducts, 120000);
+    setInterval(refreshPrinted, 60000);
+    renderTable();
+    refreshPreview();
+  }
+
+  /* User chip, standalone only. Nested, the host owns the tray -- and Settings stays in the action row
+     there, per the sub-app pattern. */
+  function pcRenderUser(){
+    var slot = document.getElementById("pcUserSlot");
+    if (!slot) return;
+    if (window.GXTopNav && GXTopNav.isEmbedded()) { slot.innerHTML = ""; return; }
+    var s = pcSession(); if (!s) { slot.innerHTML = ""; return; }
+    if (!window.GXTopNav || !GXTopNav.renderUser) { slot.innerHTML = ""; return; }
+    GXTopNav.renderUser(slot, {
+      name: s.name || s.user, role: s.role || "",
+      avatar: window.GXAvatar ? GXAvatar.chip(s.avatar, s.name || s.user) : null,
+      items: [
+        { action: "settings", label: "Settings" },
+        { action: "logout",   label: "Sign out", danger: true }
+      ]
+    });
+  }
+  document.addEventListener("gx-topnav:action", function(e){
+    var a = e.detail && e.detail.action;
+    if (a === "logout") { pcSetSession(null); location.reload(); }
+    else if (a === "settings") { var b = document.getElementById("btnSettings"); if (b) b.click(); }
+  });
+
+  /* Nested, inherit the host's sign-in rather than asking again; standalone, gate. */
+  (function pcBoot(){
+    if (pcSession()) { pcStart(); return; }
+    if (window.GXSession) {
+      GXSession.request(6000).then(function(inh){
+        if (inh && inh.token) {
+          pcSetSession({ user: inh.user, name: inh.displayName || inh.user, role: inh.role,
+                         avatar: inh.avatarConfig || null, token: inh.token });
+          pcStart();
+        } else {
+          pcRenderGate("", (window.GXTopNav && GXTopNav.isEmbedded())
+            ? (inh ? "host replied with no token" : "no reply from host") : "");
+        }
+      });
+    } else {
+      pcRenderGate();
+    }
+  })();
   // re-fit once fonts + layout settle (first paint can mis-measure)
   function settle(){ if(zoom===0) requestAnimationFrame(function(){ applyFit(sheetsEl); updateZoom(); }); }
   if(document.fonts && document.fonts.ready) document.fonts.ready.then(settle);
