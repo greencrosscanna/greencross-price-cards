@@ -158,19 +158,25 @@ var READ_CACHE_TTL_S  = 60;
 
 /* The nine mutating actions. markDone writes to the bound Sheet; the other
    eight mutate shared Script-Property state (queue, printed history, config). */
-var WRITE_ACTIONS = {
+/* Object.create(null) — NO prototype, so these tables cannot be indexed into a
+   inherited member even by code that forgets has_(). Inventory's improvement on
+   my fix and the better one: it defends the PATTERN rather than this instance,
+   so whoever copies it onto a new route inherits the safe version instead of
+   the lucky one. has_() stays as well; two cheap defences on the hole that
+   handed the whole pricing sheet to ?action=toString. */
+var WRITE_ACTIONS = Object.assign(Object.create(null), {
   saveConfig: 1, submitCards: 1, queueRemove: 1, clearQueue: 1, markPrinted: 1,
   removePrintedSheet: 1, clearPrinted: 1, ackProducts: 1, markDone: 1
-};
+});
 
 /* Every read this app serves, named explicitly. This list IS the router — an
    action that is not in it is an error, which is what removed the old default
    branch. scanNow sits here because it arrives as a GET, but it mutates, so it
    is gated like everything else. authStats is handled before the lookup. */
-var READ_ACTIONS = {
+var READ_ACTIONS = Object.assign(Object.create(null), {
   stores: 1, dutchieProbe: 1, liveCatalog: 1, getConfig: 1,
   getQueue: 1, getPrinted: 1, newProducts: 1, scanNow: 1, grid: 1
-};
+});
 
 function authEnforced_() {
   return PropertiesService.getScriptProperties().getProperty(AUTH_ENFORCE_PROP) === '1';
@@ -188,8 +194,20 @@ function disableReadAuth()  { PropertiesService.getScriptProperties().deleteProp
 function resetAuthStats()   { PropertiesService.getScriptProperties().deleteProperty(AUTH_STATS_PROP);     return authStats_(); }
 
 /* Validate a GX Core session token and resolve this user's role on `pricecards`.
-   Core's `validate` route runs requireAuth(): HMAC signature + expiry + an active
-   grant. A forged or expired token fails here, not in the browser. */
+   Core's `verify` route runs verifySession(): HMAC signature + expiry + a live
+   re-check of the grant. A forged or expired token fails here, not in the browser.
+
+   IT MUST BE `verify`, NOT `validate`. Both authenticate, and this called
+   `validate` for a day — copied from SPIFF's helper rather than from the spec
+   core-admin actually wrote for us, which said `v.ok && v.canEdit`. Reading
+   Core's source (v170) shows why that matters:
+
+     validate -> requireAuth()    -> { ok, user, role }
+     verify   -> verifySession()  -> { ok, user, app, role, canEdit }
+
+   validate never returns canEdit, so the write gate could only ever ask "does
+   this person have a grant?" — never "may they edit?". A viewer-granted account
+   passed it. The role was being read and thrown away. */
 function gxVerify_(token, ns, ttl) {
   if (!token) return { ok: false, error: 'Not signed in', code: 'auth_required' };
   var cache = CacheService.getScriptCache();
@@ -199,7 +217,7 @@ function gxVerify_(token, ns, ttl) {
   var hit = cache.get(ckey);
   if (hit) return JSON.parse(hit);
   try {
-    var url = GXCORE_URL + '?action=validate&app=' + encodeURIComponent(APP) +
+    var url = GXCORE_URL + '?action=verify&app=' + encodeURIComponent(APP) +
               '&token=' + encodeURIComponent(token);
     var res = UrlFetchApp.fetch(url, { muteHttpExceptions: true, followRedirects: true });
     var out = JSON.parse(res.getContentText());
@@ -272,19 +290,72 @@ function getLibVersion_() {
 function authProbe_() {
   var bogus = 'probe-' + Utilities.getUuid() + '.not-a-real-token';
   var v = gxVerify_(bogus, 'pcprobe', 1);          // own cache namespace, 1s — never reused by a real call
-  var decision = gateDecision_(v, true);           // the real gate, enforcing forced on
-  return {
-    ok: true,
+
+  /* Every assertion below runs the SHIPPED gateDecision_ with enforcing forced
+     on, differing only in what it is fed. Fakes are built here, never verified
+     by Core — the point is to exercise the decision, not the network. */
+  var real     = gateDecision_(v, true, true);                                        // garbage token, write
+  var accepted = gateDecision_({ ok: true, user: 'probe', role: 'editor', canEdit: true },  true, true);
+  var viewerW  = gateDecision_({ ok: true, user: 'probe', role: 'viewer', canEdit: false }, true, true);
+  var viewerR  = gateDecision_({ ok: true, user: 'probe', role: 'viewer', canEdit: false }, true, false);
+  var absent   = gateDecision_({ ok: true, user: 'probe', role: 'editor' },            true, true);
+
+  var out = {
     writes: { enforcing: authEnforced_(), gated: countKeys_(WRITE_ACTIONS) },
     reads:  { enforcing: readEnforced_(), gated: countKeys_(READ_ACTIONS) },
     coreReachable:  !!(v && v.code !== 'core_unreachable'),
-    refusesGarbage: !(v && v.ok),
     refusalCode:    (v && v.code) || '',
-    wouldRefuseIfEnforcing: decision.ok === false && decision.needsAuth === true
+    role:           (v && v.role) || '',
+
+    // A garbage token is actually refused …
+    refusesGarbage: !(v && v.ok),
+    wouldRefuseIfEnforcing: real.ok === false && real.needsAuth === true,
+    // … and the probe is reading its input rather than hardcoding the answer:
+    // fed a verifier that ACCEPTS, the same decision must allow.
+    inverseHolds:   accepted.ok === true,
+    // Writes need edit rights, reads only need the grant.
+    honoursReadOnly: viewerW.ok === false && viewerW.code === 'read_only' &&
+                     viewerW.needsAuth !== true && viewerR.ok === true,
+    // An ABSENT canEdit must not lock anyone out — it lands where this code
+    // stood before the check existed, which is the no-more-permissive rule.
+    absentCanEditAllows: absent.ok === true,
+    // The prototype hole cannot come back by someone reverting a map literal.
+    protoSafe: WRITE_ACTIONS['toString'] === undefined && WRITE_ACTIONS['constructor'] === undefined &&
+               READ_ACTIONS['toString']  === undefined && READ_ACTIONS['__proto__']   === undefined
   };
+
+  /* ok is the AND of every invariant, not a fixed true with details hanging off
+     it — inventory's shape. A green ok has to mean something failed nothing. */
+  out.ok = out.refusesGarbage && out.wouldRefuseIfEnforcing && out.inverseHolds &&
+           out.honoursReadOnly && out.absentCanEditAllows && out.protoSafe && out.coreReachable;
+  return out;
 }
 
 function countKeys_(o) { var n = 0; for (var k in o) if (has_(o, k)) n++; return n; }
+
+/* Readiness for the EDIT half of the write gate, which the counters could not
+   see before: how often a caller authenticates fine but would be refused for
+   being view-only, and whether canEdit arrives populated at all. Both matter
+   before flipping — the first says whether requiring it locks out somebody real,
+   the second answers inventory's question about whether canEdit is populated
+   fleet-wide or whether everyone is hedging on an absent field. */
+function authStatEdit_(action, auth) {
+  if (!auth || !auth.ok) return;
+  try {
+    var props = PropertiesService.getScriptProperties();
+    var s = JSON.parse(props.getProperty(AUTH_STATS_PROP) || '{}');
+    var seen = (auth.canEdit === true) ? 'true' : (auth.canEdit === false) ? 'false' : 'missing';
+    s.canedit_seen = s.canedit_seen || {};
+    s.canedit_seen[seen] = (s.canedit_seen[seen] || 0) + 1;
+    if (auth.canEdit === false) {
+      s.edit_denied = s.edit_denied || {};
+      var k = String(action || '?');
+      s.edit_denied[k] = (s.edit_denied[k] || 0) + 1;
+      s.last_edit_denied_at = new Date().toISOString();
+    }
+    props.setProperty(AUTH_STATS_PROP, JSON.stringify(s));
+  } catch (e) { /* telemetry must never break a write */ }
+}
 
 function authStats_() {
   var props = PropertiesService.getScriptProperties();
@@ -302,16 +373,42 @@ function requireWrite_(body) {
   var token = (body && body.token) || '';
   var auth  = gxAuthWrite_(token);
   authStatBump_('w', body && body.action, !!auth.ok);
-  return gateDecision_(auth, authEnforced_());
+  authStatEdit_(body && body.action, auth);
+  return gateDecision_(auth, authEnforced_(), true);
 }
 
-/* The whole decision, in one place, so ?action=authprobe can put a deliberately
-   bogus token through THIS function with enforcing forced on. A probe that
+/* The whole decision, in one place, so ?action=authprobe can put deliberate
+   fakes through THIS function with enforcing forced on. A probe that
    re-implemented the rule would be asserting its own copy, which is the kind of
-   check that cannot fail — and a check that cannot fail reads as a pass. */
-function gateDecision_(auth, enforcing) {
-  if (auth && auth.ok) return { ok: true, user: auth.user || '', role: auth.role || '' };
-  if (!enforcing)      return { ok: true, user: '', role: '', unauthenticated: true };
+   check that cannot fail — and a check that cannot fail reads as a pass.
+
+   needsEdit separates the two questions Core answers separately: reads need a
+   GRANT, writes need EDIT RIGHTS. GX_EDIT_ROLES is {editor, admin, director,
+   manager}, and a superadmin resolves to admin, so this refuses viewers and
+   nobody else.
+
+   canEdit is honoured only when Core says it OUTRIGHT (=== false), never when
+   merely absent — inventory's call, and it holds here for a second reason: a
+   missing canEdit lands exactly where this code already stood yesterday, so the
+   fallback is no more permissive than the thing it replaces. That is crew's
+   rule for auth fallbacks and it is the right shape. */
+function gateDecision_(auth, enforcing, needsEdit) {
+  var signedIn   = !!(auth && auth.ok);
+  var editDenied = !!(needsEdit && signedIn && auth.canEdit === false);
+
+  if (signedIn && !editDenied) return { ok: true, user: auth.user || '', role: auth.role || '' };
+
+  if (!enforcing) {
+    return { ok: true, user: (auth && auth.user) || '', role: (auth && auth.role) || '',
+             unauthenticated: !signedIn, readOnly: editDenied };
+  }
+  if (editDenied) {
+    /* NOT needsAuth. This person is signed in and may read Price Cards perfectly
+       well; bouncing them to a sign-in form would be the same dead end as
+       no_access. The client shows it inline and leaves the app usable. */
+    return { ok: false, readOnly: true, code: 'read_only', user: auth.user || '',
+             role: auth.role || '', error: 'Your Price Cards access is view-only' };
+  }
   return refusal_(auth);
 }
 
@@ -323,7 +420,7 @@ function requireRead_(action, p) {
   var token = (p && p.token) || '';
   var auth  = gxAuthRead_(token);
   authStatBump_('r', action, !!auth.ok);
-  return gateDecision_(auth, readEnforced_());
+  return gateDecision_(auth, readEnforced_(), false);   // a viewer may read; only writes need edit rights
 }
 
 /* Pass Core's stable `code` through to the client. GX Core v164 returns one on

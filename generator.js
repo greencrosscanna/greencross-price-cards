@@ -660,10 +660,22 @@
      person is signed in perfectly well and simply has no pricecards grant, so a
      sign-in form is a dead end that would refuse them the same way again. */
   function pcRefused(d) {
-    if (!d || !d.needsAuth) return false;
-    if (d.code === "no_access") pcRenderDenied(d.user || "");
-    else pcAuthFailed(d.error);
+    if (!d || (!d.needsAuth && !d.readOnly)) return false;
+    if (d.readOnly)                  pcReadOnlyNotice(d.error);
+    else if (d.code === "no_access") pcRenderDenied(d.user || "");
+    else                             pcAuthFailed(d.error);
     return true;
+  }
+
+  /* read_only is the one refusal that must NOT take over the page. That person
+     is signed in and may read Price Cards perfectly well — they simply hold a
+     viewer grant, so only the write was refused. Gating them would be the same
+     dead end as showing no_access a sign-in form. */
+  function pcReadOnlyNotice(msg) {
+    var m = msg || "Your Price Cards access is view-only.";
+    if (document.body.classList.contains("mode-employee") && typeof showToast === "function") showToast(m);
+    else if (typeof flashError === "function") flashError(m);
+    else if (typeof setStatus === "function") setStatus(m, "err");
   }
 
   /* The credential itself is bad -- expired, forged, or never sent. Drop the
