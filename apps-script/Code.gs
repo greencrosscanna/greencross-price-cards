@@ -69,7 +69,9 @@ function doGet(e) {
     /* authStats is the ONE ungated read: counters and a flag, no shop data in
        it. It has to answer without a session, because it is how we decide
        whether flipping enforcement on is safe yet. */
-    if (p.action === 'authStats') return json(authStats_());
+    if (p.action === 'authStats')  return json(authStats_());
+    if (p.action === 'libversion') return json(getLibVersion_());
+    if (p.action === 'authprobe')  return json(authProbe_());
 
     /* THERE IS NO DEFAULT BRANCH ANY MORE. doGet used to fall through to
        "return the bound Sheet", so a bare GET of the /exec URL handed live
@@ -236,6 +238,54 @@ function authStatBump_(kind, action, ok) {
   } catch (e) { /* telemetry must never break a write */ }
 }
 
+/* ?action=libversion — inventory's snippet (their note, 2026-08-21). For most
+   spokes it reports which GXCore snapshot the DEPLOYMENT runs, which is the only
+   trustworthy answer: the repo manifest, HEAD and the deployment can all
+   disagree. Here it will always say "not bound", and that is the point — this
+   app reaches Core over HTTP precisely so there is no pin to drift, and now that
+   claim is assertable over HTTP instead of taken on faith from a repo file. */
+function getLibVersion_() {
+  try {
+    if (typeof GXCore === 'undefined' || !GXCore) {
+      return { ok: false, error: 'GXCore not bound', bound: false,
+               note: 'by design — pricecards calls GX Core over HTTP, so there is no pinned snapshot' };
+    }
+    if (typeof GXCore.libVersion !== 'function') {
+      return { ok: false, error: 'pinned GXCore has no libVersion() - pre-v153', bound: true };
+    }
+    return { ok: true, bound: true, gxcore: GXCore.libVersion() };
+  } catch (e) {
+    return { ok: false, error: e.message };
+  }
+}
+
+/* ?action=authprobe — inventory's writeauthprobe, adapted. Answers "are the
+   gates really wired?" without a real session and without flipping enforcement.
+   It mints a garbage token, runs it through the REAL verification and the REAL
+   decision function with enforcing forced on, and reports whether it was
+   actually refused. `wouldRefuseIfEnforcing:true` is the live proof that the
+   enforcing path refuses — the one thing the dark rollout otherwise cannot show
+   without refusing real managers for the duration.
+
+   It deliberately does NOT touch the readiness counters: a diagnostic that
+   pollutes the signal you flip on is worse than no diagnostic. */
+function authProbe_() {
+  var bogus = 'probe-' + Utilities.getUuid() + '.not-a-real-token';
+  var v = gxVerify_(bogus, 'pcprobe', 1);          // own cache namespace, 1s — never reused by a real call
+  var decision = gateDecision_(v, true);           // the real gate, enforcing forced on
+  return {
+    ok: true,
+    writes: { enforcing: authEnforced_(), gated: countKeys_(WRITE_ACTIONS) },
+    reads:  { enforcing: readEnforced_(), gated: countKeys_(READ_ACTIONS) },
+    coreReachable:  !!(v && v.code !== 'core_unreachable'),
+    refusesGarbage: !(v && v.ok),
+    refusalCode:    (v && v.code) || '',
+    wouldRefuseIfEnforcing: decision.ok === false && decision.needsAuth === true
+  };
+}
+
+function countKeys_(o) { var n = 0; for (var k in o) if (has_(o, k)) n++; return n; }
+
 function authStats_() {
   var props = PropertiesService.getScriptProperties();
   var s = {};
@@ -252,8 +302,16 @@ function requireWrite_(body) {
   var token = (body && body.token) || '';
   var auth  = gxAuthWrite_(token);
   authStatBump_('w', body && body.action, !!auth.ok);
-  if (auth.ok) return { ok: true, user: auth.user || '', role: auth.role || '' };
-  if (!authEnforced_()) return { ok: true, user: '', role: '', unauthenticated: true };
+  return gateDecision_(auth, authEnforced_());
+}
+
+/* The whole decision, in one place, so ?action=authprobe can put a deliberately
+   bogus token through THIS function with enforcing forced on. A probe that
+   re-implemented the rule would be asserting its own copy, which is the kind of
+   check that cannot fail — and a check that cannot fail reads as a pass. */
+function gateDecision_(auth, enforcing) {
+  if (auth && auth.ok) return { ok: true, user: auth.user || '', role: auth.role || '' };
+  if (!enforcing)      return { ok: true, user: '', role: '', unauthenticated: true };
   return refusal_(auth);
 }
 
@@ -265,9 +323,7 @@ function requireRead_(action, p) {
   var token = (p && p.token) || '';
   var auth  = gxAuthRead_(token);
   authStatBump_('r', action, !!auth.ok);
-  if (auth.ok) return { ok: true, user: auth.user || '', role: auth.role || '' };
-  if (!readEnforced_()) return { ok: true, user: '', role: '', unauthenticated: true };
-  return refusal_(auth);
+  return gateDecision_(auth, readEnforced_());
 }
 
 /* Pass Core's stable `code` through to the client. GX Core v164 returns one on
