@@ -158,12 +158,19 @@ var READ_CACHE_TTL_S  = 60;
 
 /* The nine mutating actions. markDone writes to the bound Sheet; the other
    eight mutate shared Script-Property state (queue, printed history, config). */
-/* Object.create(null) — NO prototype, so these tables cannot be indexed into a
+/* Object.create(null) — NO prototype, so these tables cannot be indexed into an
    inherited member even by code that forgets has_(). Inventory's improvement on
    my fix and the better one: it defends the PATTERN rather than this instance,
    so whoever copies it onto a new route inherits the safe version instead of
    the lucky one. has_() stays as well; two cheap defences on the hole that
-   handed the whole pricing sheet to ?action=toString. */
+   handed the whole pricing sheet to ?action=toString.
+
+   NOTE ON WRITE_ACTIONS: it is no longer the gate — doPost authenticates every
+   post regardless. It survives as the documented inventory of writes and as the
+   count the probe reports, so adding a write here is now bookkeeping rather than
+   the thing that makes it safe. READ_ACTIONS IS still the read router, and that
+   is the right shape for reads: it lists what is PUBLICLY ROUTABLE, so a
+   forgotten line makes a read unreachable rather than making the Sheet public. */
 var WRITE_ACTIONS = Object.assign(Object.create(null), {
   saveConfig: 1, submitCards: 1, queueRemove: 1, clearQueue: 1, markPrinted: 1,
   removePrintedSheet: 1, clearPrinted: 1, ackProducts: 1, markDone: 1
@@ -444,17 +451,26 @@ function doPost(e) {
   try {
     var body = JSON.parse((e && e.postData && e.postData.contents) || '{}');
 
-    /* AUTH GATE — every mutating action, before any of them touch state.
-       One check here rather than nine bespoke ones: a new write added to the
-       dispatch below is covered the moment its name lands in WRITE_ACTIONS. */
-    if (has_(WRITE_ACTIONS, body.action)) {
-      var gate = requireWrite_(body);
-      if (!gate.ok) return json(gate);
-      // Attribution from the VERIFIED session, not from a client-supplied field.
-      // `by` arrived as "" from every caller anyway, so the queue never recorded
-      // who submitted a card; now it does, and it cannot be spoofed.
-      if (gate.user) body.by = gate.user;
-    }
+    /* AUTH GATE — EVERY post, before any of them touch state, whether or not
+       the action is one we recognise.
+
+       It used to gate `if (has_(WRITE_ACTIONS, body.action))`, and the comment
+       here bragged that a new write was covered the moment its name landed in
+       that list. That is the wrong shape, and SPIFF named it after finding the
+       same failure in their own gate: a list of what to PROTECT means a
+       forgotten line ships a SILENTLY PUBLIC write, while a list of what is
+       PUBLIC means a forgotten line ships an unreachable one — and only the
+       second kind reports itself, immediately, from whoever added it.
+
+       Nothing this endpoint accepts is public, so there is no exception list to
+       consult. An unknown action is authenticated first and refused second,
+       which costs a Core round trip on garbage and is the correct order. */
+    var gate = requireWrite_(body);
+    if (!gate.ok) return json(gate);
+    // Attribution from the VERIFIED session, not from a client-supplied field.
+    // `by` arrived as "" from every caller anyway, so the queue never recorded
+    // who submitted a card; now it does, and it cannot be spoofed.
+    if (gate.user) body.by = gate.user;
 
     if (body.action === 'saveConfig')  return json(saveConfig_(body));
     if (body.action === 'submitCards') return json(submitCards_(body));
