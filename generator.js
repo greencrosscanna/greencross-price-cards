@@ -556,10 +556,9 @@
     setStatus("Importing…");
     var p;
     if(engine){
-      // read THROUGH the Apps Script engine (Sheet can be private)
-      var sep = engine.indexOf("?")<0 ? "?" : "&";
-      p = fetch(engine + sep + "gid=" + encodeURIComponent(gidFromUrl(url)), {cache:"no-store"})
-        .then(function(res){ if(!res.ok) throw new Error("http-"+res.status); return res.json(); })
+      // read THROUGH the Apps Script engine (Sheet can be private). action=grid
+      // is explicit now; the engine no longer answers a bare, actionless GET.
+      p = engineGet(engine, "action=grid&gid=" + encodeURIComponent(gidFromUrl(url)))
         .then(function(data){ if(!data || !data.ok) throw new Error((data && data.error) || "engine"); finishImport(data.grid, url); });
     } else {
       // fall back to the public CSV link (read-only)
@@ -626,20 +625,76 @@
 
   /* Stamp the caller's GX Core session token onto a write payload. The SERVER
      validates it (Code.gs requireWrite_); this is only how the credential
-     travels. Reads are deliberately left alone -- they are not gated yet. */
+     travels. */
   function pcSign(payload) {
     var s = pcSession();
     if (s && s.token) payload.token = s.token;
     return payload;
   }
 
-  /* A write came back needsAuth: the session is expired or the grant was pulled.
-     Drop the dead session and re-gate. Leaving it would show a working-looking
-     tool whose every write silently bounces -- the exact failure this whole
-     change exists to remove. */
+  /* Same credential, different transport: an Apps Script GET has no body, so a
+     READ carries its token in the query string. That means it can land in
+     browser history -- accepted deliberately, because the token is short-lived
+     and scoped to this app, and the alternative (a custom header) forces a CORS
+     preflight that /exec cannot answer. */
+  function pcSignUrl(u) {
+    var s = pcSession();
+    if (!s || !s.token) return u;
+    return u + (u.indexOf("?") < 0 ? "?" : "&") + "token=" + encodeURIComponent(s.token);
+  }
+
+  /* ONE DOOR for every engine READ. It stamps the token and turns an auth
+     refusal into the gate -- without it each caller quietly renders an empty
+     panel, so a locked-out iPad would look exactly like an empty print queue. */
+  function engineGet(base, query) {
+    var sep = base.indexOf("?") < 0 ? "?" : "&";
+    return fetch(pcSignUrl(base + sep + query), { cache: "no-store" })
+      .then(function (res) { if (!res.ok) throw new Error("http-" + res.status); return res.json(); })
+      .then(function (d) { if (pcRefused(d)) throw new Error((d && d.error) || "Not signed in"); return d; });
+  }
+
+  /* Every refusal from the engine, read or write, lands here. Branch on `code`,
+     never on the prose -- GX Core owns that wording and has reworded it once
+     already. The distinction that earns its keep is no_access: everything else
+     means the credential is bad, so ask for a new one; no_access means the
+     person is signed in perfectly well and simply has no pricecards grant, so a
+     sign-in form is a dead end that would refuse them the same way again. */
+  function pcRefused(d) {
+    if (!d || !d.needsAuth) return false;
+    if (d.code === "no_access") pcRenderDenied(d.user || "");
+    else pcAuthFailed(d.error);
+    return true;
+  }
+
+  /* The credential itself is bad -- expired, forged, or never sent. Drop the
+     dead session and re-gate. Leaving it would show a working-looking tool
+     whose every call silently bounces. (A missing GRANT is not this: see
+     pcRenderDenied.) */
   function pcAuthFailed(msg) {
     pcSetSession(null);
     pcRenderGate(msg || "Your session expired \u2014 please sign in again.");
+  }
+
+  /* Signed in, no grant. Deliberately NOT a sign-in form and deliberately does
+     not drop the session -- the credential is fine, the access is missing. */
+  function pcRenderDenied(who) {
+    document.documentElement.classList.add("pc-gated");
+    var wrap = document.getElementById("pcGate");
+    if (!wrap) { wrap = document.createElement("div"); wrap.id = "pcGate"; document.body.appendChild(wrap); }
+    wrap.className = "gx-login";
+    wrap.innerHTML =
+      '<div class="gx-login-card">' +
+        '<div class="gx-login-head">' +
+          '<img class="gx-login-mark" src="https://greencrosscanna.github.io/greencross-gx-theme/gx-logo.png" alt="Green Cross">' +
+          '<div class="gx-login-sub">Price Cards</div>' +
+        '</div>' +
+        '<div class="gx-login-form">' +
+          '<div class="gx-login-err">' + (who ? esc(who) + ' does not' : 'You do not') + ' have access to Price Cards.</div>' +
+          '<div style="margin-top:10px;font-size:12px;color:var(--gx-text-mute)">Ask for a Price Cards grant in the Command Center \u2014 signing in again will not change this.</div>' +
+          '<button type="button" class="gx-btn gx-btn-green gx-login-submit" id="pcDeniedSwitch">Sign in as someone else</button>' +
+        '</div>' +
+      '</div>';
+    document.getElementById("pcDeniedSwitch").onclick = function () { pcSetSession(null); pcRenderGate(); };
   }
 
   function pcRenderGate(errMsg, reason) {
@@ -705,7 +760,7 @@
       .then(function(res){ return res.json().catch(function(){ return null; }); })
       .then(function(data){
         var cur = importStatus ? importStatus.textContent : "";
-        if(data && data.needsAuth){ pcAuthFailed(data.error); return; }
+        if(pcRefused(data)) return;
         if(data && data.ok) setStatus(cur + " · marked "+(data.marked!=null?data.marked+" ":"")+"Done in sheet ✓", "ok");
         else if(data && data.error) setStatus(cur + " · write-back issue: "+data.error, "err");
         else setStatus(cur + " · marked Done in sheet ✓", "ok");
@@ -869,7 +924,7 @@
         body: JSON.stringify(pcSign({ action:"saveConfig", config: currentConfig() })) })
       .then(function(r){ return r.json().catch(function(){ return null; }); })
       .then(function(d){
-        if(d && d.needsAuth){ pcAuthFailed(d.error); return; }
+        if(pcRefused(d)) return;
         if(d && d.ok === false) setStatus("Settings didn't save: " + (d.error || "unknown error"), "err");
       })
       .catch(function(){ setStatus("Settings didn't save \u2014 check your connection.", "err"); });
@@ -889,8 +944,7 @@
   function fetchConfigGlobal(){          // adopt the shared config on load
     var url = (typeof loadWebapp === "function") ? (loadWebapp()||"").trim() : "";
     if(!url) return;
-    var sep = url.indexOf("?")<0 ? "?" : "&";
-    fetch(url+sep+"action=getConfig", {cache:"no-store"}).then(function(r){ return r.json(); })
+    engineGet(url, "action=getConfig")
       .then(function(d){
         if(d && d.ok && d.config && applyConfig(d.config)){
           lsSet(CONFIG_KEY, currentConfig());
@@ -1333,9 +1387,7 @@
     var url = engineUrl();
     if(!url){ STYLE.liveReady=false; setSource("Template prices — set an engine URL in ⚙ Sheet settings for live inventory", "tpl"); return; }
     STYLE.liveReady = false; setSource("Loading "+tagStore(store)+" inventory…", "load");
-    var sep = url.indexOf("?")<0 ? "?" : "&";
-    fetch(url+sep+"action=liveCatalog&store="+encodeURIComponent(store), {cache:"no-store"})
-      .then(function(r){ return r.json(); })
+    engineGet(url, "action=liveCatalog&store="+encodeURIComponent(store))
       .then(function(d){ if(!d || !d.ok) throw 0; STYLE.liveRaw = d.items || []; buildLiveIndex(STYLE.liveRaw); STYLE.liveReady = true;
         buildCatMapUI();
         setSource("● Live · "+tagStore(store)+" · "+(d.count||0)+" in-stock products · OTD", "live");
@@ -1383,8 +1435,7 @@
     };
     var url = engineUrl();
     if(!url){ fill(null); return; }
-    var sep = url.indexOf("?")<0 ? "?" : "&";
-    fetch(url+sep+"action=stores", {cache:"no-store"}).then(function(r){ return r.json(); })
+    engineGet(url, "action=stores")
       .then(function(d){ fill(d && d.ok && d.stores && d.stores.length ? d.stores : null); })
       .catch(function(){ fill(null); });
   }
@@ -1432,8 +1483,7 @@
   }
   function refreshQueueCount(){
     var url = engineUrl(); if(!url){ if(queueStrip) queueStrip.hidden = true; return; }
-    var sep = url.indexOf("?")<0 ? "?" : "&";
-    fetch(url+sep+"action=getQueue", {cache:"no-store"}).then(function(r){ return r.json(); })
+    engineGet(url, "action=getQueue")
       .then(function(d){ if(!d || !d.ok) return; var n=(d.queue||[]).length;
         showQueue(n ? ("<b>"+n+"</b> card"+(n>1?"s":"")+" waiting in the shared queue") : "Shared queue is empty", n>0);
         postQueueCountToHost(n);
@@ -1449,7 +1499,7 @@
     if (window.GXDev) window.GXDev.check("submitCards");
     fetch(url, { method:"POST", headers:{ "Content-Type":"text/plain;charset=utf-8" }, body:JSON.stringify(pcSign({ action:"submitCards", cards:payload })) })
       .then(function(r){ return r.json(); }).then(function(d){
-        if(d && d.needsAuth){ pcAuthFailed(d.error); return; }
+        if(pcRefused(d)) return;
         if(d && d.ok){
           rows = rows.filter(function(r){ return cards.indexOf(r)<0; }); if(!rows.length) rows.push(blankRow());
           save(); renderTable(); refreshPreview();
@@ -1460,8 +1510,7 @@
   }
   function loadQueue(){
     var url = engineUrl(); if(!url) return;
-    var sep = url.indexOf("?")<0 ? "?" : "&";
-    fetch(url+sep+"action=getQueue", {cache:"no-store"}).then(function(r){ return r.json(); })
+    engineGet(url, "action=getQueue")
       .then(function(d){ if(!d || !d.ok) return;
         var have={}; rows.forEach(function(r){ if(r.qid) have[r.qid]=true; });
         var added=0, claimed=[];
@@ -1496,8 +1545,7 @@
   }
   function refreshPrinted(){
     var url = engineUrl(); if(!url){ if(printedStrip) printedStrip.hidden = true; return; }
-    var sep = url.indexOf("?")<0 ? "?" : "&";
-    fetch(url+sep+"action=getPrinted", {cache:"no-store"}).then(function(r){ return r.json(); })
+    engineGet(url, "action=getPrinted")
       .then(function(d){ if(!d || !d.ok) return; PRINTED = d.printed || []; showPrintedStrip(); }).catch(function(){});
   }
   function postEngine(payload, then){                // small POST helper for the printed actions
@@ -1507,7 +1555,7 @@
     fetch(url, { method:"POST", headers:{ "Content-Type":"text/plain;charset=utf-8" }, body:JSON.stringify(pcSign(payload)) })
       .then(function(r){ return r.json().catch(function(){ return null; }); })
       .then(function(d){
-        if(d && d.needsAuth){ pcAuthFailed(d.error); return; }
+        if(pcRefused(d)) return;
         if(d && d.ok === false){ setStatus("Couldn't save: " + (d.error || "unknown error"), "err"); return; }
         if(then) then();
       })
@@ -1571,8 +1619,7 @@
   var newprodList  = document.getElementById("newprodList");
   function refreshNewProducts(){
     var url = engineUrl(); if(!url) return;
-    var sep = url.indexOf("?")<0 ? "?" : "&";
-    fetch(url+sep+"action=newProducts", {cache:"no-store"}).then(function(r){ return r.json(); })
+    engineGet(url, "action=newProducts")
       .then(function(d){ if(!d || !d.ok) return;
         NEW_PRODUCTS = d.products || [];
         var n = NEW_PRODUCTS.length;
@@ -1598,7 +1645,7 @@
     if(url) fetch(url, { method:"POST", headers:{ "Content-Type":"text/plain;charset=utf-8" },
       body:JSON.stringify(pcSign({ action:"ackProducts", ids:[p.id] })) })
       .then(function(r){ return r.json().catch(function(){ return null; }); })
-      .then(function(d){ if(d && d.needsAuth) pcAuthFailed(d.error); })
+      .then(function(d){ pcRefused(d); })
       .catch(function(){});
     NEW_PRODUCTS = NEW_PRODUCTS.filter(function(x){ return x.id !== p.id; });
     renderNewProductsList(); refreshNewProducts();
