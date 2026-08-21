@@ -80,7 +80,7 @@ function doGet(e) {
        naming neither an action nor a gid now gets an error, not the Sheet.
        Retire the alias once the read gate is enforcing. */
     var action = p.action || (p.gid ? 'grid' : '');
-    if (!READ_ACTIONS[action]) return json({ ok: false, error: 'unknown-action' });
+    if (!has_(READ_ACTIONS, action)) return json({ ok: false, error: 'unknown-action' });
 
     var gate = requireRead_(action, p);
     if (!gate.ok) return json(gate);
@@ -94,15 +94,11 @@ function doGet(e) {
       case 'getPrinted':   return json(getPrinted_());
       case 'newProducts':  return json(newProducts_());
       case 'scanNow':      return json(scanNewProducts());
+      case 'grid':         return json(readGrid_(p.gid));
     }
-
-    // action === 'grid': the sheet-import read.
-    var sheet  = pickSheet(p.gid);
-    var values = sheet.getDataRange().getValues();
-    var grid   = values.map(function (row) {
-      return row.map(cellToString);
-    });
-    return json({ ok: true, grid: grid, rows: grid.length });
+    // No fall-through to the Sheet. If an action reached here it is in
+    // READ_ACTIONS but has no case, which is a bug, not a request for the grid.
+    return json({ ok: false, error: 'unknown-action' });
   } catch (err) {
     return json({ ok: false, error: String(err) });
   }
@@ -298,7 +294,7 @@ function doPost(e) {
     /* AUTH GATE — every mutating action, before any of them touch state.
        One check here rather than nine bespoke ones: a new write added to the
        dispatch below is covered the moment its name lands in WRITE_ACTIONS. */
-    if (WRITE_ACTIONS[body.action]) {
+    if (has_(WRITE_ACTIONS, body.action)) {
       var gate = requireWrite_(body);
       if (!gate.ok) return json(gate);
       // Attribution from the VERIFIED session, not from a client-supplied field.
@@ -345,6 +341,22 @@ function doPost(e) {
 }
 
 /* --------------------------- HELPERS -------------------------- */
+/* OWN keys only. `READ_ACTIONS[a]` alone is a hole: every plain object inherits
+   toString, constructor, valueOf and friends, so ?action=toString passed the
+   router as a known action. It then fell past the switch to the old grid
+   read — re-creating, through a different door, the exact leak that deleting
+   the default branch was meant to close. Caught on the live endpoint after
+   deploy; the stubbed harness had not thought to ask for a prototype member. */
+function has_(table, key) {
+  return Object.prototype.hasOwnProperty.call(table, String(key));
+}
+
+function readGrid_(gid) {
+  var sheet  = pickSheet(gid);
+  var values = sheet.getDataRange().getValues();
+  var grid   = values.map(function (row) { return row.map(cellToString); });
+  return { ok: true, grid: grid, rows: grid.length };
+}
 function pickSheet(gid) {
   var ss   = SpreadsheetApp.getActiveSpreadsheet();
   var want = gid || SHEET_GID;
