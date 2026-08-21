@@ -243,6 +243,29 @@ function gxAuthRead_(token)  { return gxVerify_(token, 'pcr', READ_CACHE_TTL_S);
 /* Best-effort counters answering one question: are real clients sending tokens
    yet? Undercounts under concurrency (Properties writes are not transactional)
    and that is fine — it is a readiness signal, not an audit log. */
+/* JSON.parse hands back plain objects, WITH a prototype — so a counter keyed on
+   an action name does `bucket['toString'] || 0`, finds the inherited function,
+   and stores "function toString() { [native code] }1". Found in the LIVE stats,
+   in my own telemetry, days after I sent every app in the suite a warning about
+   this exact class and grepped my gates for it. Counters did not look like a
+   place the bug could live, which is precisely why it lived there.
+
+   Not a security hole — but these counters are the evidence the auth flip gets
+   decided on, and a corrupted count is worse than no count. */
+function statBucket_(s, name) {
+  var clean = Object.create(null);
+  var raw = s[name];
+  if (raw) {
+    for (var k in raw) {
+      if (!Object.prototype.hasOwnProperty.call(raw, k)) continue;
+      var n = Number(raw[k]);
+      if (isFinite(n)) clean[k] = n;      // drop anything a previous build corrupted
+    }
+  }
+  s[name] = clean;
+  return clean;
+}
+
 function authStatBump_(kind, action, ok) {
   try {
     var props = PropertiesService.getScriptProperties();
@@ -252,8 +275,8 @@ function authStatBump_(kind, action, ok) {
     // a mixed count could not tell you which one was ready.
     var withKey = (kind === 'r') ? 'read_with' : 'with';
     var noKey   = (kind === 'r') ? 'read_without' : 'without';
-    s[withKey] = s[withKey] || {}; s[noKey] = s[noKey] || {};
-    var bucket = ok ? s[withKey] : s[noKey];
+    var bucket  = statBucket_(s, ok ? withKey : noKey);
+    statBucket_(s, ok ? noKey : withKey);          // sanitise the other side too
     var key = String(action || '?');
     bucket[key] = (bucket[key] || 0) + 1;
     var stamp = (kind === 'r') ? 'read_' : '';
@@ -352,12 +375,12 @@ function authStatEdit_(action, auth) {
     var props = PropertiesService.getScriptProperties();
     var s = JSON.parse(props.getProperty(AUTH_STATS_PROP) || '{}');
     var seen = (auth.canEdit === true) ? 'true' : (auth.canEdit === false) ? 'false' : 'missing';
-    s.canedit_seen = s.canedit_seen || {};
-    s.canedit_seen[seen] = (s.canedit_seen[seen] || 0) + 1;
+    var seenB = statBucket_(s, 'canedit_seen');
+    seenB[seen] = (seenB[seen] || 0) + 1;
     if (auth.canEdit === false) {
-      s.edit_denied = s.edit_denied || {};
+      var denied = statBucket_(s, 'edit_denied');
       var k = String(action || '?');
-      s.edit_denied[k] = (s.edit_denied[k] || 0) + 1;
+      denied[k] = (denied[k] || 0) + 1;
       s.last_edit_denied_at = new Date().toISOString();
     }
     props.setProperty(AUTH_STATS_PROP, JSON.stringify(s));
@@ -368,6 +391,10 @@ function authStats_() {
   var props = PropertiesService.getScriptProperties();
   var s = {};
   try { s = JSON.parse(props.getProperty(AUTH_STATS_PROP) || '{}'); } catch (e) {}
+  // Report sanitised counts, so a value corrupted by an older build cannot be
+  // read as a number by whoever is deciding whether to flip.
+  ['with', 'without', 'read_with', 'read_without', 'canedit_seen', 'edit_denied']
+    .forEach(function (b) { if (s[b]) statBucket_(s, b); });
   s.enforcing = authEnforced_();            // writes
   s.enforcing_reads = readEnforced_();
   return { ok: true, auth: s };
