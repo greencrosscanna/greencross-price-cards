@@ -65,7 +65,27 @@ function authorize() {
 function doGet(e) {
   try {
     var p = (e && e.parameter) || {};
-    switch (p.action) {
+
+    /* authStats is the ONE ungated read: counters and a flag, no shop data in
+       it. It has to answer without a session, because it is how we decide
+       whether flipping enforcement on is safe yet. */
+    if (p.action === 'authStats') return json(authStats_());
+
+    /* THERE IS NO DEFAULT BRANCH ANY MORE. doGet used to fall through to
+       "return the bound Sheet", so a bare GET of the /exec URL handed live
+       pricing to anyone holding the link — no knowledge of the API required at
+       all, which made it a worse leak than the unauthenticated writes were.
+       A bare ?gid= is still honoured as an ALIAS for action=grid, because
+       iPads on cached JS ask that way; that is not a catch-all — a request
+       naming neither an action nor a gid now gets an error, not the Sheet.
+       Retire the alias once the read gate is enforcing. */
+    var action = p.action || (p.gid ? 'grid' : '');
+    if (!READ_ACTIONS[action]) return json({ ok: false, error: 'unknown-action' });
+
+    var gate = requireRead_(action, p);
+    if (!gate.ok) return json(gate);
+
+    switch (action) {
       case 'stores':       return json({ ok: true, stores: dutchieStores_() });
       case 'dutchieProbe': return json(dutchieProbe_(p));
       case 'liveCatalog':  return json(liveCatalog_(p));
@@ -74,9 +94,9 @@ function doGet(e) {
       case 'getPrinted':   return json(getPrinted_());
       case 'newProducts':  return json(newProducts_());
       case 'scanNow':      return json(scanNewProducts());
-      case 'authStats':    return json(authStats_());   // readiness check before flipping enforcement
     }
-    // default: read the bound Sheet
+
+    // action === 'grid': the sheet-import read.
     var sheet  = pickSheet(p.gid);
     var values = sheet.getDataRange().getValues();
     var grid   = values.map(function (row) {
@@ -102,19 +122,41 @@ function doGet(e) {
  * route always hits current Core and needs no pin. Scope for the outbound call
  * (script.external_request) was already declared for Dutchie.
  *
- * ROLLOUT — this ships DARK. authEnforced_() reads a Script Property that
- * starts unset, so writes are validated and COUNTED but never rejected. That
- * closes the window where an iPad running cached JS would have its writes
- * refused. Check readiness with ?action=authStats, then run enableWriteAuth()
- * from the Apps Script editor to enforce. disableWriteAuth() is the rollback,
- * and neither needs a code deploy.
+ * READS ARE GATED TOO (Sky, 2026-08-20). The writes were the noisier problem;
+ * the reads were the bigger one, because getQueue / getPrinted / liveCatalog /
+ * newProducts / getConfig leak live pricing and inventory to anyone with the
+ * URL. They differ from writes in one way that matters: FREQUENCY. Writes are
+ * occasional, reads run several times per page load, so the read gate caches
+ * its verification for 60s (keyed on a digest of the token) rather than paying
+ * a Core round trip five times a load. The read cache and the write cache are
+ * separate namespaces on purpose — a read verification must never authorise a
+ * write.
+ *
+ * ROLLOUT — BOTH GATES SHIP DARK, and they flip INDEPENDENTLY. authEnforced_()
+ * and readEnforced_() each read a Script Property that starts unset, so calls
+ * are validated and COUNTED but never rejected. That closes the window where an
+ * iPad running cached JS would have its writes refused or its catalog blanked.
+ * Check readiness with ?action=authStats, then run enableWriteAuth() /
+ * enableReadAuth() from the Apps Script editor to enforce. disableWriteAuth()
+ * and disableReadAuth() are the rollbacks, and none of them need a code deploy.
+ * Flip the writes first and let them sit: two dark gates flipped together means
+ * two ways for a stale iPad to break at once, with no way to tell which did it.
  * ══════════════════════════════════════════════════════════════════════════ */
 var APP        = 'pricecards';   // matches .gx_app AND the app_access grants in GX Core
 var GXCORE_URL = 'https://script.google.com/macros/s/AKfycbx9mjeCBbDpxNYaqBv2hyZaO1hpbGG6PZM9AebFdwl0UwkdtRCGSWrH-8ohEtdF1K_6/exec';
 
-var AUTH_ENFORCE_PROP = 'PRICECARDS_REQUIRE_AUTH';    // '1' = reject unauthenticated writes
-var AUTH_STATS_PROP   = 'PRICECARDS_AUTH_STATS';      // readiness telemetry for the flip
-var AUTH_CACHE_TTL_S  = 300;                          // « GX_SESSION_TTL; a revoke takes effect within 5 min
+var AUTH_ENFORCE_PROP = 'PRICECARDS_REQUIRE_AUTH';       // '1' = reject unauthenticated WRITES
+var READ_ENFORCE_PROP = 'PRICECARDS_REQUIRE_AUTH_READ';  // '1' = reject unauthenticated READS
+var AUTH_STATS_PROP   = 'PRICECARDS_AUTH_STATS';         // readiness telemetry for both flips
+
+/* Two verification caches, two namespaces, deliberately NOT shared. 60s is the
+   whole budget for a revocation to bite; the write path was on 300s, which was
+   far too generous for the side that mutates shared state. Core-admin's ruling
+   was to leave the writes uncached entirely — this keeps a 60s cache there
+   because queue work is click-by-click and a Core round trip has been measured
+   at ~7s, which would put a 7s spinner on every button in the print queue. */
+var WRITE_CACHE_TTL_S = 60;
+var READ_CACHE_TTL_S  = 60;
 
 /* The nine mutating actions. markDone writes to the bound Sheet; the other
    eight mutate shared Script-Property state (queue, printed history, config). */
@@ -123,24 +165,38 @@ var WRITE_ACTIONS = {
   removePrintedSheet: 1, clearPrinted: 1, ackProducts: 1, markDone: 1
 };
 
+/* Every read this app serves, named explicitly. This list IS the router — an
+   action that is not in it is an error, which is what removed the old default
+   branch. scanNow sits here because it arrives as a GET, but it mutates, so it
+   is gated like everything else. authStats is handled before the lookup. */
+var READ_ACTIONS = {
+  stores: 1, dutchieProbe: 1, liveCatalog: 1, getConfig: 1,
+  getQueue: 1, getPrinted: 1, newProducts: 1, scanNow: 1, grid: 1
+};
+
 function authEnforced_() {
   return PropertiesService.getScriptProperties().getProperty(AUTH_ENFORCE_PROP) === '1';
+}
+function readEnforced_() {
+  return PropertiesService.getScriptProperties().getProperty(READ_ENFORCE_PROP) === '1';
 }
 
 /* Flip enforcement from the Apps Script editor (owner-only) rather than over
    HTTP — an endpoint that can disable the endpoint's own auth is a back door. */
 function enableWriteAuth()  { PropertiesService.getScriptProperties().setProperty(AUTH_ENFORCE_PROP, '1'); return authStats_(); }
 function disableWriteAuth() { PropertiesService.getScriptProperties().deleteProperty(AUTH_ENFORCE_PROP);   return authStats_(); }
+function enableReadAuth()   { PropertiesService.getScriptProperties().setProperty(READ_ENFORCE_PROP, '1'); return authStats_(); }
+function disableReadAuth()  { PropertiesService.getScriptProperties().deleteProperty(READ_ENFORCE_PROP);   return authStats_(); }
 function resetAuthStats()   { PropertiesService.getScriptProperties().deleteProperty(AUTH_STATS_PROP);     return authStats_(); }
 
 /* Validate a GX Core session token and resolve this user's role on `pricecards`.
    Core's `validate` route runs requireAuth(): HMAC signature + expiry + an active
    grant. A forged or expired token fails here, not in the browser. */
-function gxAuth_(token) {
-  if (!token) return { ok: false, error: 'Not signed in' };
+function gxVerify_(token, ns, ttl) {
+  if (!token) return { ok: false, error: 'Not signed in', code: 'auth_required' };
   var cache = CacheService.getScriptCache();
   // Key on a DIGEST, never the raw token — the cache is not a place to park credentials.
-  var ckey = 'pcauth:' + Utilities.base64EncodeWebSafe(
+  var ckey = ns + ':' + Utilities.base64EncodeWebSafe(
     Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, String(token)));
   var hit = cache.get(ckey);
   if (hit) return JSON.parse(hit);
@@ -149,28 +205,37 @@ function gxAuth_(token) {
               '&token=' + encodeURIComponent(token);
     var res = UrlFetchApp.fetch(url, { muteHttpExceptions: true, followRedirects: true });
     var out = JSON.parse(res.getContentText());
-    // Cache ONLY successes. Caching a failure would turn a blip in Core into five
-    // minutes of locked-out managers.
-    if (out && out.ok) cache.put(ckey, JSON.stringify(out), AUTH_CACHE_TTL_S);
+    // Cache ONLY successes. Caching a failure would turn a blip in Core into a
+    // minute of locked-out managers.
+    if (out && out.ok) cache.put(ckey, JSON.stringify(out), ttl);
     return out;
   } catch (e) {
-    return { ok: false, error: 'Could not reach GX Core to verify your session' };
+    return { ok: false, error: 'Could not reach GX Core to verify your session',
+             code: 'core_unreachable' };
   }
 }
+function gxAuthWrite_(token) { return gxVerify_(token, 'pcw', WRITE_CACHE_TTL_S); }
+function gxAuthRead_(token)  { return gxVerify_(token, 'pcr', READ_CACHE_TTL_S); }
 
 /* Best-effort counters answering one question: are real clients sending tokens
    yet? Undercounts under concurrency (Properties writes are not transactional)
    and that is fine — it is a readiness signal, not an audit log. */
-function authStatBump_(action, ok) {
+function authStatBump_(kind, action, ok) {
   try {
     var props = PropertiesService.getScriptProperties();
     var s = JSON.parse(props.getProperty(AUTH_STATS_PROP) || '{}');
-    s['with'] = s['with'] || {}; s['without'] = s['without'] || {};
-    var bucket = ok ? s['with'] : s['without'];
+    // Writes keep the original bucket names so the counts already collected stay
+    // comparable; reads get their own, because the two gates flip separately and
+    // a mixed count could not tell you which one was ready.
+    var withKey = (kind === 'r') ? 'read_with' : 'with';
+    var noKey   = (kind === 'r') ? 'read_without' : 'without';
+    s[withKey] = s[withKey] || {}; s[noKey] = s[noKey] || {};
+    var bucket = ok ? s[withKey] : s[noKey];
     var key = String(action || '?');
     bucket[key] = (bucket[key] || 0) + 1;
-    if (ok) s.last_ok_at = new Date().toISOString();
-    else    s.last_missing_at = new Date().toISOString();
+    var stamp = (kind === 'r') ? 'read_' : '';
+    if (ok) s[stamp + 'last_ok_at'] = new Date().toISOString();
+    else    s[stamp + 'last_missing_at'] = new Date().toISOString();
     props.setProperty(AUTH_STATS_PROP, JSON.stringify(s));
   } catch (e) { /* telemetry must never break a write */ }
 }
@@ -179,7 +244,8 @@ function authStats_() {
   var props = PropertiesService.getScriptProperties();
   var s = {};
   try { s = JSON.parse(props.getProperty(AUTH_STATS_PROP) || '{}'); } catch (e) {}
-  s.enforcing = authEnforced_();
+  s.enforcing = authEnforced_();            // writes
+  s.enforcing_reads = readEnforced_();
   return { ok: true, auth: s };
 }
 
@@ -188,11 +254,40 @@ function authStats_() {
    the stats reflect what enforcement WOULD have done. */
 function requireWrite_(body) {
   var token = (body && body.token) || '';
-  var auth  = gxAuth_(token);
-  authStatBump_(body && body.action, !!auth.ok);
+  var auth  = gxAuthWrite_(token);
+  authStatBump_('w', body && body.action, !!auth.ok);
   if (auth.ok) return { ok: true, user: auth.user || '', role: auth.role || '' };
   if (!authEnforced_()) return { ok: true, user: '', role: '', unauthenticated: true };
-  return { ok: false, error: auth.error || 'Not signed in', needsAuth: true };
+  return refusal_(auth);
+}
+
+/* Same shape for reads, on its own flag and its own cache. Kept separate from
+   requireWrite_ rather than parameterised: the two differ in what they may
+   trust (a cached read answer must not stand in for a write check), and a
+   single function with a mode flag is how that distinction gets lost later. */
+function requireRead_(action, p) {
+  var token = (p && p.token) || '';
+  var auth  = gxAuthRead_(token);
+  authStatBump_('r', action, !!auth.ok);
+  if (auth.ok) return { ok: true, user: auth.user || '', role: auth.role || '' };
+  if (!readEnforced_()) return { ok: true, user: '', role: '', unauthenticated: true };
+  return refusal_(auth);
+}
+
+/* Pass Core's stable `code` through to the client. GX Core v164 returns one on
+   every auth failure — auth_required, invalid_session, session_expired,
+   bad_credentials, missing_credentials, no_access, app_required — and the
+   client branches on THAT, never on the prose, which gets reworded. The
+   distinction that earns its keep is no_access: that person is signed in
+   perfectly well and simply has no pricecards grant, so showing them a sign-in
+   form is a dead end that refuses them again. */
+function refusal_(auth) {
+  return {
+    ok: false,
+    error: (auth && auth.error) || 'Not signed in',
+    code:  (auth && auth.code)  || 'auth_required',
+    needsAuth: true
+  };
 }
 
 /* --------------------------- WRITE ---------------------------- */
