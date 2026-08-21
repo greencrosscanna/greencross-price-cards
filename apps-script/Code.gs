@@ -72,6 +72,7 @@ function doGet(e) {
     if (p.action === 'authStats')  return json(authStats_());
     if (p.action === 'libversion') return json(getLibVersion_());
     if (p.action === 'authprobe')  return json(authProbe_());
+    if (p.action === 'queueCount') return json(queueCount_());
 
     /* THERE IS NO DEFAULT BRANCH ANY MORE. doGet used to fall through to
        "return the bound Sheet", so a bare GET of the /exec URL handed live
@@ -613,6 +614,30 @@ function writeQueue_(q) {
   PropertiesService.getScriptProperties().setProperty(GC_QUEUE_PROP, JSON.stringify(q));
 }
 function getQueue_() { return { ok: true, queue: readQueue_() }; }
+
+/* PUBLIC BY DESIGN, and deliberately NOT getQueue.
+   Inventory renders a Price Tags badge from the shared queue and polls this
+   engine every 30s (greencross-inventory/index.html:8745). It has no pricecards
+   token, and once the read gate enforces its badge would silently show nothing —
+   found in the dark-mode counters, as tokenless reads that never went quiet no
+   matter how many stale clients we fixed. A steady rate that survives every fix
+   is not noise, it is a subscriber.
+
+   The two obvious fixes are both bad. Having Inventory send a token couples its
+   badge to whether the current Inventory user holds a pricecards grant — and
+   Price Cards is a SUB-APP, so plenty of Inventory users have no such row, and
+   their badge would blank for a reason unrelated to the badge. Exempting
+   getQueue is worse: it returns brand, item, description, size, PRICE and store
+   for every pending card, so publishing it to serve a count would republish the
+   pending price list — the exact leak we just closed.
+
+   So: a count, and nothing else. No token, no grant, no card data. The number of
+   cards waiting says nothing about what they are or what they cost. Anything
+   that carries actual queue CONTENT stays behind the gate. */
+function queueCount_() {
+  var q = readQueue_();
+  return { ok: true, count: (q && q.length) || 0 };
+}
 function submitCards_(body) {
   var cards = (body && body.cards) || [];
   if (!cards.length) return { ok: false, error: 'no-cards' };
