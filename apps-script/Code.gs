@@ -243,7 +243,21 @@ function gxAuthRead_(token)  { return gxVerify_(token, 'pcr', READ_CACHE_TTL_S);
 
 /* Best-effort counters answering one question: are real clients sending tokens
    yet? Undercounts under concurrency (Properties writes are not transactional)
-   and that is fine — it is a readiness signal, not an audit log. */
+   and that is fine — it is a readiness signal, not an audit log.
+
+   PROBES MUST SAY SO: pass probe=1 and the attempt is tallied under `probes`
+   instead of with/without, so testing cannot be mistaken for a stale client in
+   the data a flip gets decided on. This exists because it has now happened
+   twice — my own tokenless curl left a "?" in the write counters, and
+   core-admin's post-flip probes added six ackProducts hits that look exactly
+   like a real client whose writes are being refused. We each nearly
+   manufactured the ghost we spent a day chasing.
+
+   It is SELF-DECLARED, so it is not audit-grade: anyone can set probe=1 and
+   stay out of the counters. That costs nothing, because the flag has no effect
+   on the gate — a probe is refused exactly like any other unauthenticated
+   request. It buys a clean instrument, not a security property, and it would be
+   a mistake to ever treat `without` as a record of who tried. */
 /* JSON.parse hands back plain objects, WITH a prototype — so a counter keyed on
    an action name does `bucket['toString'] || 0`, finds the inherited function,
    and stores "function toString() { [native code] }1". Found in the LIVE stats,
@@ -267,13 +281,21 @@ function statBucket_(s, name) {
   return clean;
 }
 
-function authStatBump_(kind, action, ok) {
+function authStatBump_(kind, action, ok, isProbe) {
   try {
     var props = PropertiesService.getScriptProperties();
     var s = JSON.parse(props.getProperty(AUTH_STATS_PROP) || '{}');
     // Writes keep the original bucket names so the counts already collected stay
     // comparable; reads get their own, because the two gates flip separately and
     // a mixed count could not tell you which one was ready.
+    if (isProbe) {
+      var pb = statBucket_(s, 'probes');
+      var pk = (kind === 'r' ? 'read:' : 'write:') + String(action || '?');
+      pb[pk] = (pb[pk] || 0) + 1;
+      s.last_probe_at = new Date().toISOString();
+      props.setProperty(AUTH_STATS_PROP, JSON.stringify(s));
+      return;
+    }
     var withKey = (kind === 'r') ? 'read_with' : 'with';
     var noKey   = (kind === 'r') ? 'read_without' : 'without';
     var bucket  = statBucket_(s, ok ? withKey : noKey);
@@ -364,6 +386,14 @@ function authProbe_() {
 
 function countKeys_(o) { var n = 0; for (var k in o) if (has_(o, k)) n++; return n; }
 
+/* Truthy `probe` on the query string or the post body. Deliberately loose about
+   the value ('1', 'true', 1) and deliberately without effect on the gate. */
+function isProbe_(src) {
+  var v = src && src.probe;
+  return v === 1 || v === true || v === '1' || v === 'true';
+}
+
+
 /* Readiness for the EDIT half of the write gate, which the counters could not
    see before: how often a caller authenticates fine but would be refused for
    being view-only, and whether canEdit arrives populated at all. Both matter
@@ -394,7 +424,7 @@ function authStats_() {
   try { s = JSON.parse(props.getProperty(AUTH_STATS_PROP) || '{}'); } catch (e) {}
   // Report sanitised counts, so a value corrupted by an older build cannot be
   // read as a number by whoever is deciding whether to flip.
-  ['with', 'without', 'read_with', 'read_without', 'canedit_seen', 'edit_denied']
+  ['with', 'without', 'read_with', 'read_without', 'canedit_seen', 'edit_denied', 'probes']
     .forEach(function (b) { if (s[b]) statBucket_(s, b); });
   s.enforcing = authEnforced_();            // writes
   s.enforcing_reads = readEnforced_();
@@ -407,7 +437,7 @@ function authStats_() {
 function requireWrite_(body) {
   var token = (body && body.token) || '';
   var auth  = gxAuthWrite_(token);
-  authStatBump_('w', body && body.action, !!auth.ok);
+  authStatBump_('w', body && body.action, !!auth.ok, isProbe_(body));
   authStatEdit_(body && body.action, auth);
   return gateDecision_(auth, authEnforced_(), true);
 }
@@ -454,7 +484,7 @@ function gateDecision_(auth, enforcing, needsEdit) {
 function requireRead_(action, p) {
   var token = (p && p.token) || '';
   var auth  = gxAuthRead_(token);
-  authStatBump_('r', action, !!auth.ok);
+  authStatBump_('r', action, !!auth.ok, isProbe_(p));
   return gateDecision_(auth, readEnforced_(), false);   // a viewer may read; only writes need edit rights
 }
 
