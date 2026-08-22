@@ -40,6 +40,11 @@
     </div>
     <div class="gx-topnav-right">
       <div class="gx-clock"><div class="gx-clock-time">&mdash;</div><div class="gx-clock-date">&mdash;</div></div>
+      <!-- Report a bug. HIDDEN WHEN EMBEDDED: inside Inventory this app is an iframe and the host
+           page already carries its own reporter, so showing a second one offers the user two
+           buttons that file the same report. Shown standalone, where until now a staff bug had
+           nowhere to land at all. -->
+      <button class="btn btn-ghost" id="pcBugBtn" title="Report a bug" hidden>&#128030;</button>
       <div id="pcUserSlot"></div>
     </div>
   </header>
@@ -257,6 +262,6 @@
     'getConfig', 'getPrinted', 'getQueue', 'liveCatalog', 'newProducts', 'stores'
   ];
 </script>
-<script src="generator.js?v=38"></script>
+<script src="generator.js?v=39"></script>
 </body>
 </html>

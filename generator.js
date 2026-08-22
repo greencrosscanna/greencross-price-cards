@@ -1767,3 +1767,55 @@
   window.addEventListener("load", settle);
   setTimeout(settle, 250);
 })();
+
+/* ── Report a bug ──────────────────────────────────────────────────────────────
+ * Files to GX Core through this app's own engine, which forwards over HTTP. Per
+ * the sub-app convention the report buckets to Inventory with tab=pricecards.
+ *
+ * ONLY STANDALONE. Embedded in Inventory this page is an iframe and the host
+ * already has a reporter; two buttons filing the same report is worse than one.
+ * `?embed=1` is what Inventory appends, so that is the signal.
+ *
+ * Reports the ENGINE's answer, never a blanket success. Sales shipped a version
+ * that ignored a failed ingest and told the user it worked — the reports were
+ * lost and nobody knew for weeks.
+ */
+(function pcBugReporter(){
+  var btn = document.getElementById("pcBugBtn");
+  if (!btn) return;
+  var embedded = /[?&]embed=1\b/.test(location.search);
+  if (embedded) return;                       // host page owns the reporter
+  btn.hidden = false;
+
+  btn.addEventListener("click", function(){
+    var endpoint = ((typeof markUrlInput !== "undefined" && markUrlInput && markUrlInput.value) || loadWebapp() || "").trim();
+    if (!endpoint) { alert("No engine configured — cannot file a bug from here."); return; }
+
+    var desc = prompt("Describe the bug — what you did, and what happened instead:");
+    if (desc == null) return;                 // cancelled
+    desc = String(desc).trim();
+    if (!desc) { alert("A description is required."); return; }
+
+    var who = "";
+    try { who = (window.GXSession && GXSession.user && GXSession.user()) || ""; } catch (e) {}
+
+    var payload = JSON.stringify({
+      action: "reportBug",
+      desc: desc,
+      reporter: who || "anonymous",
+      appVer: (document.querySelector('script[src*="generator.js?v="]') || {}).src || "",
+    });
+    btn.disabled = true;
+    fetch(endpoint, { method:"POST", headers:{ "Content-Type":"text/plain;charset=utf-8" }, body:payload })
+      .then(function(r){ return r.json().catch(function(){ return null; }); })
+      .then(function(d){
+        if (d && d.ok) alert("Thanks — filed to the Inventory bug board as a Price Cards report.");
+        else alert("Could not file that: " + ((d && d.error) || "no response from the engine") +
+                   "\n\nNothing was saved. Please tell Sky directly.");
+      })
+      .catch(function(e){
+        alert("Could not file that: " + e.message + "\n\nNothing was saved. Please tell Sky directly.");
+      })
+      .then(function(){ btn.disabled = false; });
+  });
+})();
