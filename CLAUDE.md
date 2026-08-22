@@ -6,6 +6,32 @@ connector, and the centralized bug-report + release-note + coordination logs all
 `index.html` + `generator.js` (GitHub Pages); backend: `apps-script/Code.gs` (clasp). Its app key in GX
 Core is **`pricecards`**.
 
+## Stack & local loop
+
+**No build step — the file on disk IS the app.**
+
+| | |
+|---|---|
+| frontend | `index.html` + `generator.js` + `generator.css` on GitHub Pages; also `fonts.css`, `style/`, `doodle-bg.svg`, `align-template.png` |
+| backend | `apps-script/Code.gs` + `apps-script/appsscript.json`, deployed with clasp |
+| version | the **`?v=` cache-buster** in `index.html` — single source of truth for `deploy.sh` |
+| run | `python3 serve.py` → <http://localhost:8753> |
+| ship | commit → push (Pages) → `./deploy.sh` |
+| tests | no automated suite — verify against the live app |
+
+**`serve.py` here exits with a clear error if the app key is missing from its `PORTS` table** rather than
+falling back to a default. Don't reintroduce a fallback: the old default was **8181 — Leaderboard's real
+port, not a free one** — so a missing key silently collided with a running server instead of failing. This
+app hit exactly that (keyed `pricecards`, table said `pricetags`; the preview opened 8753 while the server
+listened on 8181).
+
+The dev server talks to the **live** backend; `gx-dev.js` blocks writes until armed. `gx-preflight.sh` runs
+as a **pre-push hook** and refuses dev leftovers.
+
+**Shared files** (`deploy.sh`, `serve.py`, `gx-preflight.sh`, `.claude/gx-brain-notes.sh`) come from
+**gx-theme** via `./gx-sync.sh`, filled from `.gx_app`. Edit them **there**, then re-sync. This CLAUDE.md is
+intentionally **not** synced.
+
 ## Sync with the brain — run `/gxbrain` (or say "brain sync")
 
 This app is on the shared brain. **`/gxbrain`** loads the shared rules and reconciles this chat with GX Core
