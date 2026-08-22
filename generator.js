@@ -1809,9 +1809,15 @@
     fetch(endpoint, { method:"POST", headers:{ "Content-Type":"text/plain;charset=utf-8" }, body:payload })
       .then(function(r){ return r.json().catch(function(){ return null; }); })
       .then(function(d){
-        if (d && d.ok) alert("Thanks — filed to the Inventory bug board as a Price Cards report.");
-        else alert("Could not file that: " + ((d && d.error) || "no response from the engine") +
-                   "\n\nNothing was saved. Please tell Sky directly.");
+        if (d && d.ok) { alert("Thanks — filed to the Inventory bug board as a Price Cards report."); return; }
+        // The engine gates every write, so an unauthenticated user lands here. Say what to do
+        // instead of showing them a raw auth error they cannot act on.
+        if (d && (d.needsAuth || d.code === "auth_required")) {
+          alert("You need to be signed in to file a bug from here.\n\nSign in, or report it from the Price Cards tab inside Inventory — that reporter files to the same board.");
+          return;
+        }
+        alert("Could not file that: " + ((d && d.error) || "no response from the engine") +
+              "\n\nNothing was saved. Please tell Sky directly.");
       })
       .catch(function(e){
         alert("Could not file that: " + e.message + "\n\nNothing was saved. Please tell Sky directly.");

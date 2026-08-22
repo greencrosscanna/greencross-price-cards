@@ -538,8 +538,14 @@ function doPost(e) {
     if (body.action === 'removePrintedSheet') return json(removePrintedSheet_(body));
     if (body.action === 'clearPrinted')return json(clearPrinted_());
     if (body.action === 'ackProducts') return json(ackProducts_(body));
-    // Unauthenticated on purpose: a person hitting a bug may be exactly the person whose session
-    // just broke. Refusing the report because auth failed loses the report about auth failing.
+    // Gated like every other post here, and NOT added to any public-exception list. I first shipped
+    // this reasoning "unauthenticated on purpose — the person hitting a bug may be the one whose
+    // session broke", and the gate refused it on the first real call. The gate is right: this /exec
+    // is ANYONE_ANONYMOUS, so a public write path would let anyone holding the URL post into the
+    // shared Inventory bug board. A user who cannot authenticate cannot use this app at all, and
+    // still has Inventory's reporter and Sky. The doPost comment above already explains why there is
+    // no exception list — a forgotten line should ship UNREACHABLE, which is exactly what happened
+    // here, and it reported itself in minutes.
     if (body.action === 'reportBug')   return json(reportBug_(body));
     if (body.action !== 'markDone') return json({ ok: false, error: 'unknown-action' });
 
@@ -681,6 +687,8 @@ function getQueue_() { return { ok: true, queue: readQueue_() }; }
  * the parent page, so the gap was invisible. Standalone — this app's own Pages
  * URL, which is how it is used with write auth ENFORCING — there was no reporter
  * anywhere on the page and a staff bug had nowhere to land.
+ *
+ * REQUIRES A SESSION, like every other post here — see the note at the dispatch line.
  *
  * A TITLE IS MANDATORY and Sales learned it the expensive way: GX Core rejects a
  * report with no title, the old Sales code ignored that result and returned
