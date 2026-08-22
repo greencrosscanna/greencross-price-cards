@@ -538,6 +538,9 @@ function doPost(e) {
     if (body.action === 'removePrintedSheet') return json(removePrintedSheet_(body));
     if (body.action === 'clearPrinted')return json(clearPrinted_());
     if (body.action === 'ackProducts') return json(ackProducts_(body));
+    // Unauthenticated on purpose: a person hitting a bug may be exactly the person whose session
+    // just broke. Refusing the report because auth failed loses the report about auth failing.
+    if (body.action === 'reportBug')   return json(reportBug_(body));
     if (body.action !== 'markDone') return json({ ok: false, error: 'unknown-action' });
 
     var sheet = pickSheet(body.gid);
@@ -664,6 +667,66 @@ function getQueue_() { return { ok: true, queue: readQueue_() }; }
    So: a count, and nothing else. No token, no grant, no card data. The number of
    cards waiting says nothing about what they are or what they cost. Anything
    that carries actual queue CONTENT stays behind the gate. */
+/* ═══════════════════ BUG FORWARDING — over HTTP, like everything else here ═══
+ * Sub-app convention: Price Cards reports bucket to INVENTORY with a `tab`
+ * discriminator (app=inventory, tab=pricecards), not to a separate pricecards
+ * stream. The notes key and the bug tab are different things — do not conflate.
+ *
+ * Every other spoke calls GXCore.gxIngestBug() through the pinned library. This
+ * app deliberately binds no library (see the WRITE AUTH note above), so it uses
+ * Core's secret-gated `ingest_bug` route over HTTP — the same channel it already
+ * uses to verify sessions. No pin, nothing to go stale.
+ *
+ * WHY THIS EXISTS NOW: embedded in Inventory the user has Inventory's reporter on
+ * the parent page, so the gap was invisible. Standalone — this app's own Pages
+ * URL, which is how it is used with write auth ENFORCING — there was no reporter
+ * anywhere on the page and a staff bug had nowhere to land.
+ *
+ * A TITLE IS MANDATORY and Sales learned it the expensive way: GX Core rejects a
+ * report with no title, the old Sales code ignored that result and returned
+ * ok:true, so reports were silently lost while the user saw success. Derive one
+ * from the first line rather than trusting the caller, and NEVER report success
+ * on a failed ingest.
+ */
+function reportBug_(body) {
+  var desc = String((body && body.desc) || '').trim();
+  if (!desc) return { ok: false, error: 'desc required' };
+
+  var secret = PropertiesService.getScriptProperties().getProperty('GX_DEPLOY_SECRET') || '';
+  if (!secret) return { ok: false, error: 'GX_DEPLOY_SECRET unset on this engine — cannot file' };
+
+  var reporter = String((body && body.reporter) || '').trim() || 'anonymous';
+  var title    = String((body && body.title) || '').trim() || desc.split('\n')[0].slice(0, 80).trim();
+
+  var params = {
+    action: 'ingest_bug', secret: secret,
+    app: 'inventory',                 // sub-app: bugs bucket to the parent
+    reporter: reporter,
+    title: title,
+    desc: desc,
+    priority: String((body && body.priority) || 'normal'),
+    tab: 'pricecards',                // the discriminator that makes it findable
+    appVer: String((body && body.appVer) || ''),
+    appStore: String((body && body.appStore) || ''),
+  };
+  var qs = Object.keys(params).map(function (k) {
+    return encodeURIComponent(k) + '=' + encodeURIComponent(params[k]);
+  }).join('&');
+
+  try {
+    var res  = UrlFetchApp.fetch(GXCORE_URL + '?' + qs, { method: 'get', muteHttpExceptions: true });
+    var code = res.getResponseCode();
+    if (code < 200 || code >= 300) return { ok: false, error: 'GX Core returned HTTP ' + code };
+    var out;
+    try { out = JSON.parse(res.getContentText()); } catch (e) { return { ok: false, error: 'GX Core returned non-JSON' }; }
+    // Surface Core's own refusal rather than flattening it to success.
+    if (!out || !out.ok) return { ok: false, error: (out && out.error) || 'bug report was not saved' };
+    return { ok: true, id: out.id || '' };
+  } catch (e) {
+    return { ok: false, error: String(e && e.message || e) };
+  }
+}
+
 function queueCount_() {
   var q = readQueue_();
   return { ok: true, count: (q && q.length) || 0 };
