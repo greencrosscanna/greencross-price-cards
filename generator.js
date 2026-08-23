@@ -1501,7 +1501,38 @@
         postQueueCountToHost(n);
       }).catch(function(){});
   }
+  /* ONE SUBMIT AT A TIME. The POST goes through /exec's second hop and takes seconds; a button that
+     sits there looking untouched reads as a broken one, so staff tap it again -- and each tap used to
+     queue another copy of the same cards. Two guards, because neither alone is enough:
+
+       _submitting  closes the double-tap window and, just as importantly, makes the wait VISIBLE.
+                    Purely local: it dies with a reload.
+       subId        closes what the flag cannot -- a retry whose first response was merely lost, or a
+                    tap after a reload. The engine decides, so it holds even if this tab never learns
+                    the first request succeeded. */
+  var _submitting = false;
+  var SUBMIT_BTNS = ["btnSubmitQueue", "ceSubmit"];
+  function submitBusy(on, label){
+    SUBMIT_BTNS.forEach(function(id){
+      var b = document.getElementById(id); if(!b) return;
+      if(on){ if(!b.dataset.idleHtml) b.dataset.idleHtml = b.innerHTML; b.disabled = true; b.innerHTML = label; }
+      else  { b.disabled = false; if(b.dataset.idleHtml) b.innerHTML = b.dataset.idleHtml; }
+    });
+  }
+  /* Content-derived, so the SAME cards retried yield the SAME key and the engine can tell a re-tap
+     from a real second submission. Deliberately NOT a random id per tap -- a fresh key every tap is
+     precisely what let the duplicates through. Two independent 32-bit accumulators plus the length:
+     this only has to separate distinct card batches within a 90s window, not resist an adversary. */
+  function submitId(payload){
+    var s = JSON.stringify(payload), h1 = 0x811c9dc5, h2 = 0x01000193;
+    for(var i=0;i<s.length;i++){
+      h1 = ((h1 ^ s.charCodeAt(i)) >>> 0) * 0x01000193 >>> 0;
+      h2 = (h2 + s.charCodeAt(i) * (i + 1)) >>> 0;
+    }
+    return h1.toString(36) + "-" + h2.toString(36) + "-" + s.length.toString(36);
+  }
   function submitToQueue(){
+    if(_submitting) return;                    // a tap that landed while the first is still in flight
     var url = engineUrl(); if(!url){ flashError("No engine configured — set the data engine URL in ⚙ Settings."); return; }
     var v = validate();
     var cards = v.queued.filter(function(r){ return REQUIRED.every(function(f){ return String(r[f]||"").trim(); }); });
@@ -1509,16 +1540,25 @@
     if(!cards.length){ emp ? showToast("Pop in a brand and a price first 🙂") : flashError("Check <b>Print</b> on at least one complete card (Brand + Price) to submit."); return; }
     var payload = cards.map(function(r){ return { brand:r.name, item:r.product, desc:r.description, desc2:r.description2, size:r.size, price:r.price, store:r.store, status:r.status }; });
     if (window.GXDev) window.GXDev.check("submitCards");
-    fetch(url, { method:"POST", headers:{ "Content-Type":"text/plain;charset=utf-8" }, body:JSON.stringify(pcSign({ action:"submitCards", cards:payload })) })
+    _submitting = true; submitBusy(true, emp ? "Sending… 🖨️" : "Sending…");
+    fetch(url, { method:"POST", headers:{ "Content-Type":"text/plain;charset=utf-8" }, body:JSON.stringify(pcSign({ action:"submitCards", cards:payload, subId:submitId(payload) })) })
       .then(function(r){ return r.json(); }).then(function(d){
         if(pcRefused(d)) return;
         if(d && d.ok){
-          rows = rows.filter(function(r){ return cards.indexOf(r)<0; }); if(!rows.length) rows.push(blankRow());
+          /* The kiosk's replacement card must carry print:true, exactly as the one the ROLE block
+             seeds does. blankRow() defaults it FALSE, and validate() skips un-printed rows -- so the
+             SECOND card of a shift used to fail the completeness check no matter how carefully it was
+             filled in, and answer with "Pop in a brand and a price first" about a brand and a price
+             that were already there. In the full app print is a real per-row choice; in a one-card
+             kiosk it is not a concept, and the only row there is by definition the one being sent. */
+          rows = rows.filter(function(r){ return cards.indexOf(r)<0; });
+          if(!rows.length) rows.push(emp ? blankRow({print:true}) : blankRow());
           save(); renderTable(); refreshPreview();
           postQueueCountToHost(d.count);
           emp ? celebrate() : showQueue("<b>Submitted "+d.added+"</b> · "+d.count+" now waiting", d.count>0);
         } else { emp ? showToast("Hmm, that didn't send — try again") : flashError("Submit failed."); }
-      }).catch(function(){ emp ? showToast("Couldn't send — check your connection") : flashError("Submit failed — check your connection."); });
+      }).catch(function(){ emp ? showToast("Couldn't send — check your connection") : flashError("Submit failed — check your connection."); })
+      .then(function(){ _submitting = false; submitBusy(false); });   // .then not .finally: this ships to old iPad Safari
   }
   function loadQueue(){
     var url = engineUrl(); if(!url) return;

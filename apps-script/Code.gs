@@ -739,18 +739,56 @@ function queueCount_() {
   var q = readQueue_();
   return { ok: true, count: (q && q.length) || 0 };
 }
+/* ---- submitCards idempotency -------------------------------------------------------------------
+ * "Send it to print" POSTs through /exec's second hop and can take seconds. Staff read the silence
+ * as a dead button and tap again, and every tap used to append another set of rows -- the queue
+ * grew a duplicate of the same card for each impatient tap.
+ *
+ * The client stamps each batch with a content-derived subId, so a re-tap of the SAME cards replays
+ * the first result instead of queueing a second copy. Two properties of the design earn their keep:
+ *
+ *   WINDOW, NOT A LEDGER -- a genuine reprint of an identical card next week must still queue, so
+ *   records expire. The window only has to outlast a human's patience, not the card's life.
+ *
+ *   INSIDE THE LOCK -- the double-tap is a race. Checking outside the lock would let both taps read
+ *   the store before either wrote to it, and both would append: exactly the bug, just narrower.
+ *
+ * subId is optional: an older client that does not send one still queues normally (undeduped).
+ */
+var GC_SUBMITS_PROP  = 'GC_SUBMITS_JSON';
+var SUBMIT_DEDUP_MS  = 90 * 1000;   // a re-tap window, not a permanent ledger
+var SUBMIT_DEDUP_CAP = 50;
+function readSubmits_() {
+  var raw = PropertiesService.getScriptProperties().getProperty(GC_SUBMITS_PROP);
+  try { return raw ? JSON.parse(raw) : []; } catch (e) { return []; }
+}
+function writeSubmits_(s) {
+  if (s.length > SUBMIT_DEDUP_CAP) s = s.slice(s.length - SUBMIT_DEDUP_CAP);
+  PropertiesService.getScriptProperties().setProperty(GC_SUBMITS_PROP, JSON.stringify(s));
+}
 function submitCards_(body) {
   var cards = (body && body.cards) || [];
   if (!cards.length) return { ok: false, error: 'no-cards' };
+  var subId = String((body && body.subId) || '');
   var lock = LockService.getScriptLock();
   lock.waitLock(10000);
   try {
+    var nowMs = Date.now();
+    var recent = readSubmits_().filter(function (s) { return (nowMs - s.ms) < SUBMIT_DEDUP_MS; });
+    for (var j = 0; subId && j < recent.length; j++) {
+      if (recent[j].subId === subId) {          // same batch, still inside the window
+        writeSubmits_(recent);                  // persist the prune, append nothing
+        return { ok: true, added: recent[j].added, count: readQueue_().length, duplicate: true };
+      }
+    }
     var q = readQueue_();
     var now = new Date().toISOString(), by = String(body.by || '');
     for (var i = 0; i < cards.length; i++) {
       q.push({ id: Utilities.getUuid(), card: cards[i], by: by, at: now });
     }
     writeQueue_(q);
+    if (subId) recent.push({ subId: subId, ms: nowMs, added: cards.length });
+    writeSubmits_(recent);
     return { ok: true, added: cards.length, count: q.length };
   } finally { lock.releaseLock(); }
 }

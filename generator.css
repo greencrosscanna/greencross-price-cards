@@ -256,6 +256,15 @@ body{
   box-shadow:0 10px 26px rgba(95,160,39,.42); transition:transform .14s ease, box-shadow .14s ease; }
 .ce-submit:hover{ transform:translateY(-2px) scale(1.03); box-shadow:0 16px 34px rgba(95,160,39,.5); }
 .ce-submit:active{ transform:translateY(0) scale(.97); }
+/* In flight. The submit POST takes seconds through /exec's second hop, and a button that still looks
+   pressable IS the duplicate bug's user interface -- staff tap a live-looking button again. :hover and
+   :active keep matching a disabled button, so both have to be neutralised explicitly or the thing still
+   lifts under a finger it is ignoring. */
+.ce-submit:disabled{ cursor:progress; opacity:.62; filter:saturate(.55);
+  box-shadow:0 4px 12px rgba(95,160,39,.22); }
+.ce-submit:disabled:hover, .ce-submit:disabled:active{ transform:none;
+  box-shadow:0 4px 12px rgba(95,160,39,.22); }
+.btn:disabled{ cursor:progress; opacity:.6; }
 
 /* celebration */
 .confetti-layer{ position:fixed; inset:0; pointer-events:none; z-index:400; overflow:hidden; }
