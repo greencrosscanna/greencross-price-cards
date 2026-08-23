@@ -1809,59 +1809,65 @@
 })();
 
 /* ── Report a bug ──────────────────────────────────────────────────────────────
+ * The form is gx-bugreport.js in gx-theme; this only supplies the transport and
+ * the app's own context. Was a bare window.prompt() with one free-text field —
+ * no title, no priority, and no state beyond whatever the user thought to type.
+ *
  * Files to GX Core through this app's own engine, which forwards over HTTP. Per
  * the sub-app convention the report buckets to Inventory with tab=pricecards.
  *
  * ONLY STANDALONE. Embedded in Inventory this page is an iframe and the host
  * already has a reporter; two buttons filing the same report is worse than one.
- * `?embed=1` is what Inventory appends, so that is the signal.
+ * `?embed=1` is what Inventory appends, so that is the signal. (gx-theme also
+ * hides the floating .gx-bug-fab under html.gx-embedded, but this page uses its
+ * own toolbar button, so the check stays here and stays explicit.)
  *
  * Reports the ENGINE's answer, never a blanket success. Sales shipped a version
  * that ignored a failed ingest and told the user it worked — the reports were
- * lost and nobody knew for weeks.
+ * lost and nobody knew for weeks. gx-bugreport treats a resolved {ok:false} as
+ * failure for the same reason, so throwing here surfaces correctly.
  */
 (function pcBugReporter(){
   var btn = document.getElementById("pcBugBtn");
   if (!btn) return;
   var embedded = /[?&]embed=1\b/.test(location.search);
   if (embedded) return;                       // host page owns the reporter
+  if (!window.GXBugReport) return;            // shared layer down: leave the button hidden
   btn.hidden = false;
 
-  btn.addEventListener("click", function(){
-    var endpoint = ((typeof markUrlInput !== "undefined" && markUrlInput && markUrlInput.value) || loadWebapp() || "").trim();
-    if (!endpoint) { alert("No engine configured — cannot file a bug from here."); return; }
-
-    var desc = prompt("Describe the bug — what you did, and what happened instead:");
-    if (desc == null) return;                 // cancelled
-    desc = String(desc).trim();
-    if (!desc) { alert("A description is required."); return; }
-
-    var who = "";
-    try { who = (window.GXSession && GXSession.user && GXSession.user()) || ""; } catch (e) {}
-
-    var payload = JSON.stringify({
-      action: "reportBug",
-      desc: desc,
-      reporter: who || "anonymous",
-      appVer: (document.querySelector('script[src*="generator.js?v="]') || {}).src || "",
-    });
-    btn.disabled = true;
-    fetch(endpoint, { method:"POST", headers:{ "Content-Type":"text/plain;charset=utf-8" }, body:payload })
-      .then(function(r){ return r.json().catch(function(){ return null; }); })
-      .then(function(d){
-        if (d && d.ok) { alert("Thanks — filed to the Inventory bug board as a Price Cards report."); return; }
-        // The engine gates every write, so an unauthenticated user lands here. Say what to do
-        // instead of showing them a raw auth error they cannot act on.
-        if (d && (d.needsAuth || d.code === "auth_required")) {
-          alert("You need to be signed in to file a bug from here.\n\nSign in, or report it from the Price Cards tab inside Inventory — that reporter files to the same board.");
-          return;
-        }
-        alert("Could not file that: " + ((d && d.error) || "no response from the engine") +
-              "\n\nNothing was saved. Please tell Sky directly.");
+  GXBugReport.init({
+    app: 'pricecards',
+    action: 'reportBug',                      // this engine's spelling — not 'bugreport'
+    fab: false,                               // the toolbar button above is the trigger
+    reporter: function () {
+      try { return (window.GXSession && GXSession.user && GXSession.user()) || 'anonymous'; }
+      catch (e) { return 'anonymous'; }
+    },
+    version: function () {
+      var t = document.querySelector('script[src*="generator.js?v="]');
+      return t ? t.src.replace(/.*\?v=/, '') : '';
+    },
+    context: function () { return { tab: 'pricecards' }; },
+    submit: function (payload) {
+      var endpoint = ((typeof markUrlInput !== "undefined" && markUrlInput && markUrlInput.value) || loadWebapp() || "").trim();
+      if (!endpoint) throw new Error("No engine configured — cannot file a bug from here.");
+      return fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify(payload),
       })
-      .catch(function(e){
-        alert("Could not file that: " + e.message + "\n\nNothing was saved. Please tell Sky directly.");
-      })
-      .then(function(){ btn.disabled = false; });
+        .then(function (r) { return r.json().catch(function () { return null; }); })
+        .then(function (d) {
+          if (d && d.ok) return d;
+          // The engine gates every write, so an unauthenticated user lands here. Say what to do
+          // instead of showing them a raw auth error they cannot act on.
+          if (d && (d.needsAuth || d.code === "auth_required" || d.code === 401)) {
+            throw new Error("You need to be signed in to file a bug from here. Sign in, or report it from the Price Cards tab inside Inventory — that reporter files to the same board.");
+          }
+          throw new Error((d && d.error) || "no response from the engine");
+        });
+    },
   });
+
+  btn.addEventListener("click", function () { GXBugReport.open(); });
 })();
