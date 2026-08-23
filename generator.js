@@ -9,8 +9,12 @@
 
   // App version (vNN). Single-sourced from this script's own ?v= cache-buster in index.html,
   // so bumping that one number drives the cache-bust, the bug-report appVer, and the deploy log.
+  /* The suite version format is vMAJOR.BBB, so the fraction is NOT decoration — it is the build
+     counter. `(\d+)` stopped at the dot and reported "v1" for ?v=1.420, and "v1" looks plausible
+     enough that nothing about the header would have looked wrong. Same bug deploy.sh carried against
+     these same files — see gx-theme/tests/deploy_version_test.js. */
   var APP_VERSION = (function(){
-    try{ var m = (document.currentScript && document.currentScript.src || "").match(/[?&]v=(\d+)/); return m ? "v"+m[1] : "v0"; }
+    try{ var m = (document.currentScript && document.currentScript.src || "").match(/[?&]v=(\d+(?:\.\d+)?)/); return m ? "v"+m[1] : "v0"; }
     catch(e){ return "v0"; }
   })();
 
@@ -1768,11 +1772,20 @@
     if (window.GXTopNav && GXTopNav.isEmbedded()) { slot.innerHTML = ""; return; }
     var s = pcSession(); if (!s) { slot.innerHTML = ""; return; }
     if (!window.GXTopNav || !GXTopNav.renderUser) { slot.innerHTML = ""; return; }
+    if (window.GXChangelog) {
+      // Price Cards buckets to app=inventory for BUG reports (it is an Inventory sub-app), but its
+      // RELEASES are its own — app_versions is keyed 'pricecards' and always has been. The notes key
+      // and the release key are not the same thing here; see the hub CLAUDE.md.
+      GXChangelog.init({ app: 'pricecards', title: 'GX Price Cards', version: APP_VERSION });
+    }
     GXTopNav.renderUser(slot, {
       name: s.name || s.user, role: s.role || "",
       avatar: window.GXAvatar ? GXAvatar.chip(s.avatar, s.name || s.user) : null,
       items: [
         { action: "settings", label: "Settings" },
+        // Price Cards was the one app with no Version row at all — not even a dead label. The
+        // canonical order puts it between Settings and Sign out; see gx-topnav.js.
+        { action: "version",  label: "Version", value: APP_VERSION },
         { action: "logout",   label: "Sign out", danger: true }
       ]
     });
