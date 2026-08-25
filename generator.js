@@ -574,7 +574,10 @@
     }
     p.catch(function(err){
         var m = String(err && err.message || err);
-        if(m==="not-public")       setStatus("Can't read the sheet. Either set sharing to “Anyone with the link → Viewer”, or use an Apps Script engine URL in ⚙ Sheet settings.", "err");
+        // Tagged by engineGet after every retry missed. Distinct from "check the link": the link is
+        // fine, Google's /exec second hop is not, and the honest advice is simply to try again.
+        if(err && err.gxUnreachable) setStatus("Couldn't reach the data engine — Google's script redirect failed on every retry. Nothing was imported; try again in a moment.", "err");
+        else if(m==="not-public")       setStatus("Can't read the sheet. Either set sharing to “Anyone with the link → Viewer”, or use an Apps Script engine URL in ⚙ Sheet settings.", "err");
         else if(m==="empty")       setStatus("The sheet looks empty — it needs a header row plus data.", "err");
         else if(m==="no-done-column") setStatus("Imported, but the engine couldn't find a “Done” column to filter on.", "err");
         else if(/failed to fetch/i.test(m)) setStatus("Couldn't reach the data source. Check the link / engine URL and its sharing.", "err");
@@ -649,12 +652,58 @@
 
   /* ONE DOOR for every engine READ. It stamps the token and turns an auth
      refusal into the gate -- without it each caller quietly renders an empty
-     panel, so a locked-out iPad would look exactly like an empty print queue. */
+     panel, so a locked-out iPad would look exactly like an empty print queue.
+
+     ROUTED THROUGH GXClient, NOT A BESPOKE RETRY. The engine is an Apps Script
+     web app, so its /exec URL is the same TWO-HOP redirect GX Core's is:
+     script.google.com/macros/s/.../exec -> 302 -> script.googleusercontent.com,
+     and the second hop intermittently serves Google's "unable to open the file"
+     HTML page instead of our JSON (~6% of rapid calls). The old body here was a
+     single raw fetch: one miss and liveCatalog rejected, which dropped the card
+     builder to the style/catalog.json TEMPLATE prices -- staff then printed
+     shelf cards at stale prices with nothing on screen looking broken.
+
+     The retry for exactly this failure already exists, is shared, and is already
+     loaded on this page (index.html <script src=gx-client.js>; login and
+     loadStores use it). Hand-rolling a sixth copy of it here would be the thing
+     the suite rule "all GX Core traffic through GXClient" exists to prevent, and
+     it would be the copy nobody remembers to fix. getJSON, not jsonp: the engine
+     answers plain ContentService JSON and has no `callback` branch, and getJSON
+     detects the HTML page by body shape (the status is often a cheerful 200).
+     Unknown params (`_ts`) are ignored by doGet, which reads only named ones.
+
+     A REFUSAL IS NOT A MISS. An auth refusal is well-formed JSON, so getJSON
+     returns it on the first attempt and pcRefused gates the page -- no retry
+     storm on a signed-out iPad. Only a transport failure retries, and when every
+     attempt misses the error is tagged `gxUnreachable` so callers can tell
+     "Google's redirect is broken" apart from "the engine said no". Callers MUST
+     branch on that instead of falling back to template data. */
   function engineGet(base, query) {
-    var sep = base.indexOf("?") < 0 ? "?" : "&";
-    return fetch(pcSignUrl(base + sep + query), { cache: "no-store" })
-      .then(function (res) { if (!res.ok) throw new Error("http-" + res.status); return res.json(); })
-      .then(function (d) { if (pcRefused(d)) throw new Error((d && d.error) || "Not signed in"); return d; });
+    var qs = new URLSearchParams(query);
+    var action = qs.get("action") || "";
+    qs.delete("action");
+    var params = {};
+    qs.forEach(function (v, k) { params[k] = v; });
+    var s = pcSession();
+    if (s && s.token) params.token = s.token;   // same credential pcSignUrl carried, as a param
+
+    // gx-client.js is a remote <script>; if it failed to load, one plain attempt still beats
+    // nothing. That path is the OLD behaviour, so it is a degradation, never an upgrade.
+    var req = (typeof GXClient !== "undefined")
+      ? GXClient(base).getJSON(action, params)
+      : fetch(pcSignUrl(base + (base.indexOf("?") < 0 ? "?" : "&") + query), { cache: "no-store" })
+          .then(function (res) { if (!res.ok) throw new Error("http-" + res.status); return res.json(); });
+
+    return req.then(function (d) {
+      if (pcRefused(d)) throw new Error((d && d.error) || "Not signed in");
+      return d;
+    }, function (e) {
+      // Two-argument then() on purpose: this handler sees transport failures only, never a
+      // refusal thrown by the fulfilment handler above.
+      var err = new Error("engine unreachable — " + ((e && e.message) || e));
+      err.gxUnreachable = true;
+      throw err;
+    });
   }
 
   /* Every refusal from the engine, read or write, lands here. Branch on `code`,
@@ -827,7 +876,12 @@
   // ================= STYLE GUIDE: autocomplete + smart-naming =================
   // Loads the canonical tag dictionary (style/tags.json) and powers brand
   // type-ahead + on-blur normalization, so cards stay uniform across stores.
-  var STYLE = { brands:[], brandNorm:{}, sizes:[], catalog:{}, catalogIndex:[], lexIndex:{}, liveIndex:[], liveReady:false };
+  /* liveReady and liveFailed are NOT opposites and must not be collapsed into one flag.
+       liveReady=false, liveFailed=false  no engine configured — template prices are the
+                                          intended mode, and searching them is correct
+       liveReady=false, liveFailed=true   an engine IS configured and we could not reach it —
+                                          template prices would be a LIE, so search is paused */
+  var STYLE = { brands:[], brandNorm:{}, sizes:[], catalog:{}, catalogIndex:[], lexIndex:{}, liveIndex:[], liveReady:false, liveFailed:false };
   function ensureDatalist(id, values){
     var dl = document.getElementById(id);
     if(!dl){ dl = document.createElement("datalist"); dl.id = id; document.body.appendChild(dl); }
@@ -1162,7 +1216,22 @@
       sel.addEventListener("change", function(){ USER_CATMAP[sel.dataset.cat] = sel.value; saveCatMap(USER_CATMAP); rebuildLive(); });
     });
   }
-  function activeIndex(){ return (STYLE.liveReady && STYLE.liveIndex && STYLE.liveIndex.length) ? STYLE.liveIndex : (STYLE.catalogIndex||[]); }
+  /* ── @test-slice priceIndexFor_ ─────────────────────────────────────────────────────────────────
+     Which price index the card builder is allowed to search. Kept pure and sentinel-delimited so
+     tests/live_price_fallback_test.js can exercise the REAL shipped source without a DOM.
+
+     The middle branch is the whole point of this change. It used to fall straight through to
+     catalogIndex whenever live data was missing, for ANY reason — including "the /exec second hop
+     404ed". A template price then looks exactly like a live one in the results list, gets clicked,
+     printed, and stuck on a shelf. Returning [] is deliberately inconvenient: an empty result with a
+     loud banner is recoverable, a wrong price on a shelf card is not. */
+  function priceIndexFor_(st){
+    if(st.liveReady && st.liveIndex && st.liveIndex.length) return st.liveIndex;
+    if(st.liveFailed) return [];                 // engine configured but unreachable — refuse to guess
+    return st.catalogIndex || [];                // no engine configured — templates are the intent
+  }
+  /* ── @test-slice end ────────────────────────────────────────────────────────────────────────── */
+  function activeIndex(){ return priceIndexFor_(STYLE); }
   function cbRun(q){
     q = String(q||"").trim().toLowerCase();
     if(!q) return [];
@@ -1220,7 +1289,11 @@
   function cbRender(){
     if(!cbResults) return;
     if(!cbMatches.length){
-      cbResults.innerHTML = '<div class="cb-empty">No match — refine your search, or add a blank row below.</div>';
+      // "No match" would be a lie when the index is empty because live pricing is down — it reads as
+      // "we don't carry that" and sends the user off to type a price from memory.
+      cbResults.innerHTML = STYLE.liveFailed
+        ? '<div class="cb-empty cb-empty-err">Search is paused — live prices are unavailable. Use <b>Retry</b> above; nothing here would have a trustworthy price.</div>'
+        : '<div class="cb-empty">No match — refine your search, or add a blank row below.</div>';
       cbResults.hidden = false; return;
     }
     CB_GROUPS = cbGroupMatches();
@@ -1399,16 +1472,64 @@
   }
   function setSource(msg, kind){ if(cbSource){ cbSource.textContent = msg||""; cbSource.className = "cb-source"+(kind?" "+kind:""); } }
   function engineUrl(){ return (loadWebapp()||"").trim(); }
+  /* The live-price failure banner. It lives inside #cardBuilder, not in #validation or a toast,
+     for one reason: the employee kiosk (.mode-employee) HIDES #previewPane, .cb-source and every
+     strip, so flashError and setSource are both invisible there — and the kiosk is precisely where
+     someone builds a card and prints it without a second pair of eyes. This element is visible in
+     both modes and does not auto-dismiss, because the condition does not auto-resolve. */
+  function liveAlertEl(){
+    var el = document.getElementById("cbLiveAlert");
+    if(!el){
+      var host = document.getElementById("cardBuilder");
+      if(!host) return null;
+      el = document.createElement("div");
+      el.id = "cbLiveAlert";
+      el.className = "cb-alert";
+      el.setAttribute("role", "alert");
+      var before = document.getElementById("cbResults");
+      if(before && before.parentNode === host) host.insertBefore(el, before); else host.appendChild(el);
+    }
+    return el;
+  }
+  function clearLiveAlert(){ var el = document.getElementById("cbLiveAlert"); if(el) el.remove(); }
+  function showLiveAlert(store, err){
+    var el = liveAlertEl(); if(!el) return;
+    var why = (err && err.gxUnreachable)
+      ? "Google's Apps&nbsp;Script redirect kept failing after several retries."
+      : "The data engine answered, but not with inventory.";
+    el.innerHTML =
+      '<div class="cb-alert-h">⚠ Live prices unavailable — ' + esc(tagStore(store) || store || "this store") + '</div>' +
+      '<div class="cb-alert-b">' + why +
+        ' Product search is <b>paused on purpose</b>: the only other price source is the built-in template' +
+        ' list, and a stale template price is indistinguishable from a live one once it is printed on a' +
+        ' shelf card.</div>' +
+      '<button type="button" class="btn btn-primary cb-alert-retry" id="cbLiveRetry">Retry</button>';
+    var btn = document.getElementById("cbLiveRetry");
+    if(btn) btn.onclick = function(){ btn.disabled = true; btn.textContent = "Retrying…"; fetchLive(selectedStore()); };
+  }
+
   function fetchLive(store){
     var url = engineUrl();
-    if(!url){ STYLE.liveReady=false; setSource("Template prices — set an engine URL in ⚙ Sheet settings for live inventory", "tpl"); return; }
-    STYLE.liveReady = false; setSource("Loading "+tagStore(store)+" inventory…", "load");
+    if(!url){ STYLE.liveReady=false; STYLE.liveFailed=false; clearLiveAlert();
+      setSource("Template prices — set an engine URL in ⚙ Sheet settings for live inventory", "tpl"); return; }
+    STYLE.liveReady = false; STYLE.liveFailed = false; clearLiveAlert();
+    setSource("Loading "+tagStore(store)+" inventory…", "load");
     engineGet(url, "action=liveCatalog&store="+encodeURIComponent(store))
-      .then(function(d){ if(!d || !d.ok) throw 0; STYLE.liveRaw = d.items || []; buildLiveIndex(STYLE.liveRaw); STYLE.liveReady = true;
+      .then(function(d){ if(!d || !d.ok) throw new Error((d && d.error) || "engine returned no inventory");
+        STYLE.liveRaw = d.items || []; buildLiveIndex(STYLE.liveRaw); STYLE.liveReady = true; STYLE.liveFailed = false;
+        clearLiveAlert();
         buildCatMapUI();
         setSource("● Live · "+tagStore(store)+" · "+(d.count||0)+" in-stock products · OTD", "live");
         if(cbSearch && cbSearch.value){ cbMatches = cbRun(cbSearch.value); cbRender(); } })
-      .catch(function(){ STYLE.liveReady = false; setSource("Couldn't load live inventory — using template prices", "tpl"); });
+      /* This catch used to read `setSource("…using template prices","tpl")` and stop there — a grey
+         11px line, hidden outright on the kiosk, after which search quietly served template prices.
+         An exhausted retry is a real failure and now presents as one. */
+      .catch(function(err){
+        STYLE.liveReady = false; STYLE.liveFailed = true;
+        setSource("⚠ Live prices unavailable — search paused", "err");
+        showLiveAlert(store, err);
+        if(cbSearch && cbSearch.value){ cbMatches = cbRun(cbSearch.value); cbRender(); }
+      });
   }
   // Pull the canonical store registry from GX Core, then build the dropdown. Falls back to the
   // hardcoded STORE_MAP if GX Core is unreachable, so the picker always works.

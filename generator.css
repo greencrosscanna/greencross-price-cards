@@ -334,6 +334,19 @@ body.store-locked .cb-store{opacity:1;cursor:default;-webkit-appearance:none;app
 .cb-source.live{color:#2f8f46;font-weight:600;}
 .cb-source.load{color:#9a7b1f;}
 .cb-source.tpl{color:#8a6d3b;}
+.cb-source.err{color:#b42318;font-weight:700;}
+
+/* Live-price failure banner. Sized and coloured to be genuinely hard to miss — the failure it
+   reports is otherwise invisible (the app keeps working, just with the wrong prices). Deliberately
+   NOT hidden by the .mode-employee rules above: the kiosk is where an unnoticed template price gets
+   printed. Local styling rather than a .gx-* primitive because gx-theme has no alert component;
+   if one is ever added, this should adopt it instead of racing it. */
+.cb-alert{margin:8px 2px 0;padding:11px 13px;border-radius:10px;
+  border:1px solid #f0b4ae;background:#fdf3f2;color:#7a271a;}
+.cb-alert-h{font-size:13.5px;font-weight:800;letter-spacing:-.1px;}
+.cb-alert-b{margin-top:4px;font-size:12px;line-height:1.45;color:#8a3a2e;}
+.cb-alert-retry{margin-top:9px;}
+.cb-empty-err{color:#b42318;}
 .cb-search{width:100%;font:inherit;font-size:15px;padding:11px 14px 11px 38px;border:1.5px solid var(--gc-line,#d7dbe0);border-radius:10px;background:#fff;color:var(--gc-ink,#2a2d31);}
 .cb-search::placeholder{color:#9aa0a6;}
 .cb-search:focus{outline:none;border-color:#8bc34a;box-shadow:0 0 0 3px rgba(139,195,74,.18);}

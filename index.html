@@ -20,7 +20,7 @@
 <link rel="stylesheet" href="fonts.css"/>
 <!-- Shared GX suite theme (tokens + .gx-* primitives; opt-in, no global overrides) -->
 <link rel="stylesheet" href="https://greencrosscanna.github.io/greencross-gx-theme/gx-theme.css"/>
-<link rel="stylesheet" href="generator.css?v=33"/>
+<link rel="stylesheet" href="generator.css?v=34"/>
 </head>
 <body>
 <div id="app">
@@ -260,10 +260,15 @@
   // from localhost, until writes are armed (banner button / ?arm=1 / GXDev.arm()). Inert in
   // production. Add new READS here; leave writes off the list.
   // Guarded writes: ackProducts, clearPrinted, markDone, markPrinted, queueRemove, removePrintedSheet, saveConfig, submitCards
+  //
+  // 'grid' joined this list when engineGet started routing through GXClient. GXClient calls
+  // GXDev.check(action) on every getJSON, and check() THROWS on an undeclared action — so an
+  // action missing from here is not a warning, it is a broken Import button on localhost. 'grid'
+  // is a read (Code.gs READ_ACTIONS.grid -> readGrid_); the Done write-back is a separate POST.
   window.GX_DEV_READS = [
-    'getConfig', 'getPrinted', 'getQueue', 'liveCatalog', 'newProducts', 'stores'
+    'getConfig', 'getPrinted', 'getQueue', 'grid', 'liveCatalog', 'newProducts', 'stores'
   ];
 </script>
-<script src="generator.js?v=1.420"></script>
+<script src="generator.js?v=1.421"></script>
 </body>
 </html>
