@@ -822,12 +822,37 @@ function getPrinted_() { return { ok: true, printed: readPrinted_() }; }
 // so callers pass the card payloads directly in body.cards; body.ids is still
 // honored to dequeue anything not yet claimed (and as the card source if no
 // explicit cards were given), keeping older clients working.
+/* THE ONE WRITE HERE THAT IS NOT NATURALLY IDEMPOTENT: every call appends an archive entry with a
+ * fresh UUID. That did not matter while the client sent each POST exactly once and showed an honest
+ * error on failure. It matters now: v1.422 gave the client a retry, and the /exec failure it retries
+ * is on the SECOND hop -- the request reached this script and this function may already have run, so
+ * what the retry replaces is a lost RECEIPT, not a lost write. Without a replay window a retried
+ * print would archive the same sheet twice and dequeue nothing the second time, which reads to staff
+ * as a phantom duplicate print run.
+ *
+ * Same window, same store and the same reasoning as submitCards_ above -- deliberately not a second
+ * mechanism. The ids are namespaced `mp:` by the client so the two kinds of record cannot collide in
+ * the shared property. subId is optional: an older client that sends none still archives normally,
+ * undeduped, exactly as it does today.
+ */
 function markPrinted_(body) {
   var ids = (body && body.ids) || [];
   var cards = (body && body.cards) || [];
+  var subId = String((body && body.subId) || '');
   var lock = LockService.getScriptLock();
   lock.waitLock(10000);
   try {
+    // INSIDE THE LOCK, for the reason submitCards_ spells out: checked outside it, two attempts can
+    // both read the store before either writes, and both archive.
+    var nowMs = Date.now();
+    var recent = readSubmits_().filter(function (s) { return (nowMs - s.ms) < SUBMIT_DEDUP_MS; });
+    for (var j = 0; subId && j < recent.length; j++) {
+      if (recent[j].subId === subId) {                  // same batch, still inside the window
+        writeSubmits_(recent);                          // persist the prune, archive nothing
+        return { ok: true, moved: (recent[j].res && recent[j].res.moved) || 0,
+                 count: readQueue_().length, sheets: readPrinted_().length, duplicate: true };
+      }
+    }
     if (ids.length) {                                   // dequeue any still-queued ids (safety net)
       var set = {}; ids.forEach(function (id) { set[id] = true; });
       var q = readQueue_(), keep = [], pulled = [];
@@ -840,6 +865,8 @@ function markPrinted_(body) {
     sheets.push({ id: Utilities.getUuid(), printedAt: new Date().toISOString(),
                   printedBy: String((body && body.by) || ''), cards: cards });
     writePrinted_(sheets);
+    if (subId) recent.push({ subId: subId, ms: nowMs, res: { moved: cards.length } });
+    writeSubmits_(recent);
     return { ok: true, moved: cards.length, count: readQueue_().length, sheets: sheets.length };
   } finally { lock.releaseLock(); }
 }

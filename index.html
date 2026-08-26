@@ -259,7 +259,11 @@
   // Dev guard: non-mutating actions. Anything NOT listed is blocked when this page is served
   // from localhost, until writes are armed (banner button / ?arm=1 / GXDev.arm()). Inert in
   // production. Add new READS here; leave writes off the list.
-  // Guarded writes: ackProducts, clearPrinted, markDone, markPrinted, queueRemove, removePrintedSheet, saveConfig, submitCards
+  // Guarded writes: ackProducts, clearPrinted, clearQueue, markDone, markPrinted, queueRemove,
+  //                  removePrintedSheet, reportBug, saveConfig, submitCards
+  // reportBug joined that list in v1.422 for the same reason 'grid' joined the reads one: it moved
+  // onto a shared door (enginePost) that calls GXDev.check on every write, so on localhost it is now
+  // blocked until writes are armed. That is correct -- it files into the live Inventory bug board.
   //
   // 'grid' joined this list when engineGet started routing through GXClient. GXClient calls
   // GXDev.check(action) on every getJSON, and check() THROWS on an undeclared action — so an
@@ -269,6 +273,6 @@
     'getConfig', 'getPrinted', 'getQueue', 'grid', 'liveCatalog', 'newProducts', 'stores'
   ];
 </script>
-<script src="generator.js?v=1.421"></script>
+<script src="generator.js?v=1.422"></script>
 </body>
 </html>

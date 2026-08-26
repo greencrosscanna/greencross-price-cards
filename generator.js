@@ -359,7 +359,13 @@
       save(); renderTable(); refreshPreview(); valEl.hidden=true;
       // Archive this sheet. Imported cards were already claimed out of the queue, so we send the
       // card payloads directly; qids clean up anything not yet claimed (older client / manual reload).
-      postEngine({ action:"markPrinted", ids:qids, cards:cards }, function(){ refreshQueueCount(); refreshPrinted(); });
+      /* The one write here that is NOT naturally idempotent -- markPrinted_ appends an archive entry
+         with a fresh UUID per call -- so it carries the same content-derived replay id submitCards
+         does, and the engine returns the first result instead of archiving the batch twice. The queue
+         ids are folded in: a genuine reprint of the same cards next week carries different ones (or
+         none), so it still archives, which a hash of the cards alone could not promise. */
+      postEngine({ action:"markPrinted", ids:qids, cards:cards, subId:"mp:"+submitId({ ids:qids, cards:cards }) },
+                 function(){ refreshQueueCount(); refreshPrinted(); });
     };
     document.getElementById("btnKeepPrinted").onclick=function(){ valEl.hidden=true; };
   }
@@ -706,6 +712,103 @@
     });
   }
 
+  /* ── @test-slice enginePost ────────────────────────────────────────────────────────────────────
+     WHICH WRITES MAY BE REPLAYED, and why each one. Read the enginePost comment below first: the
+     retry re-runs a write that MAY ALREADY HAVE RUN, so an action earns a place here only by being
+     a no-op the second time. An action that is not listed gets exactly ONE attempt and the same
+     honest error it has always shown -- silence is the safe default, so a new write added without
+     thought is simply not retried. */
+  var POST_RETRY_SAFE = {
+    markDone:           1,   // skips rows already marked -> a replay marks 0 more (Code.gs `already`)
+    saveConfig:         1,   // whole-config replace, so a second write stores identical bytes
+    submitCards:        1,   // content-derived subId; the engine replays the first result (submitCards_)
+    markPrinted:        1,   // same subId window, added in v1.422 -- see markPrinted_ in Code.gs
+    queueRemove:        1,   // remove-by-id set; the ids are already gone the second time
+    clearQueue:         1,   // empties the queue; emptying an empty queue is the same queue
+    removePrintedSheet: 1,   // remove-by-id
+    clearPrinted:       1,   // empties
+    ackProducts:        1,   // filter-out-by-id
+    reportBug:          1    // GX Core's ingest_bug de-dupes -- its own response says retry_safe
+  };
+
+  /* ONE DOOR for every engine WRITE -- the mirror of engineGet, and it exists for the same transport
+     reason. The /exec URL is a TWO-HOP redirect and the second hop intermittently serves Google's
+     "unable to open the file" HTML page instead of our JSON (~6% of rapid calls). v1.421 moved the
+     READ path onto GXClient's retry; these six POSTs were not moved with it and stayed raw, so
+     roughly one rapid submit in sixteen threw "Couldn't send" at a budtender who had done nothing
+     wrong. That reads as a flaky network, which is exactly why it never got reported as a bug.
+
+     WHY THIS DOOR HAS A RETRY LOOP WHEN engineGet IS FORBIDDEN ONE. GXClient exposes jsonp() and
+     getJSON() and nothing at all for POST, and gx-client.js lives in gx-theme, which a spoke may not
+     edit -- that is core-admin's call. So the loop below is a deliberate, documented exception, not
+     the oversight the read-path comment warns about. It is the ONLY retry loop in this repo, and it
+     hands off the moment the shared client grows a POST door: see the postJSON branch. A note asking
+     for that door went to core-admin with v1.422. Do not write a second loop anywhere; call this.
+
+     WHY A RETRY IS SAFE AT ALL -- the part worth thinking hardest about. The failure is on the
+     SECOND hop, so the request reached Apps Script and the write MAY ALREADY HAVE RUN: what was lost
+     is the receipt, not the write. A retry therefore re-runs it. That is only acceptable where
+     re-running is a no-op, so every action is listed in POST_RETRY_SAFE above with its reason and
+     anything unlisted is sent exactly once. markPrinted was the one genuinely unsafe action here --
+     it appends an archive entry with a fresh UUID on every call -- so rather than leave it the only
+     unprotected write it was given the same content-derived subId replay window submitCards has.
+
+     A REFUSAL IS NOT A MISS, same rule as the read door. An auth refusal is well-formed JSON, so it
+     resolves on the first attempt and never retries -- no retry storm on a signed-out iPad. Unlike
+     engineGet this one RESOLVES the refusal rather than throwing it: each write has a different
+     thing to say to the user, so every caller keeps its own pcRefused() branch. Only a transport
+     miss retries, and an exhausted one rejects with gxUnreachable set so a caller can tell "Google's
+     redirect is broken" apart from "the engine said no". */
+  var POST_RETRIES = 4, POST_BACKOFF = 600;   // total attempts = POST_RETRIES + 1; linear, as GXClient
+
+  function enginePost(base, payload) {
+    var action = String((payload && payload.action) || "");
+
+    /* Dev write-guard. It lives HERE now rather than at each call site so a new write cannot forget
+       it. check() throws SYNCHRONOUSLY, which at a call site was fine but here would escape past the
+       caller's .catch -- submitToQueue would strand its spinner with _submitting stuck true. Convert
+       it to a rejection: nothing is sent either way, and the caller unwinds the way it already
+       knows how. */
+    try { if (window.GXDev) window.GXDev.check(action); }
+    catch (e) { return Promise.reject(e); }
+
+    var body = JSON.stringify(pcSign(payload));
+    var max  = Object.prototype.hasOwnProperty.call(POST_RETRY_SAFE, action) ? POST_RETRIES : 0;
+
+    function unreachable(e) {
+      var err = new Error("engine unreachable — " + ((e && e.message) || e));
+      err.gxUnreachable = true;
+      throw err;
+    }
+
+    // The handoff. When gx-theme gives GXClient a POST door, this repo's loop goes quiet on its own.
+    if (typeof GXClient !== "undefined") {
+      var gx = GXClient(base);
+      if (typeof gx.postJSON === "function") return gx.postJSON(action, payload, { retries: max }).then(null, unreachable);
+    }
+
+    function attempt(n) {
+      // Cache-bust every attempt: a bad intermediary response must never be served back to us.
+      var url = base + (base.indexOf("?") < 0 ? "?" : "&") + "_ts=" + Date.now() + "_" + n;
+      return fetch(url, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: body })
+        .then(function (res) { return res.text(); })
+        .then(function (text) {
+          text = String(text || "").trim();
+          // The HTML page arrives with a cheerful 200, so the BODY SHAPE is the only tell there is.
+          if (text && (text.charAt(0) === "{" || text.charAt(0) === "[")) return JSON.parse(text);
+          throw new Error("non-JSON body — Drive HTML page");
+        })
+        .catch(function (e) {
+          if (n >= max) return unreachable(e);
+          // .then(setTimeout) rather than await: this ships to old iPad Safari, same as submitToQueue.
+          return new Promise(function (r) { setTimeout(r, POST_BACKOFF * (n + 1)); })
+            .then(function () { return attempt(n + 1); });
+        });
+    }
+    return attempt(0);
+  }
+  /* ── @test-slice end ─────────────────────────────────────────────────────────────────────────── */
+
   /* Every refusal from the engine, read or write, lands here. Branch on `code`,
      never on the prose -- GX Core owns that wording and has reworded it once
      already. The distinction that earns its keep is no_access: everything else
@@ -818,11 +921,12 @@
     var endpoint = ((markUrlInput && markUrlInput.value) || loadWebapp()).trim();
     var on = markToggle ? markToggle.checked : loadWebappOn();
     if(!on || !endpoint) return;                       // no engine configured — read-only mode
-    if (window.GXDev) window.GXDev.check("markDone");
-    var payload = JSON.stringify(pcSign({ action:"markDone", gid:gidFromUrl(sheetUrl), doneHeader:(doneHeader||"Done") }));
-    // text/plain avoids a CORS preflight; the /exec redirect serves CORS-open JSON we can read
-    fetch(endpoint, { method:"POST", headers:{ "Content-Type":"text/plain;charset=utf-8" }, body:payload })
-      .then(function(res){ return res.json().catch(function(){ return null; }); })
+    /* enginePost carries the dev guard, the token and the two-hop retry (text/plain in there avoids
+       a CORS preflight; the /exec redirect serves CORS-open JSON we can read). It also closes a
+       quieter hole: the old body mapped an unparseable response to null, and null fell through the
+       branches below to "marked Done in sheet ✓" -- so a second-hop HTML page reported the write-back
+       as a SUCCESS. A miss now retries, and an exhausted retry lands in .catch where it belongs. */
+    enginePost(endpoint, { action:"markDone", gid:gidFromUrl(sheetUrl), doneHeader:(doneHeader||"Done") })
       .then(function(data){
         var cur = importStatus ? importStatus.textContent : "";
         if(pcRefused(data)) return;
@@ -989,10 +1093,7 @@
     if(!url) return;
     clearTimeout(_cfgTimer);
     _cfgTimer = setTimeout(function(){
-      if (window.GXDev) window.GXDev.check("saveConfig");
-    fetch(url, { method:"POST", headers:{ "Content-Type":"text/plain;charset=utf-8" },
-        body: JSON.stringify(pcSign({ action:"saveConfig", config: currentConfig() })) })
-      .then(function(r){ return r.json().catch(function(){ return null; }); })
+      enginePost(url, { action:"saveConfig", config: currentConfig() })
       .then(function(d){
         if(pcRefused(d)) return;
         if(d && d.ok === false) setStatus("Settings didn't save: " + (d.error || "unknown error"), "err");
@@ -1664,10 +1765,12 @@
     var emp = document.body.classList.contains("mode-employee");
     if(!cards.length){ emp ? showToast("Pop in a brand and a price first 🙂") : flashError("Check <b>Print</b> on at least one complete card (Brand + Price) to submit."); return; }
     var payload = cards.map(function(r){ return { brand:r.name, item:r.product, desc:r.description, desc2:r.description2, size:r.size, price:r.price, store:r.store, status:r.status }; });
-    if (window.GXDev) window.GXDev.check("submitCards");
+    /* _submitting stays true across the whole retry chain on purpose -- that is the double-tap guard
+       doing its job while enginePost is mid-backoff, and "Sending…" for a few seconds is the honest
+       reading of what is happening. The engine de-dupes the replay by subId either way. */
     _submitting = true; submitBusy(true, emp ? "Sending… 🖨️" : "Sending…");
-    fetch(url, { method:"POST", headers:{ "Content-Type":"text/plain;charset=utf-8" }, body:JSON.stringify(pcSign({ action:"submitCards", cards:payload, subId:submitId(payload) })) })
-      .then(function(r){ return r.json(); }).then(function(d){
+    enginePost(url, { action:"submitCards", cards:payload, subId:submitId(payload) })
+      .then(function(d){
         if(pcRefused(d)) return;
         if(d && d.ok){
           /* The kiosk's replacement card must carry print:true, exactly as the one the ROLE block
@@ -1725,12 +1828,9 @@
     engineGet(url, "action=getPrinted")
       .then(function(d){ if(!d || !d.ok) return; PRINTED = d.printed || []; showPrintedStrip(); }).catch(function(){});
   }
-  function postEngine(payload, then){                // small POST helper for the printed actions
-    // Dev guard: these are writes. Blocked on localhost until armed; inert in production.
-    if (window.GXDev) window.GXDev.check(payload && payload.action);
+  function postEngine(payload, then){                // the printed/queue actions, through the one door
     var url = engineUrl(); if(!url) return;
-    fetch(url, { method:"POST", headers:{ "Content-Type":"text/plain;charset=utf-8" }, body:JSON.stringify(pcSign(payload)) })
-      .then(function(r){ return r.json().catch(function(){ return null; }); })
+    enginePost(url, payload)
       .then(function(d){
         if(pcRefused(d)) return;
         if(d && d.ok === false){ setStatus("Couldn't save: " + (d.error || "unknown error"), "err"); return; }
@@ -1817,11 +1917,8 @@
     newprodList.hidden = false;
   }
   function ackNewProduct(p){
-    if (window.GXDev) window.GXDev.check("ackProducts");
     var url = engineUrl();
-    if(url) fetch(url, { method:"POST", headers:{ "Content-Type":"text/plain;charset=utf-8" },
-      body:JSON.stringify(pcSign({ action:"ackProducts", ids:[p.id] })) })
-      .then(function(r){ return r.json().catch(function(){ return null; }); })
+    if(url) enginePost(url, { action:"ackProducts", ids:[p.id] })
       .then(function(d){ pcRefused(d); })
       .catch(function(){});
     NEW_PRODUCTS = NEW_PRODUCTS.filter(function(x){ return x.id !== p.id; });
@@ -1985,12 +2082,11 @@
     submit: function (payload) {
       var endpoint = ((typeof markUrlInput !== "undefined" && markUrlInput && markUrlInput.value) || loadWebapp() || "").trim();
       if (!endpoint) throw new Error("No engine configured — cannot file a bug from here.");
-      return fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "text/plain;charset=utf-8" },
-        body: JSON.stringify(payload),
-      })
-        .then(function (r) { return r.json().catch(function () { return null; }); })
+      /* Through the one door like every other write. gx-bugreport hands the transport to the app
+         precisely because "the app owns auth" -- and the raw fetch here never signed the payload, so
+         a report from a perfectly signed-in user hit the doPost auth gate and came back needsAuth.
+         enginePost stamps the session token, which is what the branch below was apologising for. */
+      return enginePost(endpoint, payload)
         .then(function (d) {
           if (d && d.ok) return d;
           // The engine gates every write, so an unauthenticated user lands here. Say what to do

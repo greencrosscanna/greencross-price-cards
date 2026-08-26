@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/* ─── submitCards_ idempotency — tests ────────────────────────────────────────────────────────────
+/* ─── engine write idempotency (submitCards_, markPrinted_) — tests ────────────────────────────────────────────────────────────
  *
  *   RUN:  node tests/submit_dedup_test.js   (from the repo root; no deps, no network, no credentials)
  *
@@ -17,6 +17,9 @@
  *   - a DIFFERENT batch still queues                            (over-dedup would eat real work)
  *   - the same cards after the window still queue               (a reprint next week is legitimate)
  *   - no subId at all still queues                              (an older cached client must not break)
+ *
+ * §8 applies the same four to markPrinted_, which needed them only once the client grew a retry in
+ * v1.422 — see that section's note on why a lost RECEIPT is a harder case than a double-tap.
  *
  * Loads the real apps-script/Code.gs with Apps Script globals stubbed, against a live in-memory
  * PropertiesService so the queue and the dedup ledger actually round-trip.
@@ -49,7 +52,8 @@ const names = Object.keys(stubs);
 let P;
 try {
   P = new Function(...names, fs.readFileSync(__dirname + '/../apps-script/Code.gs','utf8') +
-    '\n; return { submitCards_, readQueue_, writeQueue_, SUBMIT_DEDUP_MS, SUBMIT_DEDUP_CAP, readSubmits_ };'
+    '\n; return { submitCards_, readQueue_, writeQueue_, SUBMIT_DEDUP_MS, SUBMIT_DEDUP_CAP, readSubmits_,' +
+    '           markPrinted_, readPrinted_ };'
   )(...names.map(n=>stubs[n]));
 } catch (e) {
   console.error('LOAD FAILED: Code.gs did not evaluate under stubs — ' + e.message);
@@ -126,6 +130,49 @@ ok('expired records are pruned, not merely capped',
              NOW += P.SUBMIT_DEDUP_MS + 1,
              P.submitCards_({ cards:[CARD_B], subId:'new' }),
              P.readSubmits_().every(r => r.subId !== 'old')));
+
+console.log('\n8. markPrinted_ — the same guarantee, for the write a retry would otherwise duplicate');
+/* This one arrived with v1.422, when the CLIENT grew a retry. Every other write here is a no-op on
+ * replay by construction; markPrinted_ appends an archive entry with a fresh UUID on every call. And
+ * the retry it must survive is not a double-tap but a lost RECEIPT: the /exec second hop can drop the
+ * response to a request that already ran, so attempt two arrives with the queue ALREADY emptied by
+ * attempt one — which is why replay has to be decided on the subId and not on "are these ids still
+ * queued". Read that as: the second call below has no ids left to pull and must still not archive. */
+reset();
+{
+  const CARDS = [CARD_A, CARD_B];
+  P.submitCards_({ cards: CARDS, subId: 'q-1' });
+  const qids = P.readQueue_().map(e => e.id);
+
+  const one = P.markPrinted_({ ids: qids, cards: CARDS, subId: 'mp:batch-1' });
+  ok('the first print archives the sheet', one.ok === true && one.moved === 2 && P.readPrinted_().length === 1);
+  ok('and pulls those cards out of the queue', qlen() === 0);
+
+  const two = P.markPrinted_({ ids: qids, cards: CARDS, subId: 'mp:batch-1' });
+  ok('a retried print archives NOTHING the second time', P.readPrinted_().length === 1);
+  ok('and says so rather than erroring', two.ok === true && two.duplicate === true);
+  ok('replaying moved keeps the UI honest', two.moved === 2);
+
+  // Over-dedup would be the worse bug: a real second print run must still archive.
+  const three = P.markPrinted_({ ids: [], cards: CARDS, subId: 'mp:batch-2' });
+  ok('a genuinely different print run still archives', three.ok === true && P.readPrinted_().length === 2);
+
+  // The two kinds of record share one property store; the client namespaces print ids `mp:` so a
+  // submit and a print of the same cards can never be read as each other.
+  ok('submit and print ids coexist in the shared ledger',
+     P.readSubmits_().some(r => r.subId === 'q-1') && P.readSubmits_().some(r => r.subId === 'mp:batch-1'));
+
+  // An older cached client sends no subId. It must archive, undeduped, exactly as it did before.
+  const n1 = P.markPrinted_({ ids: [], cards: [CARD_A] });
+  const n2 = P.markPrinted_({ ids: [], cards: [CARD_A] });
+  ok('an un-keyed print still works and is not refused', n1.ok === true && n2.ok === true);
+  ok('(undeduped, which is the old behaviour and better than a refusal)', P.readPrinted_().length === 4);
+
+  // The window is a window here too: a legitimate reprint of the same batch next week must go through.
+  NOW += P.SUBMIT_DEDUP_MS + 1;
+  const later = P.markPrinted_({ ids: [], cards: CARDS, subId: 'mp:batch-1' });
+  ok('the identical batch archives again once the window has passed', later.duplicate !== true && P.readPrinted_().length === 5);
+}
 
 console.log('\n──────────────────────────────');
 console.log(pass + ' passed, ' + fail + ' failed');
