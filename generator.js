@@ -2104,6 +2104,14 @@
         });
     },
   });
+  // Stale-build toast. Same auth check as the reporter above: no point prompting a reload
+  // behind a login overlay that covers the toast anyway.
+  GXUpdateCheck.init({
+    app:      'pricecards',
+    gxcore:   GXCORE_URL,
+    version:  function () { return APP_VERSION; },
+    isAuthed: function () { try{return !!(pcSession()||{}).token;}catch(e){return false;} },
+  });
 
   btn.addEventListener("click", function () { GXBugReport.open(); });
 })();
