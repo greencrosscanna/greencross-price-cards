@@ -2067,6 +2067,12 @@
   btn.hidden = false;
 
   GXBugReport.init({
+    // Screenshot upload. A separate call from `submit`: the image cannot ride the report payload,
+    // since several apps submit through a GET query string that a ~273KB base64 would not survive.
+    // The shared uploader gets THIS app's own session token, so auth still originates here.
+    uploadShot: GXBugReport.gxCoreUploader(GXCORE_URL, function () {
+      try { return (pcSession() || {}).token || ''; } catch (e) { return ''; }
+    }),
     app: 'pricecards',
     action: 'reportBug',                      // this engine's spelling — not 'bugreport'
     fab: false,                               // the toolbar button above is the trigger
