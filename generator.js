@@ -606,6 +606,15 @@
   // GX Core (shared brain) — public read endpoints (e.g. ?action=stores for the canonical store registry).
   var GXCORE_URL = "https://script.google.com/macros/s/AKfycbx9mjeCBbDpxNYaqBv2hyZaO1hpbGG6PZM9AebFdwl0UwkdtRCGSWrH-8ohEtdF1K_6/exec";
 
+  /* Shared maintenance gate (gx-maintenance.js, loaded from index.html above this file).
+     Initialised HERE rather than in index.html because GXCORE_URL is a `var` scoped to this IIFE.
+     Called at load and deliberately NOT inside pcStart(): pcStart only runs once there is a session,
+     and being told the app is down must not require signing in first. The gate overlays at
+     z-index 10000, so it covers the sign-in gate too. */
+  if (window.GXMaintenance) {
+    GXMaintenance.init({ app: 'pricecards', appName: 'Price Cards', gxcore: GXCORE_URL });
+  }
+
   /* ── Sign-in gate ────────────────────────────────────────────────────────────────────────────────
    * Price Cards was PUBLIC and could write: ackProducts, clearPrinted, markDone, markPrinted,
    * queueRemove, removePrintedSheet, saveConfig, submitCards. Anyone with the URL could submit to the
@@ -1999,6 +2008,23 @@
     GXTopNav.renderUser(slot, {
       name: s.name || s.user, role: s.role || "",
       avatar: window.GXAvatar ? GXAvatar.chip(s.avatar, s.name || s.user) : null,
+      /* Opt-in avatar row — only when we can actually SAVE, so it never renders a dead Save button.
+         No `seed`: the chip above does not pass one either, and gx-topnav falls back to `name`, so
+         omitting it keeps the editor preview identical to the chip. Price Cards buckets to
+         app=inventory for BUGS but its own key everywhere else; set_my_avatar takes the app key. */
+      avatarEdit: (window.GXAvatar && s.token) ? {
+        token:  s.token,
+        app:    APP_KEY,
+        client: GXClient(GXCORE_URL),
+        config: s.avatar,
+        onSaved: function (cfg) {
+          // Persist or the face reverts on reload — pcRenderUser re-reads the stored session.
+          // pcSetSession replaces the whole record, so merge onto the current one.
+          var cur = pcSession();
+          if (cur) { cur.avatar = cfg; pcSetSession(cur); }
+          pcRenderUser();
+        }
+      } : undefined,
       items: [
         { action: "settings", label: "Settings" },
         // Price Cards was the one app with no Version row at all — not even a dead label. The
