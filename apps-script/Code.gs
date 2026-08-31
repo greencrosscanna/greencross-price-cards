@@ -47,16 +47,23 @@ function authorize() {
   var name = SpreadsheetApp.getActiveSpreadsheet().getName();
   var report = { sheet: name, dutchie: {} };
   // Touch the external-request scope + verify Dutchie connectivity per store.
+  /* Connectivity is now GX Core's to report, not ours: this app holds no Dutchie credential, so
+     there is nothing here to authorize against Dutchie directly. dutchie_whoami asks Dutchie what
+     each key opens and checks it against the stores registry — a stronger check than the HTTP code
+     this used to print, and it cannot be fooled by a mislabelled map. */
   try {
-    var stores = dutchieStores_();
-    for (var i = 0; i < stores.length; i++) {
-      try {
-        var hdrs = { Authorization: dutchieAuth_(stores[i]), Accept: 'application/json' };
-        var r = UrlFetchApp.fetch(DUTCHIE_BASE + '/whoami', { headers: hdrs, muteHttpExceptions: true });
-        report.dutchie[stores[i]] = 'HTTP ' + r.getResponseCode();
-      } catch (e2) { report.dutchie[stores[i]] = 'ERR ' + e2.message; }
+    var wu = GXCORE_URL + '?action=dutchie_whoami&secret='
+           + encodeURIComponent(gxDeploySecret_());
+    var wr = UrlFetchApp.fetch(wu, { muteHttpExceptions: true });
+    var wd = JSON.parse(wr.getContentText() || 'null');
+    if (wd && wd.ok === true) {
+      (wd.stores || []).forEach(function (st) {
+        report.dutchie[st.store] = st.ok ? ('opens ' + (st.location || st.location_id)) : ('ERR ' + st.error);
+      });
+    } else {
+      report.dutchie = 'GX Core refused: ' + ((wd && wd.error) || 'no response');
     }
-  } catch (e1) { report.dutchie = 'keys not set: ' + e1.message; }
+  } catch (e1) { report.dutchie = 'GX Core unreachable: ' + e1.message; }
   Logger.log('Authorized. ' + JSON.stringify(report));
   return report;
 }
@@ -985,14 +992,16 @@ function _getBig_(key) {
 // Map of productId -> {id,name,brand,category} across all stores' catalogs.
 function buildProductDict_() {
   var stores = dutchieStores_();
-  var reqs = stores.map(function (s) {
-    return { url: DUTCHIE_BASE + '/products', headers: { Authorization: dutchieAuth_(s), Accept: 'application/json' }, muteHttpExceptions: true };
-  });
-  var resps = UrlFetchApp.fetchAll(reqs), dict = {};
-  for (var i = 0; i < resps.length; i++) {
-    if (resps[i].getResponseCode() !== 200) continue;
-    var raw = JSON.parse(resps[i].getContentText());
-    var items = Array.isArray(raw) ? raw : (raw.data || raw.items || []);
+  /* Six sequential proxy calls where there used to be one parallel fetchAll. This runs on the DAILY
+     new-product scan against a 6-minute budget, so the few seconds it costs are a background job's,
+     not a user's — and the trade buys this app having no Dutchie credential at all.
+     A store that fails is SKIPPED, matching the previous behaviour of skipping a non-200: the scan
+     diffs against a known-set, and a store missing from the dict simply contributes no new ids. */
+  var dict = {}, storeErrs = [];
+  for (var i = 0; i < stores.length; i++) {
+    var items;
+    try { items = gxDutchieRows_('dutchie_products', stores[i], ''); }
+    catch (e) { storeErrs.push(stores[i] + ': ' + ((e && e.message) || e)); continue; }
     for (var j = 0; j < items.length; j++) {
       var it = items[j], pid = it.productId;
       if (pid == null || dict[pid]) continue;
@@ -1001,6 +1010,14 @@ function buildProductDict_() {
       dict[pid] = { id: String(pid), name: name, brand: String(it.brandName || '').trim(),
                     category: String(it.masterCategory || it.category || '').trim() };
     }
+  }
+  /* Every store failing is a FAILURE, not an empty catalog. buildProductDict_ feeds the daily
+     new-product diff; returning {} silently means "nothing new today", which is exactly how a
+     broken integration looks identical to a quiet one. A partial failure still returns — the diff
+     against the known-set is additive, so a missing store contributes no ids and costs nothing. */
+  if (storeErrs.length) Logger.log('buildProductDict_: ' + storeErrs.length + ' store(s) failed — ' + storeErrs.join(' | '));
+  if (storeErrs.length === stores.length) {
+    throw new Error('buildProductDict_: all ' + stores.length + ' stores failed — ' + storeErrs.join(' | '));
   }
   return dict;
 }
@@ -1045,19 +1062,65 @@ function installNewScanTrigger() {
  * Script Property DUTCHIE_STORE_KEYS_JSON = {"<store>":"<apiKey>", ...},
  * the same map the inventory app uses. Never hard-code keys here.
  * ------------------------------------------------------------------------- */
-var DUTCHIE_BASE = 'https://api.pos.dutchie.com';
-var DUTCHIE_STORE_KEYS_PROP = 'DUTCHIE_STORE_KEYS_JSON';
-
-function getDutchieStoreKeys_() {
-  var raw = PropertiesService.getScriptProperties().getProperty(DUTCHIE_STORE_KEYS_PROP);
-  if (!raw) throw new Error('DUTCHIE_STORE_KEYS_JSON is not set in Script Properties.');
-  return JSON.parse(raw);
+/* ─── DUTCHIE, THROUGH GX CORE. THIS APP HOLDS NO CREDENTIAL. ────────────────────────────────────
+ *
+ * Until 2026-08-31 this read its own DUTCHIE_STORE_KEYS_JSON — one of five copies across the suite,
+ * in two different spellings. Rotating the six POS keys meant five paste jobs, and the May leak
+ * survived a cleanup pass because a copy nobody remembered was left behind.
+ *
+ * Unlike Inventory and Leaderboard, this app never needs the key itself: every call here is a
+ * per-store read that GX Core proxies directly. The one multi-store batch (buildProductDict_) runs
+ * on the DAILY new-product scan, not on an interactive path, so trading one parallel fetchAll for
+ * six sequential proxy calls costs a background job a few seconds and costs a user nothing.
+ *
+ * The deploy secret, NOT the connector secret: these routes return ROWS. Only the two apps that
+ * genuinely need key material hold the connector secret, and this is not one of them.
+ *
+ * Store naming: GX Core resolves store_id, dutchie_name or display_name, so this app's existing
+ * Dutchie-name vocabulary passes through unchanged and no rename was needed here.
+ * ------------------------------------------------------------------------------------------------ */
+function gxDeploySecret_() {
+  var s = PropertiesService.getScriptProperties().getProperty('GX_DEPLOY_SECRET');
+  if (!s) throw new Error('GX_DEPLOY_SECRET is not set on this engine — cannot reach GX Core for Dutchie data');
+  return s;
 }
-function dutchieStores_() { return Object.keys(getDutchieStoreKeys_()); }
-function dutchieAuth_(store) {
-  var key = getDutchieStoreKeys_()[store];
-  if (!key) throw new Error('No Dutchie key for store: ' + store);
-  return 'Basic ' + Utilities.base64Encode(key + ':');   // POS API: key as username, blank password
+
+/* One gated call to a GX Core dutchie_* route. Returns the rows array. `fields` trims the payload:
+   an inventory pull is thousands of rows and this adds a hop. */
+function gxDutchieRows_(action, store, fields) {
+  var url = GXCORE_URL + '?action=' + encodeURIComponent(action)
+          + '&store=' + encodeURIComponent(store)
+          + '&secret=' + encodeURIComponent(gxDeploySecret_())
+          + (fields ? '&fields=' + encodeURIComponent(fields) : '');
+  var lastErr = '';
+  for (var i = 0; i < 5; i++) {
+    var resp = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
+    var data = null;
+    try { data = JSON.parse(resp.getContentText()); } catch (e) { lastErr = 'unparseable body'; }
+    if (data && data.ok === true && Array.isArray(data.rows)) return data.rows;
+    // A refusal is final — retrying a bad secret or an unknown store buries the message.
+    if (data && data.ok === false) throw new Error(action + ': ' + (data.error || 'refused'));
+    lastErr = lastErr || 'no rows in response';
+    Utilities.sleep(400);   // the /exec second hop 404s on ~6% of rapid calls
+  }
+  throw new Error('GX Core ' + action + ' unreachable after 5 tries — ' + lastErr);
+}
+
+/* The store list now comes from the shared registry rather than from whichever labels happened to
+   be in a local key map. That map was also the de-facto store list, which is how a stale label
+   silently became a store this app believed in. */
+function dutchieStores_() {
+  var out = [];
+  try {
+    (GXCore.getStores() || []).forEach(function (s) {
+      var dn = String(s.dutchie_name || '').trim();
+      if (dn) out.push(dn);
+    });
+  } catch (e) {
+    throw new Error('GX Core store registry unreachable: ' + ((e && e.message) || e));
+  }
+  if (!out.length) throw new Error('GX Core returned no stores');
+  return out;
 }
 
 function priceOf_(it) {
@@ -1066,11 +1129,7 @@ function priceOf_(it) {
 
 // Raw inventory items for a store from /reporting/inventory (one call, all fields).
 function dutchieInventory_(store) {
-  var hdrs = { Authorization: dutchieAuth_(store), Accept: 'application/json' };
-  var resp = UrlFetchApp.fetch(DUTCHIE_BASE + '/reporting/inventory', { headers: hdrs, muteHttpExceptions: true });
-  if (resp.getResponseCode() !== 200) throw new Error('Dutchie HTTP ' + resp.getResponseCode() + ' (' + store + ')');
-  var raw = JSON.parse(resp.getContentText());
-  return Array.isArray(raw) ? raw : (raw.data || raw.items || []);
+  return gxDutchieRows_('dutchie_inventory', store, '');
 }
 
 // Diagnostic: see real field shapes + a few in-stock samples (for designing the conformance).
