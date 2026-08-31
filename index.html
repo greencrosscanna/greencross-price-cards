@@ -244,7 +244,7 @@
           kiosk downloaded a dev-only script it can never use.
        2. A RELATIVE src cannot resolve on a GAS-served page -- HtmlService sandboxes the document to a
           different origin -- so on that path the guard was silently ABSENT rather than inert. Nothing
-          signalled it, which is worse than the 404.
+          signaled it, which is worse than the 404.
 
      Loading it only on localhost fixes both: production never makes the request at all, and the URL is
      absolute so it resolves from any origin, GAS included. Nothing to commit per repo, which also
@@ -287,6 +287,6 @@
     'getConfig', 'getPrinted', 'getQueue', 'grid', 'liveCatalog', 'newProducts', 'stores'
   ];
 </script>
-<script src="generator.js?v=1.426"></script>
+<script src="generator.js?v=1.427"></script>
 </body>
 </html>

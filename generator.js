@@ -343,7 +343,7 @@
   };
 
   // After printing, offer to remove the printed cards from the queue (confirmed,
-  // so a cancelled print dialog never loses cards). Matches the print-queue model.
+  // so a canceled print dialog never loses cards). Matches the print-queue model.
   function offerClearPrinted(printed){
     if(!printed || !printed.length) return;
     valEl.hidden=false; valEl.className="validation info";
@@ -703,7 +703,7 @@
     if (s && s.token) params.token = s.token;   // same credential pcSignUrl carried, as a param
 
     // gx-client.js is a remote <script>; if it failed to load, one plain attempt still beats
-    // nothing. That path is the OLD behaviour, so it is a degradation, never an upgrade.
+    // nothing. That path is the OLD behavior, so it is a degradation, never an upgrade.
     var req = (typeof GXClient !== "undefined")
       ? GXClient(base).getJSON(action, params)
       : fetch(pcSignUrl(base + (base.indexOf("?") < 0 ? "?" : "&") + query), { cache: "no-store" })
@@ -1631,7 +1631,7 @@
         buildCatMapUI();
         setSource("● Live · "+tagStore(store)+" · "+(d.count||0)+" in-stock products · OTD", "live");
         if(cbSearch && cbSearch.value){ cbMatches = cbRun(cbSearch.value); cbRender(); } })
-      /* This catch used to read `setSource("…using template prices","tpl")` and stop there — a grey
+      /* This catch used to read `setSource("…using template prices","tpl")` and stop there — a gray
          11px line, hidden outright on the kiosk, after which search quietly served template prices.
          An exhausted retry is a real failure and now presents as one. */
       .catch(function(err){
@@ -1976,7 +1976,7 @@
     if (_pcStarted) return;            // never re-enter: a second pass would double every interval
     _pcStarted = true;
     if (window.GXTopNav) GXTopNav.startClock();
-    if (window.GXStores) GXStores.load(GXCORE_URL).catch(function(){ /* colours are a nicety */ });
+    if (window.GXStores) GXStores.load(GXCORE_URL).catch(function(){ /* colors are a nicety */ });
     pcRenderUser();
     loadStyle();
     fetchConfigGlobal();   // adopt the shared (global) settings
@@ -2117,7 +2117,7 @@
       /* Through the one door like every other write. gx-bugreport hands the transport to the app
          precisely because "the app owns auth" -- and the raw fetch here never signed the payload, so
          a report from a perfectly signed-in user hit the doPost auth gate and came back needsAuth.
-         enginePost stamps the session token, which is what the branch below was apologising for. */
+         enginePost stamps the session token, which is what the branch below was apologizing for. */
       return enginePost(endpoint, payload)
         .then(function (d) {
           if (d && d.ok) return d;
