@@ -336,7 +336,7 @@ body.store-locked .cb-store{opacity:1;cursor:default;-webkit-appearance:none;app
 .cb-source.tpl{color:#8a6d3b;}
 .cb-source.err{color:#b42318;font-weight:700;}
 
-/* Live-price failure banner. Sized and coloured to be genuinely hard to miss — the failure it
+/* Live-price failure banner. Sized and colored to be genuinely hard to miss — the failure it
    reports is otherwise invisible (the app keeps working, just with the wrong prices). Deliberately
    NOT hidden by the .mode-employee rules above: the kiosk is where an unnoticed template price gets
    printed. Local styling rather than a .gx-* primitive because gx-theme has no alert component;

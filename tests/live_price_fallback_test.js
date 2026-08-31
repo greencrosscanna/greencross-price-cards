@@ -16,7 +16,7 @@
  * of it, so §3 asserts engineGet routes through the shared client rather than asserting retry counts.
  * §1 runs the real decision function. §2 covers the dev-guard list, which throws rather than warns.
  *
- * §1 IS A REAL BEHAVIOUR TEST, NOT A STRING MATCH. generator.js is one IIFE with no module boundary,
+ * §1 IS A REAL BEHAVIOR TEST, NOT A STRING MATCH. generator.js is one IIFE with no module boundary,
  * and standing up a DOM shim big enough to load 100KB of app code would test the shim. Instead the
  * decision function is sentinel-delimited in the source (`@test-slice priceIndexFor_`) and sliced out
  * and evaluated here — so this exercises the exact bytes that ship, and deleting the sentinels breaks

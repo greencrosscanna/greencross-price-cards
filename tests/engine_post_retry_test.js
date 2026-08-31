@@ -92,7 +92,7 @@ console.log('\n1. a retry-safe write survives the second-hop HTML page');
 const section2 = section1.then(() => {
   console.log('\n2. an action absent from POST_RETRY_SAFE is sent exactly once');
   // The safety property. Retrying re-runs a write that may already have run, so anything not
-  // explicitly cleared as a no-op-on-replay must keep the old one-shot behaviour.
+  // explicitly cleared as a no-op-on-replay must keep the old one-shot behavior.
   let calls = 0;
   const { enginePost, SAFE } = build(() => { calls++; return Promise.resolve(HTML_PAGE); });
   ok(!Object.prototype.hasOwnProperty.call(SAFE, 'somethingNew'),

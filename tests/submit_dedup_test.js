@@ -166,7 +166,7 @@ reset();
   const n1 = P.markPrinted_({ ids: [], cards: [CARD_A] });
   const n2 = P.markPrinted_({ ids: [], cards: [CARD_A] });
   ok('an un-keyed print still works and is not refused', n1.ok === true && n2.ok === true);
-  ok('(undeduped, which is the old behaviour and better than a refusal)', P.readPrinted_().length === 4);
+  ok('(undeduped, which is the old behavior and better than a refusal)', P.readPrinted_().length === 4);
 
   // The window is a window here too: a legitimate reprint of the same batch next week must go through.
   NOW += P.SUBMIT_DEDUP_MS + 1;

@@ -78,7 +78,7 @@ function doGet(e) {
        "return the bound Sheet", so a bare GET of the /exec URL handed live
        pricing to anyone holding the link — no knowledge of the API required at
        all, which made it a worse leak than the unauthenticated writes were.
-       A bare ?gid= is still honoured as an ALIAS for action=grid, because
+       A bare ?gid= is still honored as an ALIAS for action=grid, because
        iPads on cached JS ask that way; that is not a catch-all — a request
        naming neither an action nor a gid now gets an error, not the Sheet.
        Retire the alias once the read gate is enforcing. */
@@ -128,7 +128,7 @@ function doGet(e) {
  * occasional, reads run several times per page load, so the read gate caches
  * its verification for 60s (keyed on a digest of the token) rather than paying
  * a Core round trip five times a load. The read cache and the write cache are
- * separate namespaces on purpose — a read verification must never authorise a
+ * separate namespaces on purpose — a read verification must never authorize a
  * write.
  *
  * ROLLOUT — BOTH GATES SHIP DARK, and they flip INDEPENDENTLY. authEnforced_()
@@ -163,7 +163,7 @@ var READ_CACHE_TTL_S  = 60;
    inherited member even by code that forgets has_(). Inventory's improvement on
    my fix and the better one: it defends the PATTERN rather than this instance,
    so whoever copies it onto a new route inherits the safe version instead of
-   the lucky one. has_() stays as well; two cheap defences on the hole that
+   the lucky one. has_() stays as well; two cheap defenses on the hole that
    handed the whole pricing sheet to ?action=toString.
 
    NOTE ON WRITE_ACTIONS: it is no longer the gate — doPost authenticates every
@@ -299,7 +299,7 @@ function authStatBump_(kind, action, ok, isProbe) {
     var withKey = (kind === 'r') ? 'read_with' : 'with';
     var noKey   = (kind === 'r') ? 'read_without' : 'without';
     var bucket  = statBucket_(s, ok ? withKey : noKey);
-    statBucket_(s, ok ? noKey : withKey);          // sanitise the other side too
+    statBucket_(s, ok ? noKey : withKey);          // sanitize the other side too
     var key = String(action || '?');
     bucket[key] = (bucket[key] || 0) + 1;
     var stamp = (kind === 'r') ? 'read_' : '';
@@ -422,7 +422,7 @@ function authStats_() {
   var props = PropertiesService.getScriptProperties();
   var s = {};
   try { s = JSON.parse(props.getProperty(AUTH_STATS_PROP) || '{}'); } catch (e) {}
-  // Report sanitised counts, so a value corrupted by an older build cannot be
+  // Report sanitized counts, so a value corrupted by an older build cannot be
   // read as a number by whoever is deciding whether to flip.
   ['with', 'without', 'read_with', 'read_without', 'canedit_seen', 'edit_denied', 'probes']
     .forEach(function (b) { if (s[b]) statBucket_(s, b); });
@@ -452,7 +452,7 @@ function requireWrite_(body) {
    manager}, and a superadmin resolves to admin, so this refuses viewers and
    nobody else.
 
-   canEdit is honoured only when Core says it OUTRIGHT (=== false), never when
+   canEdit is honored only when Core says it OUTRIGHT (=== false), never when
    merely absent — inventory's call, and it holds here for a second reason: a
    missing canEdit lands exactly where this code already stood yesterday, so the
    fallback is no more permissive than the thing it replaces. That is crew's
@@ -510,7 +510,7 @@ function doPost(e) {
     var body = JSON.parse((e && e.postData && e.postData.contents) || '{}');
 
     /* AUTH GATE — EVERY post, before any of them touch state, whether or not
-       the action is one we recognise.
+       the action is one we recognize.
 
        It used to gate `if (has_(WRITE_ACTIONS, body.action))`, and the comment
        here bragged that a new write was covered the moment its name landed in
