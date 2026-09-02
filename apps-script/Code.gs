@@ -995,7 +995,7 @@ function buildProductDict_() {
   /* Six sequential proxy calls where there used to be one parallel fetchAll. This runs on the DAILY
      new-product scan against a 6-minute budget, so the few seconds it costs are a background job's,
      not a user's — and the trade buys this app having no Dutchie credential at all.
-     A store that fails is SKIPPED, matching the previous behaviour of skipping a non-200: the scan
+     A store that fails is SKIPPED, matching the previous behavior of skipping a non-200: the scan
      diffs against a known-set, and a store missing from the dict simply contributes no new ids. */
   var dict = {}, storeErrs = [];
   for (var i = 0; i < stores.length; i++) {
