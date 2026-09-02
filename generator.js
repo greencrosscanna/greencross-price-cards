@@ -607,7 +607,7 @@
   var GXCORE_URL = "https://script.google.com/macros/s/AKfycbx9mjeCBbDpxNYaqBv2hyZaO1hpbGG6PZM9AebFdwl0UwkdtRCGSWrH-8ohEtdF1K_6/exec";
 
   /* Shared maintenance gate (gx-maintenance.js, loaded from index.html above this file).
-     Initialised HERE rather than in index.html because GXCORE_URL is a `var` scoped to this IIFE.
+     Initialized HERE rather than in index.html because GXCORE_URL is a `var` scoped to this IIFE.
      Called at load and deliberately NOT inside pcStart(): pcStart only runs once there is a session,
      and being told the app is down must not require signing in first. The gate overlays at
      z-index 10000, so it covers the sign-in gate too. */
@@ -714,7 +714,7 @@
       return d;
     }, function (e) {
       // Two-argument then() on purpose: this handler sees transport failures only, never a
-      // refusal thrown by the fulfilment handler above.
+      // refusal thrown by the fulfillment handler above.
       var err = new Error("engine unreachable — " + ((e && e.message) || e));
       err.gxUnreachable = true;
       throw err;

@@ -374,7 +374,7 @@ function authProbe_() {
     // fed a verifier that ACCEPTS, the same decision must allow.
     inverseHolds:   accepted.ok === true,
     // Writes need edit rights, reads only need the grant.
-    honoursReadOnly: viewerW.ok === false && viewerW.code === 'read_only' &&
+    honorsReadOnly: viewerW.ok === false && viewerW.code === 'read_only' &&
                      viewerW.needsAuth !== true && viewerR.ok === true,
     // An ABSENT canEdit must not lock anyone out — it lands where this code
     // stood before the check existed, which is the no-more-permissive rule.
@@ -387,7 +387,7 @@ function authProbe_() {
   /* ok is the AND of every invariant, not a fixed true with details hanging off
      it — inventory's shape. A green ok has to mean something failed nothing. */
   out.ok = out.refusesGarbage && out.wouldRefuseIfEnforcing && out.inverseHolds &&
-           out.honoursReadOnly && out.absentCanEditAllows && out.protoSafe && out.coreReachable;
+           out.honorsReadOnly && out.absentCanEditAllows && out.protoSafe && out.coreReachable;
   return out;
 }
 
@@ -485,7 +485,7 @@ function gateDecision_(auth, enforcing, needsEdit) {
 }
 
 /* Same shape for reads, on its own flag and its own cache. Kept separate from
-   requireWrite_ rather than parameterised: the two differ in what they may
+   requireWrite_ rather than parameterized: the two differ in what they may
    trust (a cached read answer must not stand in for a write check), and a
    single function with a mode flag is how that distinction gets lost later. */
 function requireRead_(action, p) {
