@@ -160,9 +160,28 @@ var AUTH_STATS_PROP   = 'PRICECARDS_AUTH_STATS';         // readiness telemetry 
    far too generous for the side that mutates shared state. Core-admin's ruling
    was to leave the writes uncached entirely — this keeps a 60s cache there
    because queue work is click-by-click and a Core round trip has been measured
-   at ~7s, which would put a 7s spinner on every button in the print queue. */
+   at ~7s, which would put a 7s spinner on every button in the print queue.
+
+   THE WRITE TTL STAYS AT 60. It is a concession against a stricter ruling, not a
+   number to tune for load. Do not raise it to make this app faster.
+
+   THE READ TTL IS 300, RAISED FROM 60 ON 2026-09-03, and only the read side.
+   GX Core's request telemetry showed this app was its second-largest caller:
+   `verify` was 27% of ALL traffic reaching GX Core in a measured hour, and this
+   app accounted for essentially all of it. requireRead_ calls gxAuthRead_ on
+   every read whether or not read-enforcement is on, so a 60s cache meant a Core
+   round trip per user per minute, all day, per store screen.
+
+   Why reads can afford it and writes cannot: a read cannot mutate shared state,
+   and a viewer may read anyway, so the only thing a stale read answer buys a
+   revoked account is up to five minutes of LOOKING at price cards it could
+   already look at a minute ago. The write path is where a stale answer would let
+   someone change something, and that is why it is untouched.
+
+   Sessions themselves last SEVEN DAYS (GX Core GX_SESSION_TTL_MS), so this is
+   still two orders of magnitude tighter than the credential it is checking. */
 var WRITE_CACHE_TTL_S = 60;
-var READ_CACHE_TTL_S  = 60;
+var READ_CACHE_TTL_S  = 300;
 
 /* The nine mutating actions. markDone writes to the bound Sheet; the other
    eight mutate shared Script-Property state (queue, printed history, config). */
