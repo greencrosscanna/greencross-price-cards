@@ -30,7 +30,7 @@ Every card is built from these fields, in this order:
 ## 2. Brand names — canonical list
 
 Use the **full, correctly-spelled** brand every time (the [`tags.json`](./tags.json) `brands`
-list has all 84). Multi-word brands are written in full — never the wrapped fragment.
+list has all 157). Multi-word brands are written in full — never the wrapped fragment.
 
 **Corrections the dictionary auto-applies** (source → canonical):
 
@@ -48,6 +48,14 @@ list has all 84). Multi-word brands are written in full — never the wrapped fr
 | `Dave's Nuttz` / `Dave's Nutz` | **Dave's Nuttz** | two spellings unified — two t's (confirmed) |
 | `Decibel` / `Decibel Farms` | **Decibel Farms** | one brand across extracts + pre-rolls (confirmed) |
 | `East Fork` | **East Fork Cultivars** | short form → full registered name (confirmed 2026-09-04) |
+| `Mule Extracts` | **Mule** | Dutchie's longer string → the name already on the shelf (confirmed 2026-09-06) |
+| `Meraki Gardens` | **Meraki** | same |
+| `Farmer's Friend Extracts` | **Farmer's Friend** | same |
+| `Gron` | **Grön** | Dutchie drops the umlaut |
+| `Yamba Junk` | **Yamba** | same |
+| `BIC Lighters` | **BIC** | same |
+| `SeshGear` | **Sesh Gear** | same |
+| `Mk Lighter` | **MK** | same |
 
 **Apostrophes:** store as straight `'` (e.g. `Farmer's`) for reliable matching; display unchanged.
 
@@ -55,6 +63,12 @@ list has all 84). Multi-word brands are written in full — never the wrapped fr
 `Grinder`) rather than a brand — that's expected. Real accessory brands (`Puffco`, `Yocan`, `Wulf`,
 `Pulsar`, `Randy's`, `Hemper`, `Rokin`…) are used when the item is branded. ~28 generic item-types
 were excluded from the brand list.
+
+**Extended 2026-09-06** from live Dutchie inventory across all six stores: 84 → 157 brands. Where
+Dutchie writes a longer name than the shelves already use (`Mule Extracts` for `Mule`), the SHORT
+name stays canonical and the long one became a correction — Sky's call, since ~1,100 items already
+print the short form. Three Dutchie misspellings (`Reece's`, `Southern Oregon Mooonshine`,
+`Cloudious 9`) were fixed at the source in Dutchie rather than papered over here.
 
 **The list is a floor, not a ceiling.** It was parsed from one master template and does not grow on
 its own, so a brand that started selling afterward was invisible in the Brand type-ahead. The app now
