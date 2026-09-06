@@ -30,7 +30,7 @@ Every card is built from these fields, in this order:
 ## 2. Brand names — canonical list
 
 Use the **full, correctly-spelled** brand every time (the [`tags.json`](./tags.json) `brands`
-list has all 83). Multi-word brands are written in full — never the wrapped fragment.
+list has all 84). Multi-word brands are written in full — never the wrapped fragment.
 
 **Corrections the dictionary auto-applies** (source → canonical):
 
@@ -47,6 +47,7 @@ list has all 83). Multi-word brands are written in full — never the wrapped fr
 | `Harmony` (wrapped) | **Harmony Roots** | line-wrap |
 | `Dave's Nuttz` / `Dave's Nutz` | **Dave's Nuttz** | two spellings unified — two t's (confirmed) |
 | `Decibel` / `Decibel Farms` | **Decibel Farms** | one brand across extracts + pre-rolls (confirmed) |
+| `East Fork` | **East Fork Cultivars** | short form → full registered name (confirmed 2026-09-04) |
 
 **Apostrophes:** store as straight `'` (e.g. `Farmer's`) for reliable matching; display unchanged.
 
@@ -54,6 +55,12 @@ list has all 83). Multi-word brands are written in full — never the wrapped fr
 `Grinder`) rather than a brand — that's expected. Real accessory brands (`Puffco`, `Yocan`, `Wulf`,
 `Pulsar`, `Randy's`, `Hemper`, `Rokin`…) are used when the item is branded. ~28 generic item-types
 were excluded from the brand list.
+
+**The list is a floor, not a ceiling.** It was parsed from one master template and does not grow on
+its own, so a brand that started selling afterward was invisible in the Brand type-ahead. The app now
+also offers brands it discovers in live Dutchie inventory, the catalog and the new-product scan
+(`mergeBrands` in `generator.js`). Discovered names are *offered* only — spelling is still corrected
+from this list alone, so add a brand here when you want its casing enforced.
 
 ---
 

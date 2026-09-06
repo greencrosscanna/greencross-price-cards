@@ -994,17 +994,52 @@
                                           intended mode, and searching them is correct
        liveReady=false, liveFailed=true   an engine IS configured and we could not reach it —
                                           template prices would be a LIE, so search is paused */
-  var STYLE = { brands:[], brandNorm:{}, sizes:[], catalog:{}, catalogIndex:[], lexIndex:{}, liveIndex:[], liveReady:false, liveFailed:false };
+  var STYLE = { brands:[], brandNorm:{}, discovered:[], discoveredNorm:{}, sizes:[], catalog:{}, catalogIndex:[], lexIndex:{}, liveIndex:[], liveReady:false, liveFailed:false };
   function ensureDatalist(id, values){
     var dl = document.getElementById(id);
     if(!dl){ dl = document.createElement("datalist"); dl.id = id; document.body.appendChild(dl); }
     dl.innerHTML = (values||[]).map(function(v){ return '<option value="'+esc(v)+'"></option>'; }).join("");
   }
+  /* The Brand type-ahead used to be exactly the curated list in style/tags.json — a snapshot of the
+     June master template. Nothing ever added to it, so a brand that started selling after that day
+     could never appear, however many of its products were on the shelf; staff hit an empty
+     type-ahead and assumed the app did not know the brand.
+     Discovered brands (live Dutchie inventory, the catalog, the new-product scan) are merged into
+     the same list, so a new vendor shows up on its own. The curated list still owns SPELLING:
+     a discovered name only ever fixes CAPITALIZATION of what someone typed (curated entries are
+     consulted first, and can rewrite the letters themselves). */
+  function refreshBrandList(){
+    var seen = {}, out = [];
+    STYLE.brands.forEach(function(b){
+      var k = String(b).toLowerCase(); if(seen[k]) return; seen[k] = 1; out.push(b);
+    });
+    STYLE.discovered.forEach(function(b){
+      var k = String(b).toLowerCase();
+      if(seen[k] || STYLE.brandNorm[k]) return;      // curated name, or a correction, already covers it
+      seen[k] = 1; out.push(b);
+    });
+    out.sort(function(a,b){ return String(a).toLowerCase().localeCompare(String(b).toLowerCase()); });
+    ensureDatalist("brandList", out);
+  }
+  function mergeBrands(names){
+    var seen = {}, added = false;
+    STYLE.discovered.forEach(function(b){ seen[String(b).toLowerCase()] = 1; });
+    (names||[]).forEach(function(n){
+      var s = String(n==null?"":n).trim();
+      if(!s) return;
+      var k = s.toLowerCase();
+      if(seen[k]) return;
+      seen[k] = 1; STYLE.discovered.push(s); STYLE.discoveredNorm[k] = s; added = true;
+    });
+    if(added) refreshBrandList();
+  }
   function normalizeBrand(v){
     var s = String(v==null?"":v).trim();
     if(!s) return s;
-    var hit = STYLE.brandNorm[s.toLowerCase()];
-    return hit || s;   // unknown brands pass through untouched
+    var k = s.toLowerCase();
+    return STYLE.brandNorm[k]          // curated spelling + known corrections
+        || STYLE.discoveredNorm[k]     // a brand only live data knows — casing only
+        || s;                          // genuinely unknown: pass through untouched
   }
   function uniq(a){ var o=[]; (a||[]).forEach(function(x){ if(x && o.indexOf(x)<0) o.push(x); }); return o; }
   function productsFor(brand){ var b = STYLE.catalog[brand]; return b ? Object.keys(b) : []; }
@@ -1053,13 +1088,13 @@
           (su[k]||[]).forEach(function(s){ if(sizes.indexOf(s)<0) sizes.push(s); });
         });
         STYLE.sizes = sizes;
-        ensureDatalist("brandList", STYLE.brands);
+        refreshBrandList();
         ensureDatalist("sizeList", STYLE.sizes);
       })
       .catch(function(){ /* dictionary optional — app still works without it */ });
     fetch("style/catalog.json", {cache:"no-store"})
       .then(function(res){ if(!res.ok) throw 0; return res.json(); })
-      .then(function(c){ STYLE.catalog = c || {}; buildIndex(); buildLexIndex(); if(STYLE.liveReady) rebuildLive(); })
+      .then(function(c){ STYLE.catalog = c || {}; mergeBrands(Object.keys(STYLE.catalog)); buildIndex(); buildLexIndex(); if(STYLE.liveReady) rebuildLive(); })
       .catch(function(){ /* catalog optional */ });
   }
 
@@ -1233,6 +1268,7 @@
     STYLE.catalogIndex = idx;
   }
   function buildLiveIndex(items){   // live Dutchie inventory → conformed searchable index
+    mergeBrands((items||[]).map(function(it){ return it.brand; }));
     STYLE.liveIndex = (items||[]).map(function(it){
       var c = conformDutchie(it);
       return idxEntry({ brand:c.brand, item:c.item, desc:c.desc, size:c.size, price:c.price, category:c.category, store:c.store },
@@ -1908,6 +1944,7 @@
     engineGet(url, "action=newProducts")
       .then(function(d){ if(!d || !d.ok) return;
         NEW_PRODUCTS = d.products || [];
+        mergeBrands(NEW_PRODUCTS.map(function(p){ return p.brand; }));
         var n = NEW_PRODUCTS.length;
         if(n>0 && newprodStrip){ newprodInfo.innerHTML = "<b>"+n+"</b> new product"+(n>1?"s":"")+" in Dutchie need"+(n>1?"":"s")+" a tag"; newprodStrip.hidden = false; }
         else if(newprodStrip){ newprodStrip.hidden = true; if(newprodList) newprodList.hidden = true; }

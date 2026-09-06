@@ -1129,10 +1129,18 @@ function gxDutchieRows_(action, store, fields) {
    be in a local key map. That map was also the de-facto store list, which is how a stale label
    silently became a store this app believed in. */
 function dutchieStores_() {
+  /* Over HTTP, not GXCore.getStores(). This app binds no library — `dependencies` in
+     appsscript.json is empty and ?action=libversion says so on purpose — so the library call that
+     used to live here threw "GXCore is not defined" every time, taking ?action=stores and the
+     all-stores live catalog down with it. The registry is a public read; the same ?action=stores
+     route the browser already uses answers it. */
   var out = [];
   try {
-    (GXCore.getStores() || []).forEach(function (s) {
-      var dn = String(s.dutchie_name || '').trim();
+    var res = UrlFetchApp.fetch(GXCORE_URL + '?action=stores', { muteHttpExceptions: true });
+    var data = JSON.parse(res.getContentText() || 'null');
+    if (!data || data.ok !== true) throw new Error((data && data.error) || 'store registry refused');
+    (data.stores || []).forEach(function (st) {
+      var dn = String(st.dutchie_name || '').trim();
       if (dn) out.push(dn);
     });
   } catch (e) {
