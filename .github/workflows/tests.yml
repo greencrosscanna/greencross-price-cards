@@ -38,3 +38,25 @@ jobs:
       - name: Run the gate
         working-directory: greencross-price-cards
         run: sh ./gx-preflight.sh
+
+      # Say what did NOT run. A green tick reports that every test EXITED 0, which is not the same
+      # as every test having COVERED something: a suite that skips prints a pass line and looks
+      # identical to one that ran.
+      # Nothing here skips today — that is exactly why this is worth adding while the answer is
+      # boring: any ⚠️ that appears later is then real, and arrives without anyone going to look.
+      - name: Report coverage honestly
+        if: always()
+        working-directory: greencross-price-cards
+        run: |
+          {
+            echo "### Coverage"
+            echo ""
+            for t in tests/*_test.js; do
+              out="$(node "$t" 2>&1 || true)"
+              if printf '%s' "$out" | grep -qiE '^SKIP|not a sibling|checkout not present'; then
+                echo "- ⚠️ \`$t\` — **SKIPPED**: $(printf '%s' "$out" | grep -iE '^SKIP|not a sibling|checkout not present' | head -1)"
+              else
+                echo "- ✅ \`$t\` — $(printf '%s' "$out" | tail -1)"
+              fi
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
