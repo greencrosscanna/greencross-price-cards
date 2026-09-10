@@ -2159,7 +2159,14 @@
       app: 'pricecards',
       action: 'reportBug',                      // this engine's spelling — not 'bugreport'
       fab: false,                               // the toolbar button above is the trigger
+      /* THIS APP'S OWN SESSION FIRST. It asked GXSession only, and GXSession answers for the
+         HOST page -- which on the standalone page is nobody. So every report filed from here
+         came in as `anonymous`, including from a user whose name is in the top right corner of
+         the screen they filed it from, and Core could not resolve an email to write back to.
+         Confirmed on the first real report ever filed from this page, 2026-09-09.
+         Embedded, pcSession is seeded FROM the host's token, so it is right in both places. */
       reporter: function () {
+        try { var s = pcSession(); if (s && s.user) return s.user; } catch (e) {}
         try { return (window.GXSession && GXSession.user && GXSession.user()) || 'anonymous'; }
         catch (e) { return 'anonymous'; }
       },
