@@ -40,16 +40,19 @@ step alone (skips orientation).
 
 Coordination is the **central brain-notes inbox** in GX Core: `/gxbrain` and the SessionStart hook read
 notes addressed to **`to_app=pricecards`**, resolve done ones (`resolve_note`), and write note-backs to any
-app (`add_note`). As an Inventory sub-app, its **bug reports** bucket to **Inventory** (`app=inventory`,
-`tab=pricecards`), not to a separate `pricecards` bug stream — don't conflate the notes key with the bug tab.
+app (`add_note`). **Bug reports file under this app's own key**, like SPIFF's: the standalone page sends
+`app=pricecards, tab=pricecards` (`reportBug_` in `apps-script/Code.gs`), and the tab embedded in Inventory
+files through Inventory's reporter as `app=pricecards, tab=pricetags`. One board; the tab says which page.
+*Changed 2026-09-09 (v1.434): standalone reports used to go to `app=inventory`, and because GX Core's bug
+list filters strictly on `app`, `?action=bugs&app=pricecards` never showed a single one of them.*
 
 Integration status (2026-08-11): notes channel live. **Auto-record on deploy** wired — `deploy.sh`
 POSTs `deploy_version` (app=pricecards) to GX Core; `APP_VERSION` (vNN) is single-sourced from the
 `?v=` cache-buster in `index.html`. Run `deploy.sh` after each ship (releases show in `version_history`).
 **gx-theme** linked (`gx-theme.css` — `--gx-*` tokens available; kept light, no restyle of the bespoke
-generator/doodle canvas). **Bug forwarding: deferred** — app not in standalone use yet + embedded in
-Inventory (its reporter covers it); when warranted, forward via `GXCore.gxIngestBug('inventory', reporter,
-{tab:'pricecards', …})`. **GXCore library script id (from CC):**
+generator/doodle canvas). **Bug forwarding: live** — the standalone page has its own reporter, and the
+engine forwards over GX Core's secret-gated `ingest_bug` HTTP route rather than `GXCore.gxIngestBug`,
+because this app binds no library. **GXCore library script id (from CC):**
 `1sfa3quXRgk6JiDzsHgzG7DgMaxN9XJv2LnNapAT2gCss0ghblufvOTjP` — add to `appsscript.json`
 `dependencies.libraries` (userSymbol `GXCore`, latest version) + engine redeploy when wiring. Still not bound to
 `GXCore` for shared login (separate future follow-up). **Stores** are pulled live from GX Core
