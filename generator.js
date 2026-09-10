@@ -2181,15 +2181,21 @@
            precisely because "the app owns auth" -- and the raw fetch here never signed the payload, so
            a report from a perfectly signed-in user hit the doPost auth gate and came back needsAuth.
            enginePost stamps the session token, which is what the branch below was apologizing for. */
+        /* gxShow: gx-bugreport prints an error's own message ONLY when it carries this flag, and
+           otherwise says "Could not send — check your connection". None of these carried it, so a
+           signed-in viewer refused by the engine was told to check a connection that was fine, and
+           the sign-in advice below was written and never once displayed. Found 2026-09-10. */
+        function shown(msg) { var e = new Error(msg); e.gxShow = true; return e; }
         return enginePost(endpoint, payload)
           .then(function (d) {
             if (d && d.ok) return d;
             // The engine gates every write, so an unauthenticated user lands here. Say what to do
             // instead of showing them a raw auth error they cannot act on.
             if (d && (d.needsAuth || d.code === "auth_required" || d.code === 401)) {
-              throw new Error("You need to be signed in to file a bug from here. Sign in, or report it from the Price Cards tab inside Inventory — that reporter files to the same board.");
+              throw shown("You need to be signed in to file a bug from here. Sign in, or report it from the Price Cards tab inside Inventory — that reporter files to the same board.");
             }
-            throw new Error((d && d.error) || "no response from the engine");
+            if (d && d.error) throw shown("Could not file the report: " + d.error);
+            throw new Error("no response from the engine");   // unflagged: the connection message is right
           });
       },
     });

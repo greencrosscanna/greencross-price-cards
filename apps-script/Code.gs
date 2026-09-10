@@ -426,7 +426,7 @@ function isProbe_(src) {
    before flipping — the first says whether requiring it locks out somebody real,
    the second answers inventory's question about whether canEdit is populated
    fleet-wide or whether everyone is hedging on an absent field. */
-function authStatEdit_(action, auth) {
+function authStatEdit_(action, auth, needsEdit) {
   if (!auth || !auth.ok) return;
   try {
     var props = PropertiesService.getScriptProperties();
@@ -434,7 +434,8 @@ function authStatEdit_(action, auth) {
     var seen = (auth.canEdit === true) ? 'true' : (auth.canEdit === false) ? 'false' : 'missing';
     var seenB = statBucket_(s, 'canedit_seen');
     seenB[seen] = (seenB[seen] || 0) + 1;
-    if (auth.canEdit === false) {
+    // A viewer filing a bug report is allowed, so it is not a denial and must not count as one.
+    if (auth.canEdit === false && needsEdit) {
       var denied = statBucket_(s, 'edit_denied');
       var k = String(action || '?');
       denied[k] = (denied[k] || 0) + 1;
@@ -463,9 +464,27 @@ function authStats_() {
 function requireWrite_(body) {
   var token = (body && body.token) || '';
   var auth  = gxAuthWrite_(token);
+  var needsEdit = writeNeedsEdit_(body && body.action);
   authStatBump_('w', body && body.action, !!auth.ok, isProbe_(body));
-  authStatEdit_(body && body.action, auth);
-  return gateDecision_(auth, authEnforced_(), true);
+  authStatEdit_(body && body.action, auth, needsEdit);
+  return gateDecision_(auth, authEnforced_(), needsEdit);
+}
+
+/* Every post needs a SIGNED-IN user. Every post but one also needs EDIT RIGHTS.
+
+   The one is reportBug. A view-only staffer who hits a problem on the standalone
+   page is exactly who should be able to say so, and requiring edit rights here
+   refused them with nothing they could act on — found 2026-09-10, when a viewer's
+   report came back "Your Price Cards access is view-only".
+
+   This is NOT a public-exception list, and the doPost comment's argument against
+   one still holds. Sign-in is still required for every action, reportBug
+   included; only the edit-rights half is relaxed, and only for a name matched
+   exactly. A forgotten or misspelled line here fails CLOSED (edit rights still
+   required), never open. Compared by ===, not a map lookup, so an inherited name
+   like 'constructor' cannot match. */
+function writeNeedsEdit_(action) {
+  return action !== 'reportBug';
 }
 
 /* The whole decision, in one place, so ?action=authprobe can put deliberate
@@ -571,7 +590,8 @@ function doPost(e) {
     // shared GX bug board. A user who cannot authenticate cannot use this app at all, and
     // still has Inventory's reporter and Sky. The doPost comment above already explains why there is
     // no exception list — a forgotten line should ship UNREACHABLE, which is exactly what happened
-    // here, and it reported itself in minutes.
+    // here, and it reported itself in minutes. It does NOT need edit rights, though: a signed-in
+    // view-only user may file one (writeNeedsEdit_, 2026-09-10).
     if (body.action === 'reportBug')   return json(reportBug_(body));
     if (body.action !== 'markDone') return json({ ok: false, error: 'unknown-action' });
 

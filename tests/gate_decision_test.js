@@ -35,7 +35,7 @@ const names = Object.keys(stubs);
 let P;
 try {
   P = new Function(...names, fs.readFileSync(__dirname + '/../apps-script/Code.gs','utf8') +
-    '\n; return { gateDecision_, has_, countKeys_, WRITE_ACTIONS, READ_ACTIONS };')(...names.map(n=>stubs[n]));
+    '\n; return { gateDecision_, has_, countKeys_, writeNeedsEdit_, WRITE_ACTIONS, READ_ACTIONS };')(...names.map(n=>stubs[n]));
 } catch (e) {
   console.error('LOAD FAILED: Code.gs did not evaluate under stubs — ' + e.message);
   console.error('Add the missing global to `stubs`. Do not let this pass quietly.');
@@ -112,6 +112,23 @@ console.log('\n6. reportBug is gated like every other write');
      'reportBug is not in WRITE_ACTIONS — doPost gates every post regardless, no exception list');
   ok(P.gateDecision_(nobody, true, true).ok === false,
      'so a signed-out bug report is refused, not posted anonymously to the shared board');
+}
+
+console.log('\n7. a view-only user may file a bug report, and nothing else');
+{
+  // What doPost actually does: gateDecision_(auth, enforcing, writeNeedsEdit_(action)).
+  const gate = (auth, action) => P.gateDecision_(auth, true, P.writeNeedsEdit_(action));
+  ok(gate(viewer, 'reportBug').ok === true,  'a signed-in viewer CAN file a bug report');
+  ok(gate(nobody, 'reportBug').ok === false, 'a signed-out bug report is still refused');
+  ok(gate(nobody, 'reportBug').readOnly !== true, '…as not-signed-in, not as view-only');
+  ok(gate(editor, 'reportBug').ok === true,  'an editor still can');
+  ['saveConfig','submitCards','queueRemove','clearQueue','markPrinted','removePrintedSheet',
+   'clearPrinted','ackProducts','markDone'].forEach(a =>
+    ok(gate(viewer, a).ok === false && gate(viewer, a).readOnly === true,
+       'a viewer is still refused ' + a));
+  // Fail closed: anything that is not exactly 'reportBug' still needs edit rights.
+  ['reportbug','ReportBug','reportBug ','constructor','__proto__','',undefined,null].forEach(a =>
+    ok(P.writeNeedsEdit_(a) === true, 'needs edit rights: ' + JSON.stringify(a)));
 }
 
 console.log('\n──────────────────────────────');
