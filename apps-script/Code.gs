@@ -568,7 +568,7 @@ function doPost(e) {
     // this reasoning "unauthenticated on purpose — the person hitting a bug may be the one whose
     // session broke", and the gate refused it on the first real call. The gate is right: this /exec
     // is ANYONE_ANONYMOUS, so a public write path would let anyone holding the URL post into the
-    // shared Inventory bug board. A user who cannot authenticate cannot use this app at all, and
+    // shared GX bug board. A user who cannot authenticate cannot use this app at all, and
     // still has Inventory's reporter and Sky. The doPost comment above already explains why there is
     // no exception list — a forgotten line should ship UNREACHABLE, which is exactly what happened
     // here, and it reported itself in minutes.
@@ -700,9 +700,18 @@ function getQueue_() { return { ok: true, queue: readQueue_() }; }
    cards waiting says nothing about what they are or what they cost. Anything
    that carries actual queue CONTENT stays behind the gate. */
 /* ═══════════════════ BUG FORWARDING — over HTTP, like everything else here ═══
- * Sub-app convention: Price Cards reports bucket to INVENTORY with a `tab`
- * discriminator (app=inventory, tab=pricecards), not to a separate pricecards
- * stream. The notes key and the bug tab are different things — do not conflate.
+ * Reports file under THIS app's own key: app=pricecards, tab=pricecards. The tab
+ * marks where the report came from — this standalone page. The same app embedded
+ * in Inventory files through Inventory's reporter as app=pricecards,
+ * tab=pricetags (Inventory's tab id), so both land on ONE board and the tab
+ * still tells them apart.
+ *
+ * This used to be app=inventory, on the theory that a sub-app's bugs belong to
+ * its parent. GX Core's getBugs filters strictly on `app` with no tab fallback,
+ * so ?action=bugs&app=pricecards — what this app's own chat and /gxbrain inbox
+ * ask for — never saw a single standalone report. SPIFF hit the same wall and
+ * moved first (app=spiff, tab=spiff); the suite rule since is that a sub-app
+ * files under its own key. Changed 2026-09-09.
  *
  * Every other spoke calls GXCore.gxIngestBug() through the pinned library. This
  * app deliberately binds no library (see the WRITE AUTH note above), so it uses
@@ -734,12 +743,12 @@ function reportBug_(body) {
 
   var params = {
     action: 'ingest_bug', secret: secret,
-    app: 'inventory',                 // sub-app: bugs bucket to the parent
+    app: 'pricecards',                // its own key — see the header above for why not 'inventory'
     reporter: reporter,
     title: title,
     desc: desc,
     priority: String((body && body.priority) || 'normal'),
-    tab: 'pricecards',                // the discriminator that makes it findable
+    tab: 'pricecards',                // standalone page; embedded reports arrive as 'pricetags'
     appVer: String((body && body.appVer) || ''),
     appStore: String((body && body.appStore) || ''),
     /* The browser diagnostics, forwarded verbatim. gx-bugreport.js builds ONE JSON string --

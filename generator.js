@@ -2037,9 +2037,8 @@
     var s = pcSession(); if (!s) { slot.innerHTML = ""; return; }
     if (!window.GXTopNav || !GXTopNav.renderUser) { slot.innerHTML = ""; return; }
     if (window.GXChangelog) {
-      // Price Cards buckets to app=inventory for BUG reports (it is an Inventory sub-app), but its
-      // RELEASES are its own — app_versions is keyed 'pricecards' and always has been. The notes key
-      // and the release key are not the same thing here; see the hub CLAUDE.md.
+      // Releases are keyed 'pricecards' in app_versions, as are bug reports and notes (bugs moved off
+      // app=inventory on 2026-09-09 — see reportBug_ in apps-script/Code.gs).
       GXChangelog.init({ app: 'pricecards', title: 'GX Price Cards', version: APP_VERSION });
     }
     GXTopNav.renderUser(slot, {
@@ -2047,8 +2046,8 @@
       avatar: window.GXAvatar ? GXAvatar.chip(s.avatar, s.name || s.user) : null,
       /* Opt-in avatar row — only when we can actually SAVE, so it never renders a dead Save button.
          No `seed`: the chip above does not pass one either, and gx-topnav falls back to `name`, so
-         omitting it keeps the editor preview identical to the chip. Price Cards buckets to
-         app=inventory for BUGS but its own key everywhere else; set_my_avatar takes the app key. */
+         omitting it keeps the editor preview identical to the chip. set_my_avatar takes the
+         app key. */
       avatarEdit: (window.GXAvatar && s.token) ? {
         token:  s.token,
         app:    APP_KEY,
