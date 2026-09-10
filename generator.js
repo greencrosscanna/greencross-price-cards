@@ -2100,81 +2100,102 @@
   if(document.fonts && document.fonts.ready) document.fonts.ready.then(settle);
   window.addEventListener("load", settle);
   setTimeout(settle, 250);
-})();
 
-/* ── Report a bug ──────────────────────────────────────────────────────────────
- * The form is gx-bugreport.js in gx-theme; this only supplies the transport and
- * the app's own context. Was a bare window.prompt() with one free-text field —
- * no title, no priority, and no state beyond whatever the user thought to type.
- *
- * Files to GX Core through this app's own engine, which forwards over HTTP. Per
- * the sub-app convention the report buckets to Inventory with tab=pricecards.
- *
- * ONLY STANDALONE. Embedded in Inventory this page is an iframe and the host
- * already has a reporter; two buttons filing the same report is worse than one.
- * `?embed=1` is what Inventory appends, so that is the signal. (gx-theme also
- * hides the floating .gx-bug-fab under html.gx-embedded, but this page uses its
- * own toolbar button, so the check stays here and stays explicit.)
- *
- * Reports the ENGINE's answer, never a blanket success. Sales shipped a version
- * that ignored a failed ingest and told the user it worked — the reports were
- * lost and nobody knew for weeks. gx-bugreport treats a resolved {ok:false} as
- * failure for the same reason, so throwing here surfaces correctly.
- */
-(function pcBugReporter(){
-  var btn = document.getElementById("pcBugBtn");
-  if (!btn) return;
-  var embedded = /[?&]embed=1\b/.test(location.search);
-  if (embedded) return;                       // host page owns the reporter
-  if (!window.GXBugReport) return;            // shared layer down: leave the button hidden
-  btn.hidden = false;
+  /* MOVED INSIDE THIS IIFE, and that is the whole fix. This block used to sit AFTER the
+     closing `})();` below, as its own top-level block -- where GXCORE_URL, enginePost,
+     pcSession, markUrlInput and loadWebapp are all out of scope, because every one of them
+     is a `var` declared in here. The first line to touch one threw a ReferenceError, the
+     IIFE died on it, and the click handler on its last line was never attached.
 
-  GXBugReport.init({
-    // Screenshot upload. A separate call from `submit`: the image cannot ride the report payload,
-    // since several apps submit through a GET query string that a ~273KB base64 would not survive.
-    // The shared uploader gets THIS app's own session token, so auth still originates here.
-    uploadShot: GXBugReport.gxCoreUploader(GXCORE_URL, function () {
-      try { return (pcSession() || {}).token || ''; } catch (e) { return ''; }
-    }),
-    app: 'pricecards',
-    action: 'reportBug',                      // this engine's spelling — not 'bugreport'
-    fab: false,                               // the toolbar button above is the trigger
-    reporter: function () {
-      try { return (window.GXSession && GXSession.user && GXSession.user()) || 'anonymous'; }
-      catch (e) { return 'anonymous'; }
-    },
-    version: function () {
-      var t = document.querySelector('script[src*="generator.js?v="]');
-      return t ? t.src.replace(/.*\?v=/, '') : '';
-    },
-    context: function () { return { tab: 'pricecards' }; },
-    submit: function (payload) {
-      var endpoint = ((typeof markUrlInput !== "undefined" && markUrlInput && markUrlInput.value) || loadWebapp() || "").trim();
-      if (!endpoint) throw new Error("No engine configured — cannot file a bug from here.");
-      /* Through the one door like every other write. gx-bugreport hands the transport to the app
-         precisely because "the app owns auth" -- and the raw fetch here never signed the payload, so
-         a report from a perfectly signed-in user hit the doPost auth gate and came back needsAuth.
-         enginePost stamps the session token, which is what the branch below was apologizing for. */
-      return enginePost(endpoint, payload)
-        .then(function (d) {
-          if (d && d.ok) return d;
-          // The engine gates every write, so an unauthenticated user lands here. Say what to do
-          // instead of showing them a raw auth error they cannot act on.
-          if (d && (d.needsAuth || d.code === "auth_required" || d.code === 401)) {
-            throw new Error("You need to be signed in to file a bug from here. Sign in, or report it from the Price Cards tab inside Inventory — that reporter files to the same board.");
-          }
-          throw new Error((d && d.error) || "no response from the engine");
-        });
-    },
-  });
-  // Stale-build toast. Same auth check as the reporter above: no point prompting a reload
-  // behind a login overlay that covers the toast anyway.
-  GXUpdateCheck.init({
-    app:      'pricecards',
-    gxcore:   GXCORE_URL,
-    version:  function () { return APP_VERSION; },
-    isAuthed: function () { try{return !!(pcSession()||{}).token;}catch(e){return false;} },
-  });
+     WHAT THAT LOOKED LIKE, which is why it survived: the button APPEARED, because
+     `btn.hidden = false` runs two lines EARLIER than the throw. Clicking it did nothing at
+     all. Forcing the dialog open by hand answered "Bug reporting is not configured in this
+     app" -- gx-bugreport saying init() never reached it. One console error at boot, nothing
+     visibly broken, and a reporter that had never once filed a report from this page.
 
-  btn.addEventListener("click", function () { GXBugReport.open(); });
+     It took GXUpdateCheck.init at the bottom of this block down with it, so the stale-build
+     toast has been dead for exactly as long.
+
+     Found 2026-09-09 while testing the diagnostics this reporter now forwards -- the first
+     time anyone had actually clicked the button on the standalone page. The comment beside
+     GXCORE_URL already warned about this precise scope trap, for GXMaintenance.init; the same
+     trap then took the reporter fifteen hundred lines further down the same file.
+
+     So: anything reaching for this app's own state belongs IN here, never after. */
+  /* ── Report a bug ──────────────────────────────────────────────────────────────
+   * The form is gx-bugreport.js in gx-theme; this only supplies the transport and
+   * the app's own context. Was a bare window.prompt() with one free-text field —
+   * no title, no priority, and no state beyond whatever the user thought to type.
+   *
+   * Files to GX Core through this app's own engine, which forwards over HTTP. Per
+   * the sub-app convention the report buckets to Inventory with tab=pricecards.
+   *
+   * ONLY STANDALONE. Embedded in Inventory this page is an iframe and the host
+   * already has a reporter; two buttons filing the same report is worse than one.
+   * `?embed=1` is what Inventory appends, so that is the signal. (gx-theme also
+   * hides the floating .gx-bug-fab under html.gx-embedded, but this page uses its
+   * own toolbar button, so the check stays here and stays explicit.)
+   *
+   * Reports the ENGINE's answer, never a blanket success. Sales shipped a version
+   * that ignored a failed ingest and told the user it worked — the reports were
+   * lost and nobody knew for weeks. gx-bugreport treats a resolved {ok:false} as
+   * failure for the same reason, so throwing here surfaces correctly.
+   */
+  (function pcBugReporter(){
+    var btn = document.getElementById("pcBugBtn");
+    if (!btn) return;
+    var embedded = /[?&]embed=1\b/.test(location.search);
+    if (embedded) return;                       // host page owns the reporter
+    if (!window.GXBugReport) return;            // shared layer down: leave the button hidden
+    btn.hidden = false;
+
+    GXBugReport.init({
+      // Screenshot upload. A separate call from `submit`: the image cannot ride the report payload,
+      // since several apps submit through a GET query string that a ~273KB base64 would not survive.
+      // The shared uploader gets THIS app's own session token, so auth still originates here.
+      uploadShot: GXBugReport.gxCoreUploader(GXCORE_URL, function () {
+        try { return (pcSession() || {}).token || ''; } catch (e) { return ''; }
+      }),
+      app: 'pricecards',
+      action: 'reportBug',                      // this engine's spelling — not 'bugreport'
+      fab: false,                               // the toolbar button above is the trigger
+      reporter: function () {
+        try { return (window.GXSession && GXSession.user && GXSession.user()) || 'anonymous'; }
+        catch (e) { return 'anonymous'; }
+      },
+      version: function () {
+        var t = document.querySelector('script[src*="generator.js?v="]');
+        return t ? t.src.replace(/.*\?v=/, '') : '';
+      },
+      context: function () { return { tab: 'pricecards' }; },
+      submit: function (payload) {
+        var endpoint = ((typeof markUrlInput !== "undefined" && markUrlInput && markUrlInput.value) || loadWebapp() || "").trim();
+        if (!endpoint) throw new Error("No engine configured — cannot file a bug from here.");
+        /* Through the one door like every other write. gx-bugreport hands the transport to the app
+           precisely because "the app owns auth" -- and the raw fetch here never signed the payload, so
+           a report from a perfectly signed-in user hit the doPost auth gate and came back needsAuth.
+           enginePost stamps the session token, which is what the branch below was apologizing for. */
+        return enginePost(endpoint, payload)
+          .then(function (d) {
+            if (d && d.ok) return d;
+            // The engine gates every write, so an unauthenticated user lands here. Say what to do
+            // instead of showing them a raw auth error they cannot act on.
+            if (d && (d.needsAuth || d.code === "auth_required" || d.code === 401)) {
+              throw new Error("You need to be signed in to file a bug from here. Sign in, or report it from the Price Cards tab inside Inventory — that reporter files to the same board.");
+            }
+            throw new Error((d && d.error) || "no response from the engine");
+          });
+      },
+    });
+    // Stale-build toast. Same auth check as the reporter above: no point prompting a reload
+    // behind a login overlay that covers the toast anyway.
+    GXUpdateCheck.init({
+      app:      'pricecards',
+      gxcore:   GXCORE_URL,
+      version:  function () { return APP_VERSION; },
+      isAuthed: function () { try{return !!(pcSession()||{}).token;}catch(e){return false;} },
+    });
+
+    btn.addEventListener("click", function () { GXBugReport.open(); });
+  })();
 })();
