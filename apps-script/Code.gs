@@ -742,6 +742,21 @@ function reportBug_(body) {
     tab: 'pricecards',                // the discriminator that makes it findable
     appVer: String((body && body.appVer) || ''),
     appStore: String((body && body.appStore) || ''),
+    /* The browser diagnostics, forwarded verbatim. gx-bugreport.js builds ONE JSON string --
+       page url, viewport, user agent, online flag and, the part that earns this line, the JS
+       errors the page threw BEFORE the user hit submit -- and posts it as `context`. Core reads
+       `payload.context` by that exact name and prints it in the bug-filed email.
+
+       This app dropped it for as long as it has had a reporter, so every Price Cards bug landed
+       with the field blank and the email simply omitted those lines. The case Core cites: a boot
+       ReferenceError, one console error, no visible UI change, an app that merely looked slow --
+       three reports over weeks for something the captured error named exactly.
+
+       DO NOT "VERIFY" THIS WITH A HAND-BUILT CALL THAT SETS THE FIELD. Setting it by hand passes
+       the broken version too; that is how four other spokes sat broken while reading appStore and
+       appTab, which gx-bugreport has never sent under those names. The only honest check is the
+       real page filing a real report. */
+    context: String((body && body.context) || ''),
   };
   var qs = Object.keys(params).map(function (k) {
     return encodeURIComponent(k) + '=' + encodeURIComponent(params[k]);
