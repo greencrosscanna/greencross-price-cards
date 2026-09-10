@@ -884,7 +884,22 @@ function pcBugNotify_(o) {
  * re-executes a request, and three simultaneous readers of an empty cache is three emails.
  *
  * FAILS OPEN on purpose. A cache or a lock being unavailable must never be the reason a bug report
- * goes unread -- a duplicate email is a nuisance, a silent one is the bug this whole path exists for. */
+ * goes unread -- a duplicate email is a nuisance, a silent one is the bug this whole path exists for.
+ *
+ * WHAT THIS NOTICE CANNOT SURVIVE, so nobody builds on a guarantee that is not here. Apps Script
+ * meters MailApp per USER ACCOUNT per day, not per script, and all seven GX engines deploy as the
+ * same owner -- so this app, GX Core and the other five spend ONE allowance between them. When the
+ * failure being reported IS an exhausted quota (`mail_error: Service invoked too many times`), the
+ * notice above is drawing on the very bucket that just ran dry and will quietly fail too. The send
+ * is wrapped, so nothing breaks; there is simply no notice, and the report sits unread exactly as
+ * it would have before.
+ *
+ * That is not fixable from a spoke and is not worth working around here -- a suite-wide mail outage
+ * needs to be visible somewhere other than mail. It IS worth not believing the opposite: this app
+ * filing over HTTP means Core's send runs in Core's PROJECT, which is a different thing from a
+ * different quota, and reasoning from "different script" to "independent allowance" is wrong.
+ * (Corrected 2026-09-09; both SPIFF and Leaderboard measured the shared counter falling while
+ * sending nothing themselves.) */
 function pcBugMailOnce_(b, kind) {
   var lock = null;
   try {
