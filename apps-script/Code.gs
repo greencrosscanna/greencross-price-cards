@@ -762,17 +762,146 @@ function reportBug_(body) {
     return encodeURIComponent(k) + '=' + encodeURIComponent(params[k]);
   }).join('&');
 
+  var out = null, why = '';
   try {
     var res  = UrlFetchApp.fetch(GXCORE_URL + '?' + qs, { method: 'get', muteHttpExceptions: true });
     var code = res.getResponseCode();
-    if (code < 200 || code >= 300) return { ok: false, error: 'GX Core returned HTTP ' + code };
-    var out;
-    try { out = JSON.parse(res.getContentText()); } catch (e) { return { ok: false, error: 'GX Core returned non-JSON' }; }
-    // Surface Core's own refusal rather than flattening it to success.
-    if (!out || !out.ok) return { ok: false, error: (out && out.error) || 'bug report was not saved' };
-    return { ok: true, id: out.id || '' };
+    if (code < 200 || code >= 300) why = 'GX Core returned HTTP ' + code;
+    else {
+      try { out = JSON.parse(res.getContentText()); }
+      catch (e) { why = 'GX Core returned non-JSON'; }
+      /* A REFUSAL IS NOT A FILING, and it does not throw. Core answers a report it will not take --
+         an empty one, a missing app key -- with a plain {ok:false, error} value. Anything keying off
+         the exception misses precisely the case worth catching. */
+      if (!why && (!out || !out.ok)) why = 'GX Core refused the report: ' + ((out && out.error) || 'no reason given');
+    }
   } catch (e) {
-    return { ok: false, error: String(e && e.message || e) };
+    why = 'GX Core could not be reached: ' + String((e && e.message) || e);
+  }
+
+  /* NOTHING REACHED THE BOARD. The user IS told -- this returns the failure and gx-bugreport keeps
+     the dialog open with their text in it, which is more than most spokes manage. But "told" is not
+     "recorded": they can still close the tab, and then the report existed for as long as the toast
+     did. This email is the copy that outlives that, and it says outright that it is the only one. */
+  if (why) {
+    if (pcBugMailOnce_(body, 'unfiled')) {
+      pcBugNotify_({
+        subject: '⚠️ UNFILED Price Cards bug [' + String((body && body.priority) || 'normal') + ']: ' + title,
+        lead: [
+          'THIS REPORT IS NOT ON THE BUG BOARD. ' + why + ',',
+          'so nothing was recorded and this email is the only copy. The reporter was shown the',
+          'failure, so they may re-file it themselves -- check the board before acting on this.',
+        ],
+        body: body, title: title, desc: desc, reporter: reporter,
+      });
+    }
+    return { ok: false, error: why };
+  }
+
+  /* THE ROW IS DOWN AND NOBODY WAS TOLD. Core swallows its own mail failure on purpose -- a report
+     that reached the sheet has succeeded, and mail must never be the thing that undoes it -- so
+     nothing else anywhere will ever mention this. The report is safe; what was lost is the
+     announcement, including the receipt the REPORTER was owed. Hence a notice that has to say the
+     OPPOSITE of the one above: do not re-file this, go and read it.
+
+     A DEDUPED REPEAT CARRIES NO MAIL FIELD AT ALL -- Core returns at its prior-bug check ABOVE the
+     send -- which is the only reason a missing `mailed` is safe to read as failure here. Without
+     that early return, one /exec redirect chain re-executing a request would look like three
+     separate mail failures. Read every one of these with truthiness: the fields are ABSENT, not
+     empty, when they do not apply. */
+  var mailWhy = out.mail_error || out.mail_skipped;
+  if (mailWhy && pcBugMailOnce_(body, 'unannounced')) {
+    pcBugNotify_({
+      subject: '🔕 UNANNOUNCED Price Cards bug [' + String((body && body.priority) || 'normal') + ']: ' + title,
+      lead: [
+        'THIS REPORT IS ON THE BUG BOARD -- do NOT re-file it -- but GX Core could not email',
+        'anyone about it, so this notice is standing in. The reporter got no receipt either.',
+        '',
+        'Bug id   : ' + String(out.id || '(none returned)'),
+        'Mail    ' + (out.mail_error ? ' failed  : ' : ' skipped : ') + mailWhy,
+      ],
+      body: body, title: title, desc: desc, reporter: reporter,
+    });
+  }
+
+  // The mail fields travel back to the client too, so the page can say something useful rather than
+  // a bare "sent" when the only thing that actually happened was a row landing in a sheet.
+  var ret = { ok: true, id: out.id || '' };
+  if (out.mailed)       ret.mailed = out.mailed;
+  if (out.mail_error)   ret.mail_error = out.mail_error;
+  if (out.mail_skipped) ret.mail_skipped = out.mail_skipped;
+  if (out.deduped)      ret.deduped = true;
+  return ret;
+}
+
+/* The body both notices share -- same fields, same order, one place. They differ only in the
+ * paragraph at the top saying which failure this was and what to do about it. Wrapped and non-fatal
+ * for the reason every send here is: mail is the enhancement, the report is the thing.
+ *
+ * The browser diagnostics get four lines rather than the raw JSON blob: the errors the page caught
+ * are the reason this app forwards `context` at all, and a notice that buries them under a user
+ * agent string is a notice nobody reads to the end of. */
+function pcBugNotify_(o) {
+  try {
+    var ctx = {};
+    try { ctx = JSON.parse(String((o.body && o.body.context) || '{}')) || {}; } catch (e) {}
+    var errs = (ctx.errors && ctx.errors.length) ? ctx.errors : null;
+
+    MailApp.sendEmail({
+      to: 'sky@greencrosscanna.com',
+      subject: o.subject,
+      body: o.lead.concat([
+        '',
+        'Reporter : ' + (o.reporter || ''),
+        'Priority : ' + String((o.body && o.body.priority) || 'normal'),
+        'Version  : ' + String((o.body && o.body.appVer) || ''),
+        'Screen   : Price Cards',
+        'Page     : ' + (ctx.url || ''),
+        'Browser  : ' + (ctx.ua || ''),
+        'Time     : ' + Utilities.formatDate(new Date(), 'America/Los_Angeles', 'M/d/yy h:mm a'),
+        '',
+        errs ? ('Errors the page caught before submit (' + errs.length + '):') : 'The page caught no JS errors before submit.',
+        errs ? ('  ' + errs.join('\n  ')) : '',
+        '',
+        o.desc || '(no details provided)',
+      ]).join('\n'),
+    });
+  } catch (mailErr) { /* non-fatal, by design */ }
+}
+
+/* True the FIRST time a given report asks to be emailed AS `kind`, false for a repeat inside three
+ * minutes -- the same window GX Core dedupes bug rows on, so the email and the board agree about what
+ * "the same report" is. A fourth minute is a person filing again because nothing happened, which
+ * SHOULD mail.
+ *
+ * `kind` NAMESPACES THE MARK, and it is not a detail: the two notices carry contradictory
+ * instructions ("re-file this" against "do not re-file this"). One report can legitimately raise
+ * both -- a submit that never reaches Core, then a retry that files but cannot mail -- and one
+ * shared key would silently drop whichever came second, leaving the earlier, now-wrong instruction
+ * standing as the only word on it.
+ *
+ * INSIDE A LOCK, because this app already learned that lesson on its print queue: /exec's second hop
+ * re-executes a request, and three simultaneous readers of an empty cache is three emails.
+ *
+ * FAILS OPEN on purpose. A cache or a lock being unavailable must never be the reason a bug report
+ * goes unread -- a duplicate email is a nuisance, a silent one is the bug this whole path exists for. */
+function pcBugMailOnce_(b, kind) {
+  var lock = null;
+  try {
+    var digest = Utilities.computeDigest(Utilities.DigestAlgorithm.MD5,
+      String((b && b.reporter) || '') + '\u0000' + String((b && b.title) || '') + '\u0000' + String((b && b.desc) || ''),
+      Utilities.Charset.UTF_8);
+    var key = 'bugmail:' + (kind || 'unfiled') + ':' + Utilities.base64EncodeWebSafe(digest);
+    lock = LockService.getScriptLock();
+    try { lock.waitLock(5000); } catch (e) { lock = null; }   // busy → fall through and send
+    var cache = CacheService.getScriptCache();
+    if (cache.get(key)) return false;
+    cache.put(key, '1', 180);   // seconds — 3 min, matching Core's bug dedupe window
+    return true;
+  } catch (e) {
+    return true;
+  } finally {
+    if (lock) { try { lock.releaseLock(); } catch (e) {} }
   }
 }
 
