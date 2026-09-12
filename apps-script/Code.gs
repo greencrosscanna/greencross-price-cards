@@ -133,10 +133,12 @@ function doGet(e) {
  * newProducts / getConfig leak live pricing and inventory to anyone with the
  * URL. They differ from writes in one way that matters: FREQUENCY. Writes are
  * occasional, reads run several times per page load, so the read gate caches
- * its verification for 60s (keyed on a digest of the token) rather than paying
- * a Core round trip five times a load. The read cache and the write cache are
- * separate namespaces on purpose — a read verification must never authorize a
- * write.
+ * its verification (keyed on a digest of the token) rather than paying a Core
+ * round trip five times a load — and while the gate is dark it does not pay for
+ * a fresh verification at all, because the answer cannot change the outcome
+ * (requireRead_ / gxVerifyCachedOnly_ below). The read cache and the write cache
+ * are separate namespaces on purpose — a read verification must never authorize
+ * a write.
  *
  * ROLLOUT — BOTH GATES SHIP DARK, and they flip INDEPENDENTLY. authEnforced_()
  * and readEnforced_() each read a Script Property that starts unset, so calls
@@ -168,9 +170,17 @@ var AUTH_STATS_PROP   = 'PRICECARDS_AUTH_STATS';         // readiness telemetry 
    THE READ TTL IS 300, RAISED FROM 60 ON 2026-09-03, and only the read side.
    GX Core's request telemetry showed this app was its second-largest caller:
    `verify` was 27% of ALL traffic reaching GX Core in a measured hour, and this
-   app accounted for essentially all of it. requireRead_ calls gxAuthRead_ on
-   every read whether or not read-enforcement is on, so a 60s cache meant a Core
-   round trip per user per minute, all day, per store screen.
+   app accounted for essentially all of it. At the time requireRead_ called
+   gxAuthRead_ on every read whether or not read-enforcement was on, so a 60s
+   cache meant a Core round trip per user per minute, all day, per store screen.
+
+   RAISING THE TTL WAS THE WRONG LEVER AND ONLY BOUGHT A FIFTH OF THE TRAFFIC.
+   Eight days later this app was 51% of ALL traffic reaching Core — 3,662 of
+   7,181 calls in 24h, still every one of them `verify`. The real finding is that
+   while read enforcement is off the answer is discarded (gateDecision_ returns
+   ok:true regardless), so requireRead_ now asks Core only when the gate is
+   ENFORCING, and otherwise uses a warm cache entry or nothing at all. This TTL
+   therefore governs the enforcing path, which is where it always mattered.
 
    Why reads can afford it and writes cannot: a read cannot mutate shared state,
    and a viewer may read anyway, so the only thing a stale read answer buys a
@@ -242,12 +252,19 @@ function resetAuthStats()   { PropertiesService.getScriptProperties().deleteProp
    validate never returns canEdit, so the write gate could only ever ask "does
    this person have a grant?" — never "may they edit?". A viewer-granted account
    passed it. The role was being read and thrown away. */
+/* One place that turns (token, namespace) into a cache key, because there are
+   now two readers of that cache and a second hand-rolled digest is how the two
+   drift into looking each other's answers up under different keys. Key on a
+   DIGEST, never the raw token — the cache is not a place to park credentials. */
+function gxVerifyCacheKey_(token, ns) {
+  return ns + ':' + Utilities.base64EncodeWebSafe(
+    Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, String(token)));
+}
+
 function gxVerify_(token, ns, ttl) {
   if (!token) return { ok: false, error: 'Not signed in', code: 'auth_required' };
   var cache = CacheService.getScriptCache();
-  // Key on a DIGEST, never the raw token — the cache is not a place to park credentials.
-  var ckey = ns + ':' + Utilities.base64EncodeWebSafe(
-    Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, String(token)));
+  var ckey = gxVerifyCacheKey_(token, ns);
   var hit = cache.get(ckey);
   if (hit) return JSON.parse(hit);
   try {
@@ -266,6 +283,31 @@ function gxVerify_(token, ns, ttl) {
 }
 function gxAuthWrite_(token) { return gxVerify_(token, 'pcw', WRITE_CACHE_TTL_S); }
 function gxAuthRead_(token)  { return gxVerify_(token, 'pcr', READ_CACHE_TTL_S); }
+
+/* gxVerify_ up to and including the cache read, and NOT ONE STEP FURTHER: on a
+   miss it reports that nothing was checked instead of calling GX Core.
+
+   WHY IT EXISTS (measured 2026-09-11). GX Core's traffic log showed Price Cards
+   was 51% of ALL traffic reaching Core — 3,662 of 7,181 calls in 24h — and
+   every one of those was `verify`. While read enforcement is OFF, gateDecision_
+   returns ok:true no matter what Core answers, so each of those round trips was
+   paid on a read whose outcome was already decided. That is free when the hop is
+   healthy and it is not free when it is not: Core's /exec has bad spells where
+   an identical request hangs 50-130s and comes back as a Google error page, and
+   the staff member waits for every second of it before seeing a price card.
+
+   It is NOT a bypass. It is only ever reached on the branch where the answer
+   could not have changed the outcome (see requireRead_), and a warm cache entry
+   is still a real GX Core verification — just one already paid for. It carries
+   its own refusal code so the counters can tell "Core refused this" apart from
+   "nobody asked", which are the same shape and mean opposite things. */
+function gxVerifyCachedOnly_(token, ns) {
+  if (!token) return { ok: false, error: 'Not signed in', code: 'auth_required' };
+  var hit = CacheService.getScriptCache().get(gxVerifyCacheKey_(token, ns));
+  if (hit) { try { return JSON.parse(hit); } catch (e) { /* fall through to not_checked */ } }
+  return { ok: false, code: 'not_checked',
+           error: 'Session not verified — the Price Cards read gate is not enforcing' };
+}
 
 /* Best-effort counters answering one question: are real clients sending tokens
    yet? Undercounts under concurrency (Properties writes are not transactional)
@@ -307,7 +349,23 @@ function statBucket_(s, name) {
   return clean;
 }
 
-function authStatBump_(kind, action, ok, isProbe) {
+/* `notAskedTokenPresent` is the ONE thing this function cannot infer. Pass it
+   (true/false) only when GX Core was never consulted for this request; leave it
+   undefined and the call is recorded exactly as before, which is what keeps the
+   write path's counters untouched.
+
+   WHY IT IS NOT ENOUGH TO JUST STOP COUNTING. `read_with` / `read_without` are
+   the evidence someone will later use to decide whether clients are sending
+   tokens and the read gate can be flipped on. Once requireRead_ stops verifying
+   while the gate is dark, a request that DID carry a good token comes back
+   ok:false and would land in `read_without` — manufacturing a "clients aren't
+   ready" signal out of our own decision not to look. That is the same ghost the
+   comment above warns about with probes, arriving by a different door. So a
+   request nobody verified goes in its own bucket, keyed on whether a token was
+   PRESENT, and `read_with`/`read_without` keep meaning "GX Core actually
+   confirmed / actually refused". A cache hit still counts as confirmed: Core
+   really did say yes, within the TTL. */
+function authStatBump_(kind, action, ok, isProbe, notAskedTokenPresent) {
   try {
     var props = PropertiesService.getScriptProperties();
     var s = JSON.parse(props.getProperty(AUTH_STATS_PROP) || '{}');
@@ -319,6 +377,17 @@ function authStatBump_(kind, action, ok, isProbe) {
       var pk = (kind === 'r' ? 'read:' : 'write:') + String(action || '?');
       pb[pk] = (pb[pk] || 0) + 1;
       s.last_probe_at = new Date().toISOString();
+      props.setProperty(AUTH_STATS_PROP, JSON.stringify(s));
+      return;
+    }
+    if (notAskedTokenPresent === true || notAskedTokenPresent === false) {
+      var mine  = notAskedTokenPresent ? 'read_present_unverified' : 'read_absent_unverified';
+      var other = notAskedTokenPresent ? 'read_absent_unverified'  : 'read_present_unverified';
+      var ub = statBucket_(s, mine);
+      statBucket_(s, other);                     // sanitize the other side too
+      var uk = String(action || '?');
+      ub[uk] = (ub[uk] || 0) + 1;
+      s.read_last_unverified_at = new Date().toISOString();
       props.setProperty(AUTH_STATS_PROP, JSON.stringify(s));
       return;
     }
@@ -451,7 +520,8 @@ function authStats_() {
   try { s = JSON.parse(props.getProperty(AUTH_STATS_PROP) || '{}'); } catch (e) {}
   // Report sanitized counts, so a value corrupted by an older build cannot be
   // read as a number by whoever is deciding whether to flip.
-  ['with', 'without', 'read_with', 'read_without', 'canedit_seen', 'edit_denied', 'probes']
+  ['with', 'without', 'read_with', 'read_without', 'read_present_unverified',
+   'read_absent_unverified', 'canedit_seen', 'edit_denied', 'probes']
     .forEach(function (b) { if (s[b]) statBucket_(s, b); });
   s.enforcing = authEnforced_();            // writes
   s.enforcing_reads = readEnforced_();
@@ -525,12 +595,39 @@ function gateDecision_(auth, enforcing, needsEdit) {
 /* Same shape for reads, on its own flag and its own cache. Kept separate from
    requireWrite_ rather than parameterized: the two differ in what they may
    trust (a cached read answer must not stand in for a write check), and a
-   single function with a mode flag is how that distinction gets lost later. */
+   single function with a mode flag is how that distinction gets lost later.
+
+   WHILE THE READ GATE IS DARK, THIS DOES NOT PAY FOR A FRESH VERIFICATION.
+   gateDecision_(auth, false, ...) returns ok:true whatever `auth` says, so a
+   Core round trip on that branch buys an answer that is thrown away — and it is
+   not a cheap throw-away: measured 2026-09-11, this app was 51% of all traffic
+   reaching GX Core (3,662 of 7,181 calls in 24h), every one of them `verify`,
+   and Core's /exec was intermittently hanging 50-130s before returning a Google
+   error page. That is up to a minute and a half of a staff member's day, spent
+   on a question already answered.
+
+   THE BRANCH IS ON readEnforced_() AT CALL TIME, ON PURPOSE. Flipping
+   enableReadAuth() from the editor restores full verification on the very next
+   request with no deploy and no code change — the rollout note above promises
+   exactly that, and encoding "off" as a constant or as a giant TTL would quietly
+   take the promise back. Turn the gate on and every read verifies again.
+
+   A cached answer is still used when one happens to be warm, because echoing the
+   real user and role back costs nothing once it is paid for; a miss simply means
+   nobody asked, which is what `not_checked` says and what the counters record. */
 function requireRead_(action, p) {
-  var token = (p && p.token) || '';
-  var auth  = gxAuthRead_(token);
-  authStatBump_('r', action, !!auth.ok, isProbe_(p));
-  return gateDecision_(auth, readEnforced_(), false);   // a viewer may read; only writes need edit rights
+  var token     = (p && p.token) || '';
+  var enforcing = readEnforced_();
+  var auth      = enforcing ? gxAuthRead_(token) : gxVerifyCachedOnly_(token, 'pcr');
+
+  /* Did GX Core actually answer for this request? Enforcing always asks; while
+     dark, only a cache hit counts — and a hit IS a real Core answer, inside its
+     TTL. Anything else goes in the unverified buckets rather than pretending to
+     be a refusal, because `read_without` is what a flip gets decided on. */
+  var verified = enforcing || !!(auth && auth.ok);
+  authStatBump_('r', action, !!(auth && auth.ok), isProbe_(p), verified ? undefined : !!token);
+
+  return gateDecision_(auth, enforcing, false);   // a viewer may read; only writes need edit rights
 }
 
 /* Pass Core's stable `code` through to the client. GX Core v164 returns one on
