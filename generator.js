@@ -2006,6 +2006,52 @@
     rows = [blankRow({print:true})];   // start with one clean card
   }
 
+  /* ── @test-slice pollPause ────────────────────────────────────────────────────────────
+   * THREE BACKGROUND POLLS, AND UNTIL v1.437 THEY RAN WHETHER OR NOT ANYONE WAS LOOKING. The shared
+   * queue (30s), printed sheets (60s) and new-in-Dutchie products (120s) come to ~210 backend calls
+   * an hour per open tab, indefinitely -- and a forgotten tab on a shop iPad is the normal state of
+   * an app that is hardly used. Measured 2026-09-11: Price Cards was 51% of ALL traffic reaching GX
+   * Core, 3,662 calls in 24h, and most of it came off screens nobody was in front of.
+   *
+   * PAUSE, DON'T UNSCHEDULE. Clearing the intervals and re-creating them on return drifts -- the new
+   * one starts a full period from the moment of return -- and splits the teardown from the setup into
+   * two places that have to agree. The intervals keep ticking; a hidden tick costs one `hidden` read.
+   *
+   * AND REFRESH ON RETURN, ONCE. A tab hidden for hours would otherwise show hours-old counts for up
+   * to two more minutes. POLL_MIN_GAP is what makes it once: the visibility refresh and a scheduled
+   * tick can land in the same instant, and firing both is a doubled round trip for one screen.
+   *
+   * USER-INITIATED refreshes (ackNewProduct, the markPrinted callback) deliberately keep calling the
+   * raw refresh functions. They answer a click, not a timer, and must never be skipped or de-duped.
+   *
+   * NOTHING HERE RUNS BEFORE SIGN-IN: pcStart calls pollStart_, so the listener is attached on the
+   * same side of the gate as the polls it feeds. Registering it at load would let a visibility change
+   * on the sign-in screen fetch the queue from a page that has no session.
+   */
+  var POLL_MIN_GAP = 2000;          // ms -- two runs of the SAME poll this close together are one run
+  var _pollLast = {};
+  function pollGuard_(name, fn){
+    return function(){
+      if (document.hidden) return;                       // nobody is looking: skip the round trip
+      var now = Date.now();
+      if (_pollLast[name] && (now - _pollLast[name]) < POLL_MIN_GAP) return;
+      _pollLast[name] = now;
+      fn();
+    };
+  }
+  var pollQueue_   = pollGuard_("queue",   function(){ refreshQueueCount();  });
+  var pollNewProd_ = pollGuard_("newprod", function(){ refreshNewProducts(); });
+  var pollPrinted_ = pollGuard_("printed", function(){ refreshPrinted();     });
+  function pollAll_(){ pollQueue_(); pollNewProd_(); pollPrinted_(); }
+  function pollStart_(){
+    document.addEventListener("visibilitychange", function(){ if (!document.hidden) pollAll_(); });
+    pollAll_();                              // skipped outright if this tab opened in the background
+    setInterval(pollQueue_,    30000);       // keep the shared-queue count fresh
+    setInterval(pollNewProd_, 120000);
+    setInterval(pollPrinted_,  60000);
+  }
+  /* ── @test-slice end ───────────────────────────────────────────────────────────────── */
+
   /* Everything that TALKS TO THE BACKEND or paints the tool lives here, so nothing runs until there is
      a session. Gating only the UI would still leave an unauthenticated page pulling live inventory. */
   var _pcStarted = false;
@@ -2018,12 +2064,7 @@
     loadStyle();
     fetchConfigGlobal();   // adopt the shared (global) settings
     loadStores();          // pull canonical store names from GX Core, then build the picker
-    refreshQueueCount();
-    refreshNewProducts();
-    refreshPrinted();
-    setInterval(refreshQueueCount, 30000);   // keep the shared-queue count fresh
-    setInterval(refreshNewProducts, 120000);
-    setInterval(refreshPrinted, 60000);
+    pollStart_();          // the first fetch of each, then the three background polls
     renderTable();
     refreshPreview();
   }

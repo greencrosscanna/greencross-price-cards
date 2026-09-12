@@ -157,6 +157,26 @@ var AUTH_ENFORCE_PROP = 'PRICECARDS_REQUIRE_AUTH';       // '1' = reject unauthe
 var READ_ENFORCE_PROP = 'PRICECARDS_REQUIRE_AUTH_READ';  // '1' = reject unauthenticated READS
 var AUTH_STATS_PROP   = 'PRICECARDS_AUTH_STATS';         // readiness telemetry for both flips
 
+/* A CAVEAT ON THE READ COUNTERS, STAMPED AT THE POINT THEY ARE READ.
+   Until v1.436 every read called GX Core even while the read gate was dark, and a token Core was too
+   slow or too broken to answer for was filed as `read_without` -- the bucket that means "the client
+   is not signed in". So the historical read_with / read_without split reads as "clients are not ready
+   for the read gate" when it says nothing of the kind.
+
+   NOT RESET, AND DELIBERATELY: resetAuthStats() would take the WRITE counters with it, and those are
+   real and took weeks. So the numbers stay and the label travels with them.
+
+   A CONSTANT IN THE SOURCE, NOT A STORED PROPERTY, for the same reason: resetAuthStats() deletes the
+   stats property, and a caveat that a reset can erase is missing exactly when someone clears the
+   stats and the old reading comes back. */
+var AUTH_STATS_NOTE = {
+  as_of: '2026-09-12',
+  read_counters: 'read_with / read_without collected before 2026-09-12 conflate "GX Core refused" ' +
+                 'with "GX Core did not answer", so read_without overstates unsigned-in clients. ' +
+                 'read_present_unverified / read_absent_unverified are the current instrument. ' +
+                 'The write counters (with / without) are unaffected.'
+};
+
 /* Two verification caches, two namespaces, deliberately NOT shared. 60s is the
    whole budget for a revocation to bite; the write path was on 300s, which was
    far too generous for the side that mutates shared state. Core-admin's ruling
@@ -525,6 +545,7 @@ function authStats_() {
     .forEach(function (b) { if (s[b]) statBucket_(s, b); });
   s.enforcing = authEnforced_();            // writes
   s.enforcing_reads = readEnforced_();
+  s.note = AUTH_STATS_NOTE;                 // constant; survives resetAuthStats() by construction
   return { ok: true, auth: s };
 }
 
