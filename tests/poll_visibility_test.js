@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/* ─── background polling stops while the tab is hidden — tests ─────────────────────────────────────
+/* ─── background polling: paused while hidden, off entirely on the kiosk — tests ───────────────────
  *
  *   RUN:  node tests/poll_visibility_test.js   (repo root; no deps, no network, no DOM)
  *
@@ -27,6 +27,16 @@
  *   §5  refreshing on EVERY visibilitychange rather than on becoming visible: going away fetches.
  *   §6  a poll list that forgets one of the three: that one keeps polling hidden, or never returns.
  *   §7  moving the listener registration out of pollStart_ to load time: the sign-in screen fetches.
+ *   §8  the code as it stood at 2d1820b: a kiosk fetched all three on start and then every 30/60/120s
+ *       forever — 363 calls in one simulated hour, to paint five elements that are display:none.
+ *   §9  a fix that REPLACED `document.hidden` in pollGuard_ with the mode test (passes §8, undoes
+ *       v1.437 for the full app), or an inverted check that stops the polls for everyone but the kiosk.
+ *   §10 deleting any of the five `.mode-employee … display:none` selectors from generator.css, which
+ *       is what would turn §8 from an optimization into a permanently empty strip.
+ *
+ * v1.438 adds §8-§10: in `.mode-employee` pollStart_ returns before scheduling anything. That is a
+ * START-time check on purpose — the class is set once from location.search at init and never removed —
+ * and §10 pins both halves of that reasoning so neither can rot silently.
  *
  * §1-§6 run the REAL scheduler, sliced out of generator.js at `@test-slice pollPause` and evaluated
  * with document/setInterval/Date and the three refresh functions injected — generator.js is one IIFE
@@ -69,14 +79,19 @@ if (!m) {
 
 /* A fresh world per scenario. Shared state between scenarios is how a test starts passing for the
    previous scenario's reasons. */
-function world() {
+function world(opts) {
+  opts = opts || {};
   const calls = { queue: 0, newprod: 0, printed: 0 };
   const timers = [];       // [{ fn, ms }] — the intervals the code actually asked for
   const listeners = {};    // event name -> handler
   let now = 1000000;
 
+  // The kiosk is a body class, set once from the URL at init. Default: the full app.
+  const bodyClasses = new Set(opts.bodyClasses || []);
+
   const doc = {
     hidden: false,
+    body: { classList: { contains: (c) => bodyClasses.has(c) } },
     addEventListener(ev, fn) { listeners[ev] = fn; }
   };
   const P = new Function('document', 'setInterval', 'Date',
@@ -90,7 +105,7 @@ function world() {
   );
 
   return {
-    P, calls, timers, doc,
+    P, calls, timers, doc, bodyClasses,
     at: (t) => { now = t; },
     advance: (ms) => { now += ms; },
     // Fire every registered interval once, as a browser would at its period.
@@ -223,6 +238,87 @@ console.log('\n7. the visibility listener lives behind the sign-in gate');
      'and pcStart is the caller');
   const registrations = (SRC.match(/addEventListener\(\s*["']visibilitychange["']/g) || []).length;
   ok(registrations === 1, 'exactly one visibilitychange registration in the file (' + registrations + ')');
+}
+
+/* ═══ 8. the employee kiosk polls NOTHING ════════════════════════════════════════════════════════ */
+console.log('\n8. employee kiosk (.mode-employee) — the three polls never start');
+{
+  const w = world({ bodyClasses: ['mode-employee'] });
+  w.P.pollStart_();
+
+  // THE ONE THAT MATTERS. At 2d1820b this is 3 — pollStart_ fetches all three before scheduling
+  // anything, on a screen where all three strips are display:none.
+  ok(w.total() === 0, 'starting a kiosk makes no backend call at all (' + w.total() + ')');
+
+  // The deliberate design decision, pinned: the mode is read once from the URL at init and the class
+  // is never added or removed afterwards, so there is nothing to re-check per tick — do not schedule.
+  // At 2d1820b this is 3.
+  ok(w.timers.length === 0, 'and schedules no intervals (' + w.timers.length + ')');
+
+  // The return-refresh listener would fetch all three on every unlock of a shop iPad. At 2d1820b: true.
+  ok(w.hasListener() === false, 'and registers no visibilitychange listener');
+
+  // A kiosk left open through a shift, with staff walking up and away from it. Ticks are driven
+  // directly so this stays a real count even if the schedule ever comes back: at 2d1820b, 120 rounds
+  // of three polls plus ten returns to the screen is 390 calls to paint five hidden elements.
+  for (let i = 0; i < 120; i++) { w.advance(30000); w.tickAll(); if (i % 12 === 0) { w.hide(); w.show(); } }
+  ok(w.total() === 0, 'an hour of ticks and ten wake-ups later, still 0 (' + w.total() + ')');
+}
+
+/* ═══ 9. the mode check is an ADDITION to the hidden check, not a replacement ════════════════════ */
+console.log('\n9. v1.437 still holds — in both modes');
+{
+  // A fix that swapped `document.hidden` for the mode test inside pollGuard_ would pass §8 and quietly
+  // undo v1.437 for every full-app tab. §1 catches it at runtime; this catches it in the source too,
+  // which is where a future edit to the guard will be read.
+  const guard = SRC.slice(SRC.indexOf('function pollGuard_'));
+  ok(/document\.hidden/.test(guard.slice(0, guard.indexOf('\n  }'))),
+     'pollGuard_ still skips on document.hidden');
+
+  // The full app is unaffected — the same three cadences, the same listener, the same first fetch.
+  // Fixture that fails this: an inverted check (`if (isKiosk)` → `if (!isKiosk)`), which would pass
+  // every assertion in §8 and stop the queue count updating for Tawny.
+  const n = world();
+  n.P.pollStart_();
+  ok(n.total() === 3, 'the full app still refreshes all three on start (' + n.total() + ')');
+  ok(n.timers.length === 3, 'and still schedules three intervals (' + n.timers.length + ')');
+  ok(n.hasListener() === true, 'and still listens for the return to the tab');
+
+  // And a kiosk guard called directly still refuses while hidden, so the two reasons compose rather
+  // than one standing in for the other.
+  const k = world({ bodyClasses: ['mode-employee'] });
+  k.doc.hidden = true;
+  k.P.pollQueue_(); k.P.pollNewProd_(); k.P.pollPrinted_();
+  ok(k.total() === 0, 'the guards still no-op while hidden in kiosk mode (' + k.total() + ')');
+}
+
+/* ═══ 10. the PREMISE — all three strips really are hidden on the kiosk ══════════════════════════ */
+console.log('\n10. the reason the kiosk can skip these polls is still true in the CSS');
+{
+  // Skipping a fetch is only free while nothing shows its result. If a later change un-hides one of
+  // these strips in kiosk mode, §8 stops being an optimization and becomes a permanently empty strip —
+  // and this is the only place that would say so. Fixture that fails it: deleting any one of the five
+  // selectors from generator.css, or moving the kiosk to hiding them some other way (in which case
+  // re-read whether the poll skip is still correct rather than re-writing this line).
+  const CSS = fs.readFileSync(__dirname + '/../generator.css', 'utf8');
+  const block = (CSS.match(/((?:\.mode-employee[^{}]*?,\s*)+\.mode-employee[^{}]*?)\{\s*display\s*:\s*none\s*!important/) || [])[1] || '';
+  ok(block !== '', 'the .mode-employee display:none rule is still there');
+  ['#queueStrip', '.newprod-strip', '.newprod-list', '.printed-strip', '.printed-list'].forEach(sel => {
+    ok(block.split(',').some(s => s.trim() === '.mode-employee ' + sel),
+       'kiosk hides ' + sel);
+  });
+
+  // The other half of the premise: nothing ELSE on the kiosk consumes what these three load.
+  // refreshQueueCount also posts the count to a host frame — but the host embeds with ?embed=1 and
+  // never ?store= / ?role=employee, so a kiosk is never nested. Pinned as source shape because the
+  // slice cannot see it: the mode is set by the URL, and only by the URL.
+  const roleBlock = SRC.slice(SRC.indexOf('var ROLE ='), SRC.indexOf('var ROLE =') + 900);
+  ok(/ROLE === "employee" \|\| URL_STORE/.test(roleBlock),
+     'kiosk mode is entered from ?role=employee or ?store= and nothing else');
+  const adds = (SRC.match(/classList\.(add|remove|toggle)\(\s*["']mode-employee["']/g) || []);
+  ok(adds.length === 1 && /add/.test(adds[0]),
+     'the class is added once and never removed — so a start-time check cannot go stale (' +
+     adds.join(' | ') + ')');
 }
 
 console.log('\n──────────────────────────────');

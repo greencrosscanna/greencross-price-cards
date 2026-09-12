@@ -2027,6 +2027,23 @@
    * NOTHING HERE RUNS BEFORE SIGN-IN: pcStart calls pollStart_, so the listener is attached on the
    * same side of the gate as the polls it feeds. Registering it at load would let a visibility change
    * on the sign-in screen fetch the queue from a page that has no session.
+   *
+   * AND THE EMPLOYEE KIOSK DOES NOT POLL AT ALL. `.mode-employee` -- the per-store link handed to each
+   * store -- hides every strip these three feed: #queueStrip, .newprod-strip/.newprod-list and
+   * .printed-strip/.printed-list are all `display:none !important` in generator.css. So the kiosk was
+   * fetching three payloads a minute to paint nothing, on the one screen most likely to sit open all
+   * day. Nothing else there consumes them: the brand datalist refreshNewProducts feeds is attached
+   * only in makeField (the full table, hidden on the kiosk) and every brand it discovers is merged
+   * again by fetchLive from the same inventory; refreshQueueCount's host-badge postMessage is a no-op
+   * standalone, and the host embeds with ?embed=1, never ?store= / ?role=employee, so a kiosk is never
+   * nested. SUBMITTING IS UNTOUCHED -- submitToQueue posts the count to the host itself.
+   *
+   * SKIPPED AT START, NOT PER TICK, AND THAT IS SAFE: the mode is read once from location.search at
+   * init (`ROLE === "employee" || URL_STORE`) and `mode-employee` is added there and never removed --
+   * logging out reloads. pollStart_ runs later still, from pcStart, behind the sign-in gate. So the
+   * answer cannot change after this check, and a per-tick re-read would cost a class lookup every 30s
+   * to learn the same thing. The `document.hidden` guard above is untouched and still does its job for
+   * every full-app tab -- this is an ADDITIONAL reason to skip, not a replacement for that one.
    */
   var POLL_MIN_GAP = 2000;          // ms -- two runs of the SAME poll this close together are one run
   var _pollLast = {};
@@ -2043,7 +2060,9 @@
   var pollNewProd_ = pollGuard_("newprod", function(){ refreshNewProducts(); });
   var pollPrinted_ = pollGuard_("printed", function(){ refreshPrinted();     });
   function pollAll_(){ pollQueue_(); pollNewProd_(); pollPrinted_(); }
+  function pollsWanted_(){ return !document.body.classList.contains("mode-employee"); }
   function pollStart_(){
+    if (!pollsWanted_()) return;           // employee kiosk: nothing on screen reads any of this
     document.addEventListener("visibilitychange", function(){ if (!document.hidden) pollAll_(); });
     pollAll_();                              // skipped outright if this tab opened in the background
     setInterval(pollQueue_,    30000);       // keep the shared-queue count fresh
