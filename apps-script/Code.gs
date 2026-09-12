@@ -281,25 +281,106 @@ function gxVerifyCacheKey_(token, ns) {
     Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, String(token)));
 }
 
+/* ═════════════ ONE GX CORE READ, WITH A BOUNDED TRANSPORT RETRY ═════════════ *
+ *
+ * READS ONLY. Every caller of this must be safe to run more than once. An auth
+ * CHECK is a read and qualifies; so is the stores registry. A route that CHANGES
+ * something on Core's side must not come through here — a retry whose first
+ * attempt actually landed and only lost the reply files the thing twice. That is
+ * why reportBug_ (?action=ingest_bug) keeps its own single-shot call and its own
+ * email fallback rather than being folded in.
+ *
+ * WHAT IS RETRYABLE, AND WHY IT IS ONLY THESE. Measured 2026-09-11/12: GX Core's
+ * /exec bounces intermittently — an identical request either answers in ~2s or
+ * comes back as a Google HTML error page ("Sorry, unable to open the file at this
+ * time"), sometimes after a long stall. So: a thrown fetch, a non-200, or a body
+ * that is HTML rather than JSON. All three mean NOBODY ANSWERED THE QUESTION.
+ *
+ * A PARSED ANSWER IS NEVER RETRIED, even a hostile one. {ok:false,
+ * code:'session_expired'} is GX Core answering correctly; asking twice more
+ * spends 2s of backoff to be refused identically. The distinction this whole
+ * helper exists to preserve is "Core did not answer" vs "Core said no", and
+ * retrying the second kind erases it.
+ *
+ * THE ELAPSED BUDGET IS NOT DECORATION. The bounce's slow shape has been clocked
+ * at 50-130s. Three of those back to back is 390s, past Apps Script's 360s
+ * execution cap — so an unbudgeted retry would replace a clean refusal with a
+ * script timeout, which is strictly worse for the person waiting. Retry is aimed
+ * at the FAST bounce; once a call has already cost the user most of a minute,
+ * another one buys nothing.
+ *
+ * Returns { ok:true, data } — data is whatever Core said, ok:true or ok:false —
+ * or { ok:false, transport:true, attempts, why } when nothing answered. */
+var GXCORE_GET_ATTEMPTS   = 3;
+var GXCORE_GET_BACKOFF_MS = [500, 1500];   // waited BEFORE attempt 2 and attempt 3
+var GXCORE_GET_BUDGET_MS  = 45000;
+
+function gxCoreGetJson_(url) {
+  var started = Date.now();
+  var why = '';
+  for (var i = 0; i < GXCORE_GET_ATTEMPTS; i++) {
+    if (i > 0) {
+      /* Stop BEFORE sleeping and re-asking: the budget is about what the caller
+         has already spent, not about how long this loop is allowed to run. */
+      if (Date.now() - started >= GXCORE_GET_BUDGET_MS) {
+        return { ok: false, transport: true, attempts: i,
+                 why: (why || 'no answer') + ' (stopped after ' +
+                      Math.round((Date.now() - started) / 1000) + 's — retrying a stalled call ' +
+                      'would outrun the Apps Script execution limit)' };
+      }
+      Utilities.sleep(GXCORE_GET_BACKOFF_MS[i - 1]);
+    }
+    try {
+      var res  = UrlFetchApp.fetch(url, { muteHttpExceptions: true, followRedirects: true });
+      var code = res.getResponseCode();
+      if (code < 200 || code >= 300) { why = 'HTTP ' + code; continue; }
+      var body = String(res.getContentText() || '');
+      /* The bounce is an HTML page. Checking the first character is what tells it
+         apart from a real JSON refusal — both arrive as a perfectly ordinary 200. */
+      if (body.replace(/^﻿/, '').trim().charAt(0) === '<') {
+        why = 'GX Core returned an HTML error page, not JSON';
+        continue;
+      }
+      try {
+        return { ok: true, data: JSON.parse(body) };
+      } catch (pe) {
+        why = 'unparseable body';
+        continue;
+      }
+    } catch (e) {
+      why = 'fetch failed: ' + String((e && e.message) || e);
+    }
+  }
+  return { ok: false, transport: true, attempts: GXCORE_GET_ATTEMPTS, why: why || 'no answer' };
+}
+
 function gxVerify_(token, ns, ttl) {
   if (!token) return { ok: false, error: 'Not signed in', code: 'auth_required' };
   var cache = CacheService.getScriptCache();
   var ckey = gxVerifyCacheKey_(token, ns);
   var hit = cache.get(ckey);
   if (hit) return JSON.parse(hit);
-  try {
-    var url = GXCORE_URL + '?action=verify&app=' + encodeURIComponent(APP) +
-              '&token=' + encodeURIComponent(token);
-    var res = UrlFetchApp.fetch(url, { muteHttpExceptions: true, followRedirects: true });
-    var out = JSON.parse(res.getContentText());
-    // Cache ONLY successes. Caching a failure would turn a blip in Core into a
-    // minute of locked-out managers.
-    if (out && out.ok) cache.put(ckey, JSON.stringify(out), ttl);
-    return out;
-  } catch (e) {
-    return { ok: false, error: 'Could not reach GX Core to verify your session',
-             code: 'core_unreachable' };
+
+  var got = gxCoreGetJson_(GXCORE_URL + '?action=verify&app=' + encodeURIComponent(APP) +
+                           '&token=' + encodeURIComponent(token));
+
+  /* NOTHING ANSWERED. This still FAILS CLOSED — the retry buys more chances at a
+     real answer, it never turns "no answer" into "allowed". `code` deliberately
+     stays core_unreachable: authProbe_ and the client both branch on it, and this
+     is the same condition it always named. What is new is that the caller can now
+     tell it apart from a refusal without reading the prose — transport:true, plus
+     how many times we asked. */
+  if (!got.ok) {
+    return { ok: false, code: 'core_unreachable', transport: true, attempts: got.attempts,
+             error: 'GX Core did not answer after ' + got.attempts +
+                    (got.attempts === 1 ? ' attempt' : ' attempts') + ' (' + got.why + ')' };
   }
+
+  var out = got.data;
+  // Cache ONLY successes. Caching a failure would turn a blip in Core into a
+  // minute of locked-out managers — and a RETRIED failure is still a failure.
+  if (out && out.ok) cache.put(ckey, JSON.stringify(out), ttl);
+  return out;
 }
 function gxAuthWrite_(token) { return gxVerify_(token, 'pcw', WRITE_CACHE_TTL_S); }
 function gxAuthRead_(token)  { return gxVerify_(token, 'pcr', READ_CACHE_TTL_S); }
@@ -1440,18 +1521,24 @@ function dutchieStores_() {
      used to live here threw "GXCore is not defined" every time, taking ?action=stores and the
      all-stores live catalog down with it. The registry is a public read; the same ?action=stores
      route the browser already uses answers it. */
+  /* Through gxCoreGetJson_, so a bounced /exec is retried rather than taking the
+     whole store registry down with it — this is a pure read and safe to re-ask.
+     The two failures are reported separately on purpose: "did not answer" is a
+     blip to wait out, "refused" is something to go and fix. */
   var out = [];
-  try {
-    var res = UrlFetchApp.fetch(GXCORE_URL + '?action=stores', { muteHttpExceptions: true });
-    var data = JSON.parse(res.getContentText() || 'null');
-    if (!data || data.ok !== true) throw new Error((data && data.error) || 'store registry refused');
-    (data.stores || []).forEach(function (st) {
-      var dn = String(st.dutchie_name || '').trim();
-      if (dn) out.push(dn);
-    });
-  } catch (e) {
-    throw new Error('GX Core store registry unreachable: ' + ((e && e.message) || e));
+  var got = gxCoreGetJson_(GXCORE_URL + '?action=stores');
+  if (!got.ok) {
+    throw new Error('GX Core store registry did not answer after ' + got.attempts +
+                    (got.attempts === 1 ? ' attempt' : ' attempts') + ': ' + got.why);
   }
+  var data = got.data;
+  if (!data || data.ok !== true) {
+    throw new Error('GX Core store registry refused: ' + ((data && data.error) || 'no reason given'));
+  }
+  (data.stores || []).forEach(function (st) {
+    var dn = String(st.dutchie_name || '').trim();
+    if (dn) out.push(dn);
+  });
   if (!out.length) throw new Error('GX Core returned no stores');
   return out;
 }
