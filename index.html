@@ -283,10 +283,25 @@
   // GXDev.check(action) on every getJSON, and check() THROWS on an undeclared action — so an
   // action missing from here is not a warning, it is a broken Import button on localhost. 'grid'
   // is a read (Code.gs READ_ACTIONS.grid -> readGrid_); the Done write-back is a separate POST.
+  //
+  // This app talks to TWO backends and the guard sees both. Most actions here reach Price Cards' own
+  // Apps Script engine via engineGet. Three reach GX CORE instead, through GXClient(GXCORE_URL),
+  // and all three were undeclared until v1.440 -- so on localhost every load logged a BLOCKED:
+  //   config           gx-maintenance's outage flag. Unreadable counts as UP, so this one was mute
+  //                    by design -- which is exactly why it sat undeclared. NOT the app's own
+  //                    settings: those are the engine's `getConfig`, declared all along.
+  //   version_history  gx-changelog AND gx-updatecheck. check() throws, so GXChangelog.init died on
+  //                    the way out and What's New was dead on localhost.
+  //   login            generator.js's sign-in, the one blocked read that would look like a backend
+  //                    outage rather than a dev-guard refusal.
+  // Production was never affected; only dev lied. The engine-only check in
+  // tests/live_price_fallback_test.js could not have caught any of it -- it scanned engineGet call
+  // sites and nothing else -- so it now scans the GX Core call sites too.
   window.GX_DEV_READS = [
-    'getConfig', 'getPrinted', 'getQueue', 'grid', 'liveCatalog', 'newProducts', 'stores'
+    'config', 'getConfig', 'getPrinted', 'getQueue', 'grid', 'liveCatalog', 'login',
+    'newProducts', 'stores', 'version_history'
   ];
 </script>
-<script src="generator.js?v=1.439"></script>
+<script src="generator.js?v=1.440"></script>
 </body>
 </html>

@@ -77,18 +77,60 @@ console.log('\n1. priceIndexFor_ — which prices the card builder may search');
      'liveReady but an EMPTY live index still falls back rather than showing nothing');
 }
 
-console.log('\n2. every engineGet action is declared in GX_DEV_READS');
+console.log('\n2. every declared-read call site is declared in GX_DEV_READS');
 {
   // GXClient.getJSON calls GXDev.check(action), and check() THROWS on an undeclared action. On
   // localhost an action missing from this list is not a warning — it is a dead button. This caught
   // `grid`, which had never needed declaring while engineGet hand-rolled its own fetch.
   const declared = (HTML.match(/GX_DEV_READS\s*=\s*\[([\s\S]*?)\]/) || [, ''])[1]
     .split(',').map(s => s.trim().replace(/^['"]|['"]$/g, '')).filter(Boolean);
+
+  // ── 2a. this app's own engine reads ──────────────────────────────────────────────────────────
   const used = [...SRC.matchAll(/engineGet\([^,]+,\s*["']action=([A-Za-z0-9_]+)/g)].map(x => x[1]);
   ok(used.length >= 6, 'found the engineGet read call sites (' + used.length + ')');
   const missing = [...new Set(used)].filter(a => declared.indexOf(a) < 0);
   ok(missing.length === 0, 'no engineGet action is missing from GX_DEV_READS' +
      (missing.length ? ' — missing: ' + missing.join(', ') : ''));
+
+  // ── 2b. GX CORE reads, ours and the shared theme's ───────────────────────────────────────────
+  // 2a scanned engineGet and nothing else, and reported clean for months while THREE GX Core reads
+  // sat undeclared: `config`, `login` and `version_history` (fixed in v1.440). A gate that never
+  // opens the file is a stronger false negative than one that misjudges a line, because its output
+  // is indistinguishable from real coverage. So this half scans the other door.
+  //
+  // The theme file list is DERIVED from index.html's own <script src> tags, never typed here — a
+  // hardcoded list rots the day someone adds a module, and rots silently. gx-client.js is excluded
+  // because it IS the client: its `.jsonp('version_history')` lines are usage examples in a header
+  // comment, not call sites. Writes go through .post() and are deliberately out of scope.
+  const readCall = /\.(?:jsonp|getJSON)\(\s*['"]([A-Za-z0-9_]+)['"]/g;
+
+  const core = [...SRC.matchAll(/GXClient\(\s*GXCORE_URL\s*\)\s*\.(?:jsonp|getJSON)\(\s*['"]([A-Za-z0-9_]+)['"]/g)]
+    .map(x => x[1]);
+  ok(core.length >= 2, "found this app's own GX Core read call sites (" + core.length + ')');
+
+  const themeFiles = [...HTML.matchAll(/<script src="[^"]*greencross-gx-theme\/(gx-[a-z]+\.js)"/g)]
+    .map(x => x[1]).filter(f => f !== 'gx-client.js');
+  ok(themeFiles.length >= 5,
+     'derived the shared theme modules this page loads (' + themeFiles.length + ')');
+
+  const THEME_DIR = __dirname + '/../../greencross-gx-theme/';
+  const readable = themeFiles.filter(f => fs.existsSync(THEME_DIR + f));
+  if (readable.length !== themeFiles.length) {
+    // Never render "clean" for a check that could not run. Unreadable is UNKNOWN, and unknown fails.
+    ok(false, 'the gx-theme sibling checkout is readable — cannot verify shared-module reads without '
+       + 'it (missing: ' + themeFiles.filter(f => !fs.existsSync(THEME_DIR + f)).join(', ') + ')');
+  } else {
+    const themeUsed = [];
+    for (const f of readable) {
+      const src = fs.readFileSync(THEME_DIR + f, 'utf8');
+      for (const mm of src.matchAll(readCall)) themeUsed.push(mm[1]);
+    }
+    ok(themeUsed.length >= 3,
+       'found the shared modules\' GX Core read call sites (' + themeUsed.length + ')');
+    const coreMissing = [...new Set(core.concat(themeUsed))].filter(a => declared.indexOf(a) < 0);
+    ok(coreMissing.length === 0, 'no GX Core action is missing from GX_DEV_READS' +
+       (coreMissing.length ? ' — missing: ' + coreMissing.join(', ') : ''));
+  }
 }
 
 console.log('\n3. engineGet transport — shared retry, not a sixth hand-rolled one');
