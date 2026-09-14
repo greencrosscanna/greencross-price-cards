@@ -31,6 +31,25 @@ jobs:
         with:
           path: greencross-price-cards
 
+      # gx-theme, without which live_price_fallback_test.js cannot read the shared modules this page
+      # loads by URL (gx-topnav, gx-session, gx-stores, …) and so cannot check their GX Core reads
+      # against GX_DEV_READS. That suite calls ok(false) rather than skipping — unreadable is UNKNOWN
+      # and unknown fails — which is the RIGHT call and is why this checkout is required, not optional.
+      #
+      # The suite started reading the sibling in v1.440 and this step did not exist, so from that
+      # commit on the gate was green on this desk — where gx-theme is simply the next folder in
+      # Dropbox — and red on every push. Code fine, test right, workflow wrong: the kind of red that
+      # teaches people to ignore CI. Adding a cross-repo read to a suite means adding its checkout.
+      #
+      # NO TOKEN NEEDED: greencross-gx-theme is PUBLIC, so the default GITHUB_TOKEN reaches it.
+      # The path must sit BESIDE the main checkout, because the test resolves it as ../../ from
+      # tests/ — hence `path:` on both steps.
+      - name: Check out greencross-gx-theme
+        uses: actions/checkout@v7
+        with:
+          repository: greencrosscanna/greencross-gx-theme
+          path: greencross-gx-theme
+
       - uses: actions/setup-node@v7
         with:
           node-version: '24'
@@ -42,8 +61,17 @@ jobs:
       # Say what did NOT run. A green tick reports that every test EXITED 0, which is not the same
       # as every test having COVERED something: a suite that skips prints a pass line and looks
       # identical to one that ran.
-      # Nothing here skips today — that is exactly why this is worth adding while the answer is
+      # No suite here SKIPS today — that is exactly why this is worth having while the answer is
       # boring: any ⚠️ that appears later is then real, and arrives without anyone going to look.
+      #
+      # But "nothing skips" was never the same as "nothing can go uncovered", and this comment used
+      # to imply it was. live_price_fallback_test.js reads the gx-theme sibling and, when it is
+      # absent, FAILS instead of skipping — so that gap arrives as a red gate above, never as a ⚠️
+      # here. This step marks any non-skipping suite ✅ and quotes its last line, so through both
+      # red runs it printed "✅ live_price_fallback_test.js — FAILED 1 of 17 assertions". The check
+      # mark tracks "did it skip", not "did it pass"; the gate is what answers that. The gx-theme
+      # checkout step above is what closes the gap, and if it is ever removed the symptom is a red
+      # gate rather than a warning here.
       - name: Report coverage honestly
         if: always()
         working-directory: greencross-price-cards
