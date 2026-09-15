@@ -970,6 +970,17 @@ function reportBug_(body) {
     tab: 'pricecards',                // standalone page; embedded reports arrive as 'pricetags'
     appVer: String((body && body.appVer) || ''),
     appStore: String((body && body.appStore) || ''),
+    /* THE SCREENSHOT'S URL, forwarded. This params object listed every field but this one, so an
+       attached image died HERE — one line short of the board, silently, because omitting a key
+       throws nothing. Everything either side already worked: the shared form uploads to Core's
+       bug_shot sink and sets payload.screenshot_url, generator.js POSTs the whole payload through
+       enginePost, and Core's ingest_bug route hands its params straight to gxIngestBug, which reads
+       screenshot_url and writes the bug_reports column. So this needed no Core change and no library
+       pin — which is the point of filing over HTTP. Measured 2026-09-15 from live data by
+       core-admin: 140 reports across all seven apps, not one with an image; 4 of Price Cards' 8
+       filed after the feature shipped 2026-08-26. Gated by the hub's
+       tests/bug_screenshot_forwarding_test.js. */
+    screenshot_url: String((body && body.screenshot_url) || ''),
     /* The browser diagnostics, forwarded verbatim. gx-bugreport.js builds ONE JSON string --
        page url, viewport, user agent, online flag and, the part that earns this line, the JS
        errors the page threw BEFORE the user hit submit -- and posts it as `context`. Core reads
