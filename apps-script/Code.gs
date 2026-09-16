@@ -52,7 +52,7 @@ function authorize() {
      each key opens and checks it against the stores registry — a stronger check than the HTTP code
      this used to print, and it cannot be fooled by a mislabelled map. */
   try {
-    var wu = GXCORE_URL + '?action=dutchie_whoami&secret='
+    var wu = GXCORE_URL + '?action=dutchie_whoami&' + GX_SECRET_PARAM_ + '='
            + encodeURIComponent(gxDeploySecret_());
     var wr = UrlFetchApp.fetch(wu, { muteHttpExceptions: true });
     var wd = JSON.parse(wr.getContentText() || 'null');
@@ -63,9 +63,56 @@ function authorize() {
     } else {
       report.dutchie = 'GX Core refused: ' + ((wd && wd.error) || 'no response');
     }
-  } catch (e1) { report.dutchie = 'GX Core unreachable: ' + e1.message; }
+  } catch (e1) { report.dutchie = scrubSecrets_('GX Core unreachable: ' + e1.message); }
   Logger.log('Authorized. ' + JSON.stringify(report));
   return report;
+}
+
+/* ═════════════════ SECRET SCRUB — an exception message can carry a credential ═════════════════ *
+ *
+ * WHEN A UrlFetchApp CALL FAILS AT THE NETWORK LAYER, Google's exception message is
+ * "Address unavailable: <the whole URL>" — query string included. This app reaches GX Core over
+ * HTTP on purpose (it binds no library), and the URLs it builds carry `secret=` (GX_DEPLOY_SECRET,
+ * on every dutchie_* call and on ingest_bug) and `token=` (the caller's own GX Core session, on
+ * verify). Nothing in this file caught those exceptions on the way out: gxDutchieRows_ wraps only
+ * the JSON.parse, so a network failure walked all the way up to the router's catch, which turned it
+ * into `error: String(err)` and handed it to the browser — a live deploy secret in an error banner
+ * on a shop iPad. Reported by core-admin 2026-09-16 and confirmed here before changing anything.
+ *
+ * THE NAME LIST IS DERIVED FROM THIS FILE'S OWN CREDENTIAL SURFACE, not copied from another app.
+ * Measured across the suite on 2026-09-16, three of the four spokes that shipped this fix first
+ * leak a parameter their own auth accepts, because the auth check and the scrub regex were two
+ * hand-maintained lists that drifted. So the two names that matter here are CONSTANTS, used both by
+ * the code that accepts/sends them and by the regex below — they cannot drift apart without a
+ * compile-time-visible edit:
+ *
+ *   AUTH_TOKEN_PARAM_  'token'   accepted inbound by requireRead_ (?token=) and requireWrite_
+ *                                (body.token); sent outbound on ?action=verify
+ *   GX_SECRET_PARAM_   'secret'  sent outbound on every gxDutchieRows_ call, on ingest_bug and on
+ *                                dutchie_whoami
+ *
+ * The rest are defense in depth for names this app does not send today but GX Core does accept.
+ *
+ * THE MATCH IS NOT ANCHORED TO THE START OF THE NAME. Crew's version reads
+ * /([?&](?:secret|token|…)=)/ and walks straight past `connector_secret=`, because there the name is
+ * preceded by an underscore. A prefix and a suffix of name characters are both allowed here, so
+ * connector_secret=, gx_token= and token_hash= all redact. Over-redacting a harmless parameter in
+ * an error string costs nothing; under-redacting costs a credential.
+ */
+var AUTH_TOKEN_PARAM_ = 'token';
+var GX_SECRET_PARAM_  = 'secret';
+var SECRET_PARAM_WORDS_ = [AUTH_TOKEN_PARAM_, GX_SECRET_PARAM_, 'key', 'password', 'pass', 'sig', 'session', 'auth'];
+var SECRET_PARAM_RE_ = new RegExp(
+  '([?&][A-Za-z0-9_.\\-]*(?:' + SECRET_PARAM_WORDS_.join('|') + ')[A-Za-z0-9_.\\-]*=)[^&"\'\\s\\\\]*',
+  'gi'
+);
+
+/* Redact the VALUES, keep the parameter names and the rest of the message: "Address unavailable:
+   https://…/exec?action=dutchie_products&store=River%20Rd&secret=[redacted]" still says which call
+   failed, which is the whole reason anyone reads these. Value characters stop at & " ' whitespace or
+   a backslash, so this is also safe to run over an already-serialized JSON string (see json()). */
+function scrubSecrets_(s) {
+  return String(s == null ? '' : s).replace(SECRET_PARAM_RE_, '$1[redacted]');
 }
 
 /* ---------------------------- READ ---------------------------- */
@@ -110,7 +157,11 @@ function doGet(e) {
     // READ_ACTIONS but has no case, which is a bug, not a request for the grid.
     return json({ ok: false, error: 'unknown-action' });
   } catch (err) {
-    return json({ ok: false, error: String(err) });
+    /* SCRUBBED, and this is the catch the hazard was reported against. A throw from anywhere below
+       — gxDutchieRows_ has an unwrapped UrlFetchApp.fetch, and dutchieStores_ / liveCatalog_ /
+       newProducts_ / scanNow all reach it — arrives here as "Address unavailable: <url&secret=…>".
+       Anything added to this file later inherits the fix through json() as well; both, on purpose. */
+    return json({ ok: false, error: scrubSecrets_(String(err)) });
   }
 }
 
@@ -348,7 +399,10 @@ function gxCoreGetJson_(url) {
         continue;
       }
     } catch (e) {
-      why = 'fetch failed: ' + String((e && e.message) || e);
+      /* The URL this failed on carries the caller's own session token, and `why` is quoted verbatim
+         into the refusal the browser shows. Scrubbed at the source so the log and the email copies
+         are covered too, not just the reply json() serializes. */
+      why = scrubSecrets_('fetch failed: ' + String((e && e.message) || e));
     }
   }
   return { ok: false, transport: true, attempts: GXCORE_GET_ATTEMPTS, why: why || 'no answer' };
@@ -362,7 +416,7 @@ function gxVerify_(token, ns, ttl) {
   if (hit) return JSON.parse(hit);
 
   var got = gxCoreGetJson_(GXCORE_URL + '?action=verify&app=' + encodeURIComponent(APP) +
-                           '&token=' + encodeURIComponent(token));
+                           '&' + AUTH_TOKEN_PARAM_ + '=' + encodeURIComponent(token));
 
   /* NOTHING ANSWERED. This still FAILS CLOSED — the retry buys more chances at a
      real answer, it never turns "no answer" into "allowed". `code` deliberately
@@ -634,7 +688,7 @@ function authStats_() {
    to refuse. While dark it always proceeds, but still validates and counts, so
    the stats reflect what enforcement WOULD have done. */
 function requireWrite_(body) {
-  var token = (body && body.token) || '';
+  var token = (body && body[AUTH_TOKEN_PARAM_]) || '';
   var auth  = gxAuthWrite_(token);
   var needsEdit = writeNeedsEdit_(body && body.action);
   authStatBump_('w', body && body.action, !!auth.ok, isProbe_(body));
@@ -718,7 +772,7 @@ function gateDecision_(auth, enforcing, needsEdit) {
    real user and role back costs nothing once it is paid for; a miss simply means
    nobody asked, which is what `not_checked` says and what the counters record. */
 function requireRead_(action, p) {
-  var token     = (p && p.token) || '';
+  var token     = (p && p[AUTH_TOKEN_PARAM_]) || '';
   var enforcing = readEnforced_();
   var auth      = enforcing ? gxAuthRead_(token) : gxVerifyCachedOnly_(token, 'pcr');
 
@@ -817,7 +871,9 @@ function doPost(e) {
     }
     return json({ ok: true, marked: marked });
   } catch (err) {
-    return json({ ok: false, error: String(err) });
+    /* SCRUBBED — same hazard as doGet's catch. reportBug_ builds an ingest_bug URL carrying
+       GX_DEPLOY_SECRET, and submitCards_/scan paths reach the dutchie_* proxy. */
+    return json({ ok: false, error: scrubSecrets_(String(err)) });
   }
 }
 
@@ -861,9 +917,16 @@ function cellToString(c) {
   return String(c);
 }
 
+/* EVERY REPLY THIS ENGINE SENDS IS BUILT HERE — 33 `return json(...)` exits and one
+   ContentService call — so the scrub goes here too, not only in the two router catches. The router
+   catch is not the only way an exception message reaches a screen: liveCatalog_ puts a per-store
+   String(err) into the `errors` map it RETURNS, and reportBug_ returns "GX Core could not be
+   reached: " + e.message, neither of which passes through doGet's catch. Leaderboard found nine
+   such sites in its own file after fixing its router; this app has two, and they are covered here
+   rather than by asking every future exit to remember. */
 function json(obj) {
   return ContentService
-    .createTextOutput(JSON.stringify(obj))
+    .createTextOutput(scrubSecrets_(JSON.stringify(obj)))
     .setMimeType(ContentService.MimeType.JSON);
 }
 
@@ -961,7 +1024,7 @@ function reportBug_(body) {
   var title    = String((body && body.title) || '').trim() || desc.split('\n')[0].slice(0, 80).trim();
 
   var params = {
-    action: 'ingest_bug', secret: secret,
+    action: 'ingest_bug',
     app: 'pricecards',                // its own key — see the header above for why not 'inventory'
     reporter: reporter,
     title: title,
@@ -997,6 +1060,9 @@ function reportBug_(body) {
        real page filing a real report. */
     context: String((body && body.context) || ''),
   };
+  /* Keyed by the same constant the scrub regex is built from — see SECRET_PARAM_WORDS_. */
+  params[GX_SECRET_PARAM_] = secret;
+
   var qs = Object.keys(params).map(function (k) {
     return encodeURIComponent(k) + '=' + encodeURIComponent(params[k]);
   }).join('&');
@@ -1015,7 +1081,9 @@ function reportBug_(body) {
       if (!why && (!out || !out.ok)) why = 'GX Core refused the report: ' + ((out && out.error) || 'no reason given');
     }
   } catch (e) {
-    why = 'GX Core could not be reached: ' + String((e && e.message) || e);
+    /* The ingest_bug URL carries GX_DEPLOY_SECRET, and this `why` is both returned to the reporter
+       and printed in the UNFILED email below. */
+    why = scrubSecrets_('GX Core could not be reached: ' + String((e && e.message) || e));
   }
 
   /* NOTHING REACHED THE BOARD. The user IS told -- this returns the failure and gx-bugreport keeps
@@ -1418,7 +1486,7 @@ function buildProductDict_() {
   for (var i = 0; i < stores.length; i++) {
     var items;
     try { items = gxDutchieRows_('dutchie_products', stores[i], ''); }
-    catch (e) { storeErrs.push(stores[i] + ': ' + ((e && e.message) || e)); continue; }
+    catch (e) { storeErrs.push(scrubSecrets_(stores[i] + ': ' + ((e && e.message) || e))); continue; }
     for (var j = 0; j < items.length; j++) {
       var it = items[j], pid = it.productId;
       if (pid == null || dict[pid]) continue;
@@ -1507,7 +1575,7 @@ function gxDeploySecret_() {
 function gxDutchieRows_(action, store, fields) {
   var url = GXCORE_URL + '?action=' + encodeURIComponent(action)
           + '&store=' + encodeURIComponent(store)
-          + '&secret=' + encodeURIComponent(gxDeploySecret_())
+          + '&' + GX_SECRET_PARAM_ + '=' + encodeURIComponent(gxDeploySecret_())
           + (fields ? '&fields=' + encodeURIComponent(fields) : '');
   var lastErr = '';
   for (var i = 0; i < 5; i++) {
@@ -1610,7 +1678,7 @@ function liveCatalog_(p) {
           qty:        Number(it.quantityAvailable || 0)
         };
       }
-    } catch (err) { errors[stores[s]] = String(err); }
+    } catch (err) { errors[stores[s]] = scrubSecrets_(String(err)); }
   }
   var items = Object.keys(map).map(function (k) { return map[k]; });
   return { ok: true, count: items.length, stores: stores, errors: errors, items: items };
