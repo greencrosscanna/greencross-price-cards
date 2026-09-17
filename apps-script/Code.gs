@@ -115,6 +115,38 @@ function scrubSecrets_(s) {
   return String(s == null ? '' : s).replace(SECRET_PARAM_RE_, '$1[redacted]');
 }
 
+/* THE ONE DOOR EVERY EMAIL LEAVES BY. Every MailApp call in this file goes through here, and there
+ * is deliberately no second one -- a scrub at one exit says nothing whatever about a second exit.
+ * That is not a theory: on 2026-09-17 four GX engines were audited by hand and every one had a send
+ * nobody had counted. Crew had SEVEN sends and exactly one scrubbed -- the one somebody had once
+ * looked at. This app had three, and the one that mattered scrubbed the server's own failure line
+ * while printing the browser's page address and captured JS errors raw, one field apart.
+ *
+ * WHY THIS SCRUBS THE ASSEMBLED MESSAGE rather than each field at its source. A body is built from a
+ * dozen strings by three different callers, and the next variable added to any of them is added by
+ * somebody who is thinking about the notice, not about credentials. Scrubbing here cannot be
+ * forgotten by that person, because they never see it.
+ *
+ * TWO OF THE THREE CALLERS HAD NOTHING TO SCRUB when this landed -- the queue digests render only
+ * card fields -- and the shared test would have taken a written `@gx-exit-ok` reason for them. They
+ * are routed anyway: a marker is a promise about what a body contains TODAY, and it is kept only if
+ * the next person to add a field to buildDigestBody_ happens to read the comment on the send. This
+ * costs one function call and expires never.
+ *
+ * SUBJECT TOO, not just the body. A subject is built from the same strings -- this app's UNFILED
+ * notice puts the report title in it -- and it is the line that shows up in a notification preview.
+ *
+ * Safe over HTML: the regex takes value characters only up to & " ' whitespace or a backslash, so an
+ * entity (`&amp;`, `&middot;`) cannot start a match and an attribute's closing quote ends one. */
+function sendMail_(msg) {
+  var m = {}, src = msg || {};
+  Object.keys(src).forEach(function (k) { m[k] = src[k]; });
+  if (m.subject  != null) m.subject  = scrubSecrets_(m.subject);
+  if (m.body     != null) m.body     = scrubSecrets_(m.body);
+  if (m.htmlBody != null) m.htmlBody = scrubSecrets_(m.htmlBody);
+  MailApp.sendEmail(m);
+}
+
 /* ---------------------------- READ ---------------------------- */
 function doGet(e) {
   try {
@@ -1057,8 +1089,17 @@ function reportBug_(body) {
        DO NOT "VERIFY" THIS WITH A HAND-BUILT CALL THAT SETS THE FIELD. Setting it by hand passes
        the broken version too; that is how four other spokes sat broken while reading appStore and
        appTab, which gx-bugreport has never sent under those names. The only honest check is the
-       real page filing a real report. */
-    context: String((body && body.context) || ''),
+       real page filing a real report.
+
+       SCRUBBED ON THE WAY OUT, added 2026-09-17 with the mail fix. This is the same browser-supplied
+       blob the notice email prints, and it does not stop here: Core stores it in `bug_reports`, prints
+       it in the bug-filed email, and shows it on the board. A store is only a leak when something
+       reads it back, and this one has three readers. The shared exit test cannot see a write like
+       this -- it watches replies and mail -- so it is scrubbed here by hand.
+
+       Safe over the serialized JSON: scrubSecrets_ stops a value at & " ' whitespace or a backslash,
+       so it redacts inside a JSON string without eating the closing quote. */
+    context: scrubSecrets_(String((body && body.context) || '')),
   };
   /* Keyed by the same constant the scrub regex is built from — see SECRET_PARAM_WORDS_. */
   params[GX_SECRET_PARAM_] = secret;
@@ -1154,7 +1195,21 @@ function pcBugNotify_(o) {
     try { ctx = JSON.parse(String((o.body && o.body.context) || '{}')) || {}; } catch (e) {}
     var errs = (ctx.errors && ctx.errors.length) ? ctx.errors : null;
 
-    MailApp.sendEmail({
+    /* THROUGH sendMail_, and this is the send that earned it. Three of these lines are supplied by
+       the BROWSER and were printed raw until 2026-09-17: the page address, the user agent, and the
+       last JS errors the page caught -- any of which can carry a query string, and an error thrown
+       by a fetch carries the URL it was fetching. The server's own failure line was already scrubbed
+       one field away, which is how this kind of gap survives: it looks handled.
+
+       Two more arrive from GX CORE and were never scrubbed either -- `o.lead` carries Core's refusal
+       text on the UNFILED notice and its mail_error on the UNANNOUNCED one, and Core's errors name
+       the URL it was called with, which is the URL this app signs with GX_DEPLOY_SECRET.
+
+       gx-theme's gx-bugreport.js now strips secret-bearing parameters in the browser before any of
+       this is sent, and that is live. It does not make this redundant: the engine must not depend on
+       a client it does not control, an older cached page sends the old shape, and nothing stops a
+       future caller building this notice from something the browser never touched. */
+    sendMail_({
       to: 'sky@greencrosscanna.com',
       subject: o.subject,
       body: o.lead.concat([
@@ -1428,7 +1483,7 @@ function sendQueueDigest() {
   props.setProperty(DIGEST_LAST_PROP, new Date().toISOString());
   if (!fresh.length) return { ok: true, sent: false, reason: 'nothing new' };
   var to = digestRecipients_();
-  MailApp.sendEmail({
+  sendMail_({
     to: to.join(','),
     subject: '🖨️ Price card queue — ' + q.length + ' waiting (' + fresh.length + ' new)',
     htmlBody: buildDigestBody_(q, fresh)
@@ -1446,7 +1501,7 @@ function installDigestTrigger() {
 // Run in the editor to send yourself a sample digest now (forces send to sky@ only).
 function sendDigestTest() {
   var q = readQueue_();
-  MailApp.sendEmail({
+  sendMail_({
     to: DIGEST_OWNER,
     subject: '🖨️ [TEST] Price card queue — ' + q.length + ' waiting',
     htmlBody: '<p style="font-family:Arial"><b>Test digest</b> (sent only to you).</p>' + buildDigestBody_(q, q)
