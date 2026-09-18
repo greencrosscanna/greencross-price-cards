@@ -574,8 +574,8 @@
       // fall back to the public CSV link (read-only)
       var endpoint = csvEndpoint(url);
       if(!endpoint){ setStatus("Add your Google Sheet link, or an engine URL in ⚙ Sheet settings.", "err"); if(btnImport) btnImport.classList.remove("loading"); return; }
-      p = fetch(endpoint, {cache:"no-store"})
-        .then(function(res){ if(!res.ok) throw new Error("http-"+res.status); return res.text(); })
+      p = boundedRead(endpoint)
+        .then(function(r){ if(!r.res.ok) throw new Error("http-"+r.res.status); return r.text; })
         .then(function(text){ if(/^\s*<!?\s*(html|doctype)/i.test(text)) throw new Error("not-public"); finishImport(parseCSV(text), url); });
     }
     p.catch(function(err){
@@ -706,8 +706,8 @@
     // nothing. That path is the OLD behavior, so it is a degradation, never an upgrade.
     var req = (typeof GXClient !== "undefined")
       ? GXClient(base).getJSON(action, params)
-      : fetch(pcSignUrl(base + (base.indexOf("?") < 0 ? "?" : "&") + query), { cache: "no-store" })
-          .then(function (res) { if (!res.ok) throw new Error("http-" + res.status); return res.json(); });
+      : boundedRead(pcSignUrl(base + (base.indexOf("?") < 0 ? "?" : "&") + query))
+          .then(function (r) { if (!r.res.ok) throw new Error("http-" + r.res.status); return JSON.parse(r.text); });
 
     return req.then(function (d) {
       if (pcRefused(d)) throw new Error((d && d.error) || "Not signed in");
@@ -770,6 +770,21 @@
      redirect is broken" apart from "the engine said no". */
   var POST_RETRIES = 4, POST_BACKOFF = 600;   // total attempts = POST_RETRIES + 1; linear, as GXClient
 
+  /* A TIMED-OUT WRITE IS NEVER RE-SENT -- the same rule sales shipped in v2.608.
+     A browser fetch has no deadline of its own, and when /exec stalls it does not fail, it simply
+     never answers; the spinner said "Sending…" until the tab was closed. So every attempt now has a
+     ceiling. But a ceiling on a WRITE is a new hazard: Apps Script keeps running a request the
+     browser abandoned, so a timeout almost always means the write DID run and only the answer was
+     lost. Re-sending it is a second write. The engine's subId replay only covers a repeat inside
+     SUBMIT_DEDUP_MS (90s, Code.gs), and GXClient.postJSON on its own retries a timeout like any
+     miss -- five 60s attempts would put the last re-send well outside that window.
+     So this door drives the retries itself, one shared-client attempt at a time: the fast
+     Drive-HTML miss still retries (for POST_RETRY_SAFE actions only, as before), a TIMEOUT ends the
+     write and reports "may have saved", and no retry starts once POST_REPLAY_BUDGET_MS has passed.
+     The per-attempt ceiling is GXClient's own POST_TIMEOUT (60s); this file does not invent one. */
+  var POST_TIMEOUT_MS = 60000;
+  var POST_REPLAY_BUDGET_MS = 45000;   // half the engine's 90s dedupe window: a retry must land inside it
+
   function enginePost(base, payload) {
     var action = String((payload && payload.action) || "");
 
@@ -783,38 +798,72 @@
 
     var body = JSON.stringify(pcSign(payload));
     var max  = Object.prototype.hasOwnProperty.call(POST_RETRY_SAFE, action) ? POST_RETRIES : 0;
+    var started = Date.now();
+    var gx = (typeof GXClient !== "undefined") ? GXClient(base) : null;
+    if (gx && typeof gx.postJSON !== "function") gx = null;
 
-    function unreachable(e) {
-      var err = new Error("engine unreachable — " + ((e && e.message) || e));
+    function unreachable(e, timedOut) {
+      var err = new Error((timedOut ? "engine did not answer — it may still have saved — " : "engine unreachable — ") + ((e && e.message) || e));
       err.gxUnreachable = true;
+      if (timedOut) err.gxTimedOut = true;
       throw err;
     }
 
-    // The handoff. When gx-theme gives GXClient a POST door, this repo's loop goes quiet on its own.
-    if (typeof GXClient !== "undefined") {
-      var gx = GXClient(base);
-      if (typeof gx.postJSON === "function") return gx.postJSON(action, payload, { retries: max }).then(null, unreachable);
-    }
-
-    function attempt(n) {
+    // One attempt, bounded. Through the shared client when it loaded (retries:0 -- the loop below
+    // owns replay policy); otherwise a raw fetch with the same ceiling, armed across the body read.
+    function once(n) {
+      if (gx) return gx.postJSON(action, payload, { retries: 0, timeoutMs: POST_TIMEOUT_MS });
       // Cache-bust every attempt: a bad intermediary response must never be served back to us.
       var url = base + (base.indexOf("?") < 0 ? "?" : "&") + "_ts=" + Date.now() + "_" + n;
-      return fetch(url, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: body })
+      var ctl = (typeof AbortController === "function") ? new AbortController() : null;
+      var killer = ctl ? setTimeout(function () { try { ctl.abort(); } catch (e) {} }, POST_TIMEOUT_MS) : null;
+      var init = { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: body };
+      if (ctl) init.signal = ctl.signal;
+      return fetch(url, init)
         .then(function (res) { return res.text(); })
         .then(function (text) {
+          if (killer) clearTimeout(killer);
           text = String(text || "").trim();
           // The HTML page arrives with a cheerful 200, so the BODY SHAPE is the only tell there is.
           if (text && (text.charAt(0) === "{" || text.charAt(0) === "[")) return JSON.parse(text);
           throw new Error("non-JSON body — Drive HTML page");
-        })
-        .catch(function (e) {
-          if (n >= max) return unreachable(e);
-          // .then(setTimeout) rather than await: this ships to old iPad Safari, same as submitToQueue.
-          return new Promise(function (r) { setTimeout(r, POST_BACKOFF * (n + 1)); })
-            .then(function () { return attempt(n + 1); });
+        }, function (e) {
+          if (killer) clearTimeout(killer);
+          if (e && e.name === "AbortError") throw new Error("post timed out after " + POST_TIMEOUT_MS + "ms");
+          throw e;
         });
     }
+
+    function attempt(n) {
+      return once(n).catch(function (e) {
+        // "timed out" is GXClient.postJSON's own wording for its AbortError, and once() above uses it too.
+        var timedOut = /timed out/i.test(String((e && e.message) || e));
+        if (timedOut || n >= max || (Date.now() - started) > POST_REPLAY_BUDGET_MS) return unreachable(e, timedOut);
+        // .then(setTimeout) rather than await: this ships to old iPad Safari, same as submitToQueue.
+        return new Promise(function (r) { setTimeout(r, POST_BACKOFF * (n + 1)); })
+          .then(function () { return attempt(n + 1); });
+      });
+    }
     return attempt(0);
+  }
+
+  /* Every non-engine-door fetch in this file goes through here, so none of them can wait forever.
+     20s is GXClient's GET_TIMEOUT; reads only -- a write belongs in enginePost. Armed across the body
+     read, because headers can arrive and the body never finish. Resolves { res, text }. */
+  var READ_TIMEOUT_MS = 20000;
+  function boundedRead(url) {
+    var ctl = (typeof AbortController === "function") ? new AbortController() : null;
+    var killer = ctl ? setTimeout(function () { try { ctl.abort(); } catch (e) {} }, READ_TIMEOUT_MS) : null;
+    var init = { cache: "no-store" };
+    if (ctl) init.signal = ctl.signal;
+    return fetch(url, init)
+      .then(function (res) { return res.text().then(function (text) { return { res: res, text: text }; }); })
+      .then(function (r) { if (killer) clearTimeout(killer); return r; },
+            function (e) {
+              if (killer) clearTimeout(killer);
+              if (e && e.name === "AbortError") throw new Error("timed out after " + READ_TIMEOUT_MS + "ms");
+              throw e;
+            });
   }
   /* ── @test-slice end ─────────────────────────────────────────────────────────────────────────── */
 
@@ -1074,8 +1123,8 @@
   }
 
   function loadStyle(){
-    fetch("style/tags.json", {cache:"no-store"})
-      .then(function(res){ if(!res.ok) throw 0; return res.json(); })
+    boundedRead("style/tags.json")
+      .then(function(r){ if(!r.res.ok) throw 0; return JSON.parse(r.text); })
       .then(function(t){
         STYLE.brands = t.brands || [];
         var m = {};
@@ -1092,8 +1141,8 @@
         ensureDatalist("sizeList", STYLE.sizes);
       })
       .catch(function(){ /* dictionary optional — app still works without it */ });
-    fetch("style/catalog.json", {cache:"no-store"})
-      .then(function(res){ if(!res.ok) throw 0; return res.json(); })
+    boundedRead("style/catalog.json")
+      .then(function(r){ if(!r.res.ok) throw 0; return JSON.parse(r.text); })
       .then(function(c){ STYLE.catalog = c || {}; mergeBrands(Object.keys(STYLE.catalog)); buildIndex(); buildLexIndex(); if(STYLE.liveReady) rebuildLive(); })
       .catch(function(){ /* catalog optional */ });
   }
@@ -1684,7 +1733,7 @@
     // HTML page instead of JSON (~6%); a single raw fetch would silently fall back to the hardcoded STORE_MAP.
     var req = (typeof GXClient !== "undefined")
       ? GXClient(GXCORE_URL).getJSON("stores")
-      : (function(){ var sep = GXCORE_URL.indexOf("?")<0 ? "?" : "&"; return fetch(GXCORE_URL+sep+"action=stores", {cache:"no-store"}).then(function(r){ return r.json(); }); })();
+      : (function(){ var sep = GXCORE_URL.indexOf("?")<0 ? "?" : "&"; return boundedRead(GXCORE_URL+sep+"action=stores").then(function(r){ return JSON.parse(r.text); }); })();
     req
       .then(function(d){
         if(!d || !d.ok || !d.stores || !d.stores.length) throw 0;
@@ -1830,7 +1879,12 @@
           postQueueCountToHost(d.count);
           emp ? celebrate() : showQueue("<b>Submitted "+d.added+"</b> · "+d.count+" now waiting", d.count>0);
         } else { emp ? showToast("Hmm, that didn't send — try again") : flashError("Submit failed."); }
-      }).catch(function(){ emp ? showToast("Couldn't send — check your connection") : flashError("Submit failed — check your connection."); })
+      }).catch(function(err){
+        // A timeout is not a failure to send: the engine very likely queued it and only the answer
+        // was lost. Sending again inside 90s is de-duped by subId, so saying "check" is honest.
+        if(err && err.gxTimedOut) emp ? showToast("Still waiting on Google — it may have sent. Check the queue before sending again.")
+                                      : flashError("No answer from the engine — this may have been submitted. Check the queue before resending.");
+        else emp ? showToast("Couldn't send — check your connection") : flashError("Submit failed — check your connection."); })
       .then(function(){ _submitting = false; submitBusy(false); });   // .then not .finally: this ships to old iPad Safari
   }
   function loadQueue(){
@@ -1881,7 +1935,9 @@
         if(d && d.ok === false){ setStatus("Couldn't save: " + (d.error || "unknown error"), "err"); return; }
         if(then) then();
       })
-      .catch(function(){ setStatus("Couldn't reach the engine \u2014 that change was NOT saved.", "err"); });
+      .catch(function(err){ setStatus(err && err.gxTimedOut
+        ? "The engine didn't answer \u2014 that change may or may not have saved. Reload to check."
+        : "Couldn't reach the engine \u2014 that change was NOT saved.", "err"); });
   }
   function renderPrinted(){
     if(!printedList) return;
