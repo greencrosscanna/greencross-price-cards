@@ -692,7 +692,30 @@
      storm on a signed-out iPad. Only a transport failure retries, and when every
      attempt misses the error is tagged `gxUnreachable` so callers can tell
      "Google's redirect is broken" apart from "the engine said no". Callers MUST
-     branch on that instead of falling back to template data. */
+     branch on that instead of falling back to template data.
+
+     THE CEILING IS NOT OPTIONAL. gx-client's getJSON has aborted each attempt at
+     20s (its GET_TIMEOUT) since 2026-09-03, unless the caller passes its own
+     timeoutMs -- and until now nothing here did. liveCatalog is a live Dutchie
+     fetch, and measuring every configured store found Commercial answering
+     validly at 38s: a genuinely slow but WORKING read, killed at 20s and
+     re-sent, which reruns the Dutchie fetch on the server during the exact slow
+     spell that caused it. 45s sits above that measurement with headroom and
+     below "a hung call spins forever". If GX Core / Dutchie latency improves
+     this should come down; leaving it at 45s forever just means a genuinely
+     hung call holds a spinner for 45 seconds. */
+  /* @test-slice engineGet — executed by tests/slow_engine_read_test.js */
+  var ENGINE_CEILING_MS = 45000;
+  function engineTimeout(promise, ms, label) {
+    var timer;
+    var timeout = new Promise(function (_, reject) {
+      timer = setTimeout(function () { reject(new Error(label + " timed out after " + ms + "ms")); }, ms);
+    });
+    return Promise.race([promise, timeout]).then(
+      function (v) { clearTimeout(timer); return v; },
+      function (e) { clearTimeout(timer); throw e; }
+    );
+  }
   function engineGet(base, query) {
     var qs = new URLSearchParams(query);
     var action = qs.get("action") || "";
@@ -704,8 +727,13 @@
 
     // gx-client.js is a remote <script>; if it failed to load, one plain attempt still beats
     // nothing. That path is the OLD behavior, so it is a degradation, never an upgrade.
+    //
+    // timeoutMs: ENGINE_CEILING_MS lets ONE attempt use the whole budget instead of being aborted
+    // at getJSON's 20s default and resent. withTimeout below then bounds the WHOLE call (every
+    // attempt, every backoff) at the same ceiling, so a run of misses still can't add up to
+    // 5 × 45s -- a fast Drive-HTML bounce still retries, just inside the one budget.
     var req = (typeof GXClient !== "undefined")
-      ? GXClient(base).getJSON(action, params)
+      ? engineTimeout(GXClient(base).getJSON(action, params, { timeoutMs: ENGINE_CEILING_MS }), ENGINE_CEILING_MS, "Engine request (" + action + ")")
       : boundedRead(pcSignUrl(base + (base.indexOf("?") < 0 ? "?" : "&") + query))
           .then(function (r) { if (!r.res.ok) throw new Error("http-" + r.res.status); return JSON.parse(r.text); });
 
@@ -720,6 +748,7 @@
       throw err;
     });
   }
+  /* @test-slice end */
 
   /* ── @test-slice enginePost ────────────────────────────────────────────────────────────────────
      WHICH WRITES MAY BE REPLAYED, and why each one. Read the enginePost comment below first: the
