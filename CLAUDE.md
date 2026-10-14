@@ -17,7 +17,7 @@ Core is **`pricecards`**.
 | version | the **`?v=` cache-buster** in `index.html` — single source of truth for `deploy.sh` |
 | run | `python3 serve.py` → <http://localhost:8753> |
 | ship | commit → push (Pages) → `./deploy.sh` |
-| tests | no automated suite — verify against the live app |
+| tests | `tests/*_test.js` (run one with `node tests/<name>_test.js`), run by the pre-push hook and CI (`.github/workflows/tests.yml`); still verify against the live app |
 
 **`serve.py` here exits with a clear error if the app key is missing from its `PORTS` table** rather than
 falling back to a default. Don't reintroduce a fallback: the old default was **8181 — Leaderboard's real
@@ -43,10 +43,8 @@ notes addressed to **`to_app=pricecards`**, resolve done ones (`resolve_note`), 
 app (`add_note`). **Bug reports file under this app's own key**, like SPIFF's: the standalone page sends
 `app=pricecards, tab=pricecards` (`reportBug_` in `apps-script/Code.gs`), and the tab embedded in Inventory
 files through Inventory's reporter as `app=pricecards, tab=pricetags`. One board; the tab says which page.
-*Changed 2026-09-09 (v1.434): standalone reports used to go to `app=inventory`, and because GX Core's bug
-list filters strictly on `app`, `?action=bugs&app=pricecards` never showed a single one of them.*
 
-Integration status (2026-08-11): notes channel live. **Auto-record on deploy** wired — `deploy.sh`
+Integration status: notes channel live. **Auto-record on deploy** wired — `deploy.sh`
 POSTs `deploy_version` (app=pricecards) to GX Core; `APP_VERSION` (vNN) is single-sourced from the
 `?v=` cache-buster in `index.html`. Run `deploy.sh` after each ship (releases show in `version_history`).
 **gx-theme** linked (`gx-theme.css` — `--gx-*` tokens available; kept light, no restyle of the bespoke
@@ -67,15 +65,8 @@ local hardcode is offline fallback only) — don't re-hardcode store names; CC e
 ## The HUB is core-admin's — send a note, don't edit (rule from Sky, 2026-09-02 · applied here 2026-09-06)
 
 **Never edit `greencross-command-center` or `greencross-gx-theme` from this chat.** Both belong to
-core-admin. It is here because it was broken, not because it was theorized.
-
-On 2026-09-02 a spoke session made a small, correct, tested fix to GX Core and put it on a branch for
-Sky to merge, because Core library cuts are PR-gated. **Another Claude session had the same repo open
-at the same time.** These repos are Dropbox-synced, so the two sessions shared one working tree and
-one HEAD: the branch was switched out from under the first session, its commit landed on `main`
-instead, and the other session pushed `main` and shipped it. The change went out as library v284 with
-no PR and no review. The code was fine — that is the point. Nothing failed, nothing warned, and the
-gate on the highest-stakes repo in the suite simply was not there that time.
+core-admin. It is here because it was broken: two sessions sharing one Dropbox checkout once shipped an
+unreviewed GX Core change as library v284, with nothing failing and nothing warning.
 
 Two sessions cannot share a git checkout. Neither can see the other, `git checkout -b` is not atomic
 against a second process, and the loser finds out afterwards by reading the log.
