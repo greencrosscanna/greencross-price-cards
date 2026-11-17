@@ -638,6 +638,12 @@
       return s;
     } catch (e) { return null; }
   }
+  // A GX Core sign-in result → the stored session. ONE shape, shared by the sign-in form and the
+  // portal hand-off, so the two can never store different things.
+  function pcSessionFromLogin(r) {
+    return { user: r.user, name: r.displayName || r.user, role: r.role,
+             avatar: r.avatarConfig || null, token: r.token };
+  }
   function pcSetSession(s) {
     try {
       if (s) localStorage.setItem(PC_AUTH_KEY, JSON.stringify(s));
@@ -981,8 +987,7 @@
       btn.disabled = true; btn.textContent = "Signing in\u2026"; err.textContent = "";
       GXClient(GXCORE_URL).jsonp("login", { user: u, pass: pw, app: APP_KEY }).then(function (r) {
         if (!r || !r.ok) throw new Error((r && r.error) || "Sign-in failed");
-        pcSetSession({ user: r.user, name: r.displayName || r.user, role: r.role,
-                       avatar: r.avatarConfig || null, token: r.token });
+        pcSetSession(pcSessionFromLogin(r));
         wrap.remove();
         document.documentElement.classList.remove("pc-gated");
         pcStart();
@@ -2219,6 +2224,15 @@
     var a = e.detail && e.detail.action;
     if (a === "logout") { pcSetSession(null); location.reload(); }
     else if (a === "settings") { var b = document.getElementById("btnSettings"); if (b) b.click(); }
+  });
+
+  /* Opened from a staff-portal tile (#gxcode=, already wiped from the address bar by gx-handoff.js):
+     trade it once for this person's normal Price Cards session and reload signed in. Any refusal leaves
+     the sign-in gate as it is. Nested in Inventory there is never a code, so this does nothing there. */
+  if (window.GXHandoff && GXHandoff.code) GXHandoff.run({
+    app: APP_KEY,
+    save: function (r) { pcSetSession(pcSessionFromLogin(r)); },
+    current: function () { var s = pcSession(); return s ? s.user : null; },
   });
 
   /* Nested, inherit the host's sign-in rather than asking again; standalone, gate. */
