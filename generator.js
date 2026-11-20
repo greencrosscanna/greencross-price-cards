@@ -959,6 +959,7 @@
   }
 
   function pcRenderGate(errMsg, reason) {
+    pcLoaderHide(false);   // the sign-in card must be visible, not buried under the loader
     document.documentElement.classList.add("pc-gated");
     var wrap = document.getElementById("pcGate");
     if (!wrap) { wrap = document.createElement("div"); wrap.id = "pcGate"; document.body.appendChild(wrap); }
@@ -1241,8 +1242,8 @@
   }
   function fetchConfigGlobal(){          // adopt the shared config on load
     var url = (typeof loadWebapp === "function") ? (loadWebapp()||"").trim() : "";
-    if(!url) return;
-    engineGet(url, "action=getConfig")
+    if(!url) return Promise.resolve();
+    return engineGet(url, "action=getConfig")
       .then(function(d){
         if(d && d.ok && d.config && applyConfig(d.config)){
           lsSet(CONFIG_KEY, currentConfig());
@@ -1768,7 +1769,7 @@
     var req = (typeof GXClient !== "undefined")
       ? GXClient(GXCORE_URL).getJSON("stores")
       : (function(){ var sep = GXCORE_URL.indexOf("?")<0 ? "?" : "&"; return boundedRead(GXCORE_URL+sep+"action=stores").then(function(r){ return JSON.parse(r.text); }); })();
-    req
+    return req
       .then(function(d){
         if(!d || !d.ok || !d.stores || !d.stores.length) throw 0;
         STORE_MAP = d.stores
@@ -2164,18 +2165,43 @@
   /* Everything that TALKS TO THE BACKEND or paints the tool lives here, so nothing runs until there is
      a session. Gating only the UI would still leave an unauthenticated page pulling live inventory. */
   var _pcStarted = false;
+
+  /* The shared burning-joint loading screen (gx-jointloader.js, gx-theme). STANDALONE ONLY: nested in
+     Inventory this page is an iframe and the host paints its own loading state, so a cover here would
+     be a second one inside the host's tab. Up from page load until the tool is really ready (store list
+     and shared settings in), cancel() at once whenever the sign-in screen or a failure takes over. */
+  var _pcLoader = null;
+  function pcIsEmbedded(){
+    return /[?&]embed=1\b/.test(location.search) || !!(window.GXTopNav && GXTopNav.isEmbedded && GXTopNav.isEmbedded());
+  }
+  function pcLoaderShow(){
+    if (_pcLoader || !window.GXJointLoader || pcIsEmbedded()) return;
+    try { _pcLoader = GXJointLoader.screen({ appName: "Price Cards" }); } catch(e){ _pcLoader = null; }
+  }
+  function pcLoaderHide(finish){
+    var l = _pcLoader; _pcLoader = null;
+    if (!l) return;
+    try { if (finish) l.done(); else l.cancel(); } catch(e){}
+  }
+
   function pcStart(){
     if (_pcStarted) return;            // never re-enter: a second pass would double every interval
     _pcStarted = true;
+    pcLoaderShow();
     if (window.GXTopNav) GXTopNav.startClock();
     if (window.GXStores) GXStores.load(GXCORE_URL).catch(function(){ /* colors are a nicety */ });
     pcRenderUser();
     loadStyle();
-    fetchConfigGlobal();   // adopt the shared (global) settings
-    loadStores();          // pull canonical store names from GX Core, then build the picker
+    var cfgP = fetchConfigGlobal();   // adopt the shared (global) settings
+    var stP  = loadStores();          // pull canonical store names from GX Core, then build the picker
     pollStart_();          // the first fetch of each, then the three background polls
     renderTable();
     refreshPreview();
+    // Ready = store picker built and shared settings applied. Both swallow their own errors (fallbacks
+    // exist), so this always settles; the 15s cap only guards a hung request.
+    var capT = setTimeout(function(){ pcLoaderHide(true); }, 15000);
+    Promise.all([cfgP, stP]).then(function(){ clearTimeout(capT); pcLoaderHide(true); },
+                                  function(){ clearTimeout(capT); pcLoaderHide(true); });
   }
 
   /* User chip, standalone only. Nested, the host owns the tray -- and Settings stays in the action row
@@ -2239,6 +2265,7 @@
   (function pcBoot(){
     if (pcSession()) { pcStart(); return; }
     if (window.GXSession) {
+      pcLoaderShow();   // covers the wait for a host/portal session; the gate or pcStart takes over
       GXSession.request(6000).then(function(inh){
         if (inh && inh.token) {
           pcSetSession({ user: inh.user, name: inh.displayName || inh.user, role: inh.role,
